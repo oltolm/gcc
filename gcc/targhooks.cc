@@ -861,6 +861,15 @@ default_function_arg_offset (machine_mode, const_tree)
   return 0;
 }
 
+/* Default implementation of TARGET_FUNCTION_ARG_SLOT_SIZE.  */
+
+tree
+default_function_arg_slot_size (machine_mode mode, const_tree type, int, int,
+				const_tree)
+{
+  return type ? arg_size_in_bytes (type) : size_int (GET_MODE_SIZE (mode));
+}
+
 /* Default implementation of TARGET_FUNCTION_ARG_PADDING: usually pad
    upward, but pad short args downward on big-endian machines.  */
 
