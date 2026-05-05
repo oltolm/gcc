@@ -3434,6 +3434,8 @@ argument @var{libname} exists for symmetry with
 
 @hook TARGET_FUNCTION_ARG_OFFSET
 
+@hook TARGET_FUNCTION_ARG_SLOT_SIZE
+
 @hook TARGET_FUNCTION_ARG_PADDING
 
 @defmac PAD_VARARGS_DOWN

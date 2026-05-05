@@ -3636,7 +3636,7 @@ ix86_offload_options (void)
 }
 
 /* Handle "cdecl", "stdcall", "fastcall", "regparm", "thiscall",
-   and "sseregparm" calling convention attributes;
+   "vectorcall", and "sseregparm" calling convention attributes;
    arguments as in struct attribute_spec.handler.  */
 
 static tree
@@ -3662,11 +3662,15 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
 	  || ix86_function_type_abi (*node) != MS_ABI)
 	warning (OPT_Wattributes, "%qE attribute ignored",
 		 name);
-      *no_add_attrs = true;
-      return NULL_TREE;
+      if (!is_attribute_p ("vectorcall", name))
+	{
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
     }
 
-  /* Can combine regparm with all attributes but fastcall, and thiscall.  */
+  /* Can combine regparm with all attributes but fastcall, thiscall,
+     and vectorcall.  */
   if (is_attribute_p ("regparm", name))
     {
       tree cst;
@@ -3679,6 +3683,11 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
       if (lookup_attribute ("thiscall", TYPE_ATTRIBUTES (*node)))
 	{
 	  error ("regparm and thiscall attributes are not compatible");
+	}
+
+      if (lookup_attribute ("vectorcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("vectorcall and regparm attributes are not compatible");
 	}
 
       cst = TREE_VALUE (args);
@@ -3718,6 +3727,10 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
 	{
 	  error ("fastcall and thiscall attributes are not compatible");
 	}
+      if (lookup_attribute ("vectorcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("fastcall and vectorcall attributes are not compatible");
+	}
     }
 
   /* Can combine stdcall with regparm and sseregparm.  */
@@ -3735,6 +3748,10 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
 	{
 	  error ("stdcall and thiscall attributes are not compatible");
 	}
+      if (lookup_attribute ("vectorcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("stdcall and vectorcall attributes are not compatible");
+	}
     }
 
   /* Can combine cdecl with regparm and sseregparm.  */
@@ -3751,6 +3768,10 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
       if (lookup_attribute ("thiscall", TYPE_ATTRIBUTES (*node)))
 	{
 	  error ("cdecl and thiscall attributes are not compatible");
+	}
+      if (lookup_attribute ("vectorcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("cdecl and vectorcall attributes are not compatible");
 	}
     }
   else if (is_attribute_p ("thiscall", name))
@@ -3773,6 +3794,39 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
       if (lookup_attribute ("regparm", TYPE_ATTRIBUTES (*node)))
 	{
 	  error ("regparm and thiscall attributes are not compatible");
+	}
+      if (lookup_attribute ("vectorcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("thiscall and vectorcall attributes are not compatible");
+	}
+    }
+  else if (is_attribute_p ("vectorcall", name))
+    {
+      if (lookup_attribute ("stdcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("stdcall and vectorcall attributes are not compatible");
+	}
+      if (lookup_attribute ("fastcall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("fastcall and vectorcall attributes are not compatible");
+	}
+      if (lookup_attribute ("cdecl", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("cdecl and vectorcall attributes are not compatible");
+	}
+      if (lookup_attribute ("thiscall", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("thiscall and vectorcall attributes are not compatible");
+	}
+      if (lookup_attribute ("regparm", TYPE_ATTRIBUTES (*node)))
+	{
+	  error ("regparm and vectorcall attributes are not compatible");
+	}
+      /* Vectorcall does not support variadic functions.  */
+      if (TREE_CODE (*node) == FUNCTION_TYPE && stdarg_p (*node))
+	{
+	  error ("vectorcall attribute cannot be used with variadic functions");
+	  *no_add_attrs = true;
 	}
     }
 
@@ -4181,6 +4235,9 @@ static const attribute_spec ix86_gnu_attributes[] =
      if they are not variable.  */
   { "thiscall",  0, 0, false, true,  true,  true, ix86_handle_cconv_attribute,
     NULL },
+  /* Vectorcall attribute passes vector arguments in registers.  */
+  {"vectorcall", 0, 0, false, true, true, true, ix86_handle_cconv_attribute,
+   NULL},
   /* Cdecl attribute says the callee is a normal C declaration */
   { "cdecl",     0, 0, false, true,  true,  true, ix86_handle_cconv_attribute,
     NULL },

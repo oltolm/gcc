@@ -4059,9 +4059,10 @@ locate_and_pad_parm (machine_mode passed_mode, tree type, int in_regs,
 
   part_size_in_regs = (reg_parm_stack_space == 0 ? partial : 0);
 
-  sizetree = (type
-	      ? arg_size_in_bytes (type)
-	      : size_int (GET_MODE_SIZE (passed_mode)));
+  sizetree
+    = targetm.calls.function_arg_slot_size (passed_mode, type, in_regs,
+					    reg_parm_stack_space, fndecl);
+
   where_pad = targetm.calls.function_arg_padding (passed_mode, type);
   boundary = targetm.calls.function_arg_boundary (passed_mode, type);
   round_boundary = targetm.calls.function_arg_round_boundary (passed_mode,

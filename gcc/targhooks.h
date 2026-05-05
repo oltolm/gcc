@@ -154,6 +154,8 @@ extern void default_function_arg_advance
   (cumulative_args_t, const function_arg_info &);
 extern bool default_push_argument (unsigned int);
 extern HOST_WIDE_INT default_function_arg_offset (machine_mode, const_tree);
+extern tree default_function_arg_slot_size (machine_mode, const_tree, int, int,
+					    const_tree);
 extern pad_direction default_function_arg_padding (machine_mode, const_tree);
 extern rtx default_function_arg (cumulative_args_t, const function_arg_info &);
 extern rtx default_function_incoming_arg (cumulative_args_t,

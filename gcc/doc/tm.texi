@@ -4453,6 +4453,16 @@ arguments in the preferred slot that is in the middle of the quad word
 instead of starting at the top.  The default implementation returns 0.
 @end deftypefn
 
+@deftypefn {Target Hook} tree TARGET_FUNCTION_ARG_SLOT_SIZE (machine_mode @var{mode}, const_tree @var{type}, int @var{in_regs}, int @var{reg_parm_stack_space}, const_tree @var{fndecl})
+This hook returns the stack slot size, in bytes, used by
+@code{locate_and_pad_parm} when laying out an argument with mode @var{mode}
+and type @var{type}.  @var{in_regs} is nonzero if the argument is passed in
+registers and @var{reg_parm_stack_space} is the ABI-defined register home
+area size.  @var{fndecl} is the function declaration being laid out.
+
+The default implementation returns full argument size.
+@end deftypefn
+
 @deftypefn {Target Hook} pad_direction TARGET_FUNCTION_ARG_PADDING (machine_mode @var{mode}, const_tree @var{type})
 This hook determines whether, and in which direction, to pad out
 an argument of mode @var{mode} and type @var{type}.  It returns

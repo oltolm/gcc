@@ -5295,6 +5295,20 @@ instead of starting at the top.  The default implementation returns 0.",
  default_function_arg_offset)
 
 DEFHOOK
+(function_arg_slot_size,
+ "This hook returns the stack slot size, in bytes, used by\n\
+@code{locate_and_pad_parm} when laying out an argument with mode @var{mode}\n\
+and type @var{type}.  @var{in_regs} is nonzero if the argument is passed in\n\
+registers and @var{reg_parm_stack_space} is the ABI-defined register home\n\
+area size.  @var{fndecl} is the function declaration being laid out.\n\
+\n\
+The default implementation returns full argument size.",
+ tree,
+ (machine_mode mode, const_tree type, int in_regs,
+  int reg_parm_stack_space, const_tree fndecl),
+ default_function_arg_slot_size)
+
+DEFHOOK
 (function_arg_padding,
  "This hook determines whether, and in which direction, to pad out\n\
 an argument of mode @var{mode} and type @var{type}.  It returns\n\

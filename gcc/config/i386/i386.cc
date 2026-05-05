@@ -135,6 +135,8 @@ const struct processor_costs *ix86_cost = NULL;
    epilogue code.  */
 #define FAST_PROLOGUE_INSN_COUNT 20
 
+#define VECTORCALL_SSE_MASK ((1U << X86_64_VECTORCALL_SSE_REGPARM_MAX) - 1)
+
 /* Names for 8 (low), 8 (high), and 16-bit registers, respectively.  */
 static const char *const qi_reg_name[] = QI_REGISTER_NAMES;
 static const char *const qi_high_reg_name[] = QI_HIGH_REGISTER_NAMES;
@@ -432,6 +434,8 @@ static rtx ix86_function_value (const_tree, const_tree, bool);
 static bool ix86_function_value_regno_p (const unsigned int);
 static unsigned int ix86_function_arg_boundary (machine_mode,
 						const_tree);
+static tree ix86_function_arg_slot_size (machine_mode, const_tree, int, int,
+					 const_tree);
 static rtx ix86_static_chain (const_tree, bool);
 static int ix86_function_regparm (const_tree, const_tree);
 static void ix86_compute_frame_layout (void);
@@ -1159,10 +1163,11 @@ ix86_get_callcvt (const_tree type)
   bool is_stdarg;
   tree attrs;
 
-  if (TARGET_64BIT)
-    return IX86_CALLCVT_CDECL;
-
   attrs = TYPE_ATTRIBUTES (type);
+  if (TARGET_64BIT)
+    return (lookup_attribute ("vectorcall", attrs)
+	    ? IX86_CALLCVT_VECTORCALL : IX86_CALLCVT_CDECL);
+
   if (attrs != NULL_TREE)
     {
       if (lookup_attribute ("cdecl", attrs))
@@ -1173,9 +1178,14 @@ ix86_get_callcvt (const_tree type)
 	ret |= IX86_CALLCVT_FASTCALL;
       else if (lookup_attribute ("thiscall", attrs))
 	ret |= IX86_CALLCVT_THISCALL;
+      else if (lookup_attribute ("vectorcall", attrs))
+	ret |= IX86_CALLCVT_VECTORCALL;
 
-      /* Regparm isn't allowed for thiscall and fastcall.  */
-      if ((ret & (IX86_CALLCVT_THISCALL | IX86_CALLCVT_FASTCALL)) == 0)
+      /* Regparm isn't allowed for thiscall, fastcall, and vectorcall.  */
+      if ((ret
+	   & (IX86_CALLCVT_THISCALL | IX86_CALLCVT_FASTCALL
+	      | IX86_CALLCVT_VECTORCALL))
+	  == 0)
 	{
 	  if (lookup_attribute ("regparm", attrs))
 	    ret |= IX86_CALLCVT_REGPARM;
@@ -1247,10 +1257,16 @@ ix86_function_regparm (const_tree type, const_tree decl)
   int regparm;
   unsigned int ccvt;
 
-  if (TARGET_64BIT)
-    return (ix86_function_type_abi (type) == SYSV_ABI
-	    ? X86_64_REGPARM_MAX : X86_64_MS_REGPARM_MAX);
   ccvt = ix86_get_callcvt (type);
+
+  if (TARGET_64BIT)
+    {
+      if (ccvt & IX86_CALLCVT_VECTORCALL)
+	return -1;
+      return (ix86_function_type_abi (type) == SYSV_ABI
+		? X86_64_REGPARM_MAX
+		: X86_64_MS_REGPARM_MAX);
+    }
   regparm = ix86_regparm;
 
   if ((ccvt & IX86_CALLCVT_REGPARM) != 0)
@@ -1462,9 +1478,10 @@ ix86_return_pops_args (tree fundecl, tree funtype, poly_int64 size)
 
   ccvt = ix86_get_callcvt (funtype);
 
-  if ((ccvt & (IX86_CALLCVT_STDCALL | IX86_CALLCVT_FASTCALL
-	       | IX86_CALLCVT_THISCALL)) != 0
-      && ! stdarg_p (funtype))
+  if ((ccvt
+       & (IX86_CALLCVT_STDCALL | IX86_CALLCVT_FASTCALL | IX86_CALLCVT_THISCALL
+	  | IX86_CALLCVT_VECTORCALL))
+      && !stdarg_p (funtype))
     return size;
 
   /* Lose any fake structure return argument if it is passed on the stack.  */
@@ -1636,6 +1653,22 @@ ix86_reg_parm_stack_space (const_tree fndecl)
   if (TARGET_64BIT && call_abi == MS_ABI)
     return 32;
   return 0;
+}
+
+/* Return stack home slot size used while laying out incoming arguments.  */
+
+static tree
+ix86_function_arg_slot_size (machine_mode mode, const_tree type, int in_regs,
+			     int reg_parm_stack_space, const_tree fndecl)
+{
+  bool is_vectorcall
+    = fndecl
+      && (ix86_get_callcvt (TREE_TYPE (fndecl)) & IX86_CALLCVT_VECTORCALL);
+
+  if (TARGET_64BIT && in_regs && reg_parm_stack_space > 0 && is_vectorcall)
+    return size_int (UNITS_PER_WORD);
+
+  return type ? arg_size_in_bytes (type) : size_int (GET_MODE_SIZE (mode));
 }
 
 /* We add this as a workaround in order to use libc_has_function
@@ -1861,6 +1894,39 @@ ix86_init_pic_reg (void)
    for a call to a function whose data type is FNTYPE.
    For a library call, FNTYPE is 0.  */
 
+static int is_hva_type (const_tree);
+
+/* Compute which XMM registers are reserved by non-HVA vector/scalar-float
+   parameters under vectorcall position-based assignment.  */
+
+static unsigned int
+compute_vectorcall_vector_reg_mask (const_tree fntype)
+{
+  unsigned int mask = 0;
+  int argno = 0;
+  function_args_iterator iter;
+  tree argtype;
+
+  if (!fntype)
+    return 0;
+
+  FOREACH_FUNCTION_ARGS (fntype, argtype, iter)
+    {
+      if (argtype == error_mark_node || VOID_TYPE_P (argtype))
+	break;
+
+      machine_mode argmode = TYPE_MODE (argtype);
+
+      if (!is_hva_type (argtype)
+	  && (VECTOR_MODE_P (argmode) || SCALAR_FLOAT_MODE_P (argmode))
+	  && argno < X86_64_VECTORCALL_SSE_REGPARM_MAX)
+	mask |= (1U << argno);
+      argno++;
+    }
+
+  return mask;
+}
+
 void
 init_cumulative_args (CUMULATIVE_ARGS *cum,  /* Argument info to initialize */
 		      tree fntype,	/* tree ptr for function decl */
@@ -1912,9 +1978,11 @@ init_cumulative_args (CUMULATIVE_ARGS *cum,  /* Argument info to initialize */
 
   /* Set up the number of registers to use for passing arguments.  */
   cum->nregs = ix86_regparm;
+  bool is_vectorcall
+    = (fntype && (ix86_get_callcvt (fntype) & IX86_CALLCVT_VECTORCALL));
   if (TARGET_64BIT)
     {
-      cum->nregs = (cum->call_abi == SYSV_ABI
+      cum->nregs = (cum->call_abi == SYSV_ABI || is_vectorcall
                    ? X86_64_REGPARM_MAX
                    : X86_64_MS_REGPARM_MAX);
     }
@@ -1928,12 +1996,16 @@ init_cumulative_args (CUMULATIVE_ARGS *cum,  /* Argument info to initialize */
                            : X86_64_MS_SSE_REGPARM_MAX);
         }
     }
+  if (is_vectorcall)
+    cum->fastcall = 2;
   if (TARGET_MMX)
     cum->mmx_nregs = MMX_REGPARM_MAX;
   cum->warn_avx512f = true;
   cum->warn_avx = true;
   cum->warn_sse = true;
   cum->warn_mmx = true;
+
+  cum->used_xmm_mask = compute_vectorcall_vector_reg_mask (fntype);
 
   /* Because type might mismatch in between caller and callee, we need to
      use actual type of function for local calls.
@@ -3242,6 +3314,14 @@ function_arg_advance_ms_64 (CUMULATIVE_ARGS *cum, HOST_WIDE_INT bytes,
   return 0;
 }
 
+static int function_arg_advance_vectorcall_64 (CUMULATIVE_ARGS *, machine_mode,
+					       const_tree, HOST_WIDE_INT);
+static rtx function_arg_vectorcall_64 (CUMULATIVE_ARGS *, machine_mode,
+				       machine_mode, bool, const_tree,
+				       HOST_WIDE_INT);
+static rtx function_value_vectorcall_64 (machine_mode, machine_mode,
+					 const_tree);
+
 /* Update the data in CUM to advance over argument ARG.  */
 
 static void
@@ -3269,7 +3349,14 @@ ix86_function_arg_advance (cumulative_args_t cum_v,
       enum calling_abi call_abi = cum ? cum->call_abi : ix86_abi;
 
       if (call_abi == MS_ABI)
-	nregs = function_arg_advance_ms_64 (cum, bytes, words);
+	{
+	  /* init_cumulative_args records vectorcall in cum->fastcall.  */
+	  if (cum->fastcall == 2)
+	    nregs
+	      = function_arg_advance_vectorcall_64 (cum, mode, arg.type, words);
+	  else
+	    nregs = function_arg_advance_ms_64 (cum, bytes, words);
+	}
       else
 	nregs = function_arg_advance_64 (cum, mode, arg.type, words,
 					 arg.named);
@@ -3546,6 +3633,249 @@ function_arg_ms_64 (const CUMULATIVE_ARGS *cum, machine_mode mode,
   return gen_reg_or_parallel (mode, orig_mode, regno);
 }
 
+/* Vectorcall argument passing for 64-bit.
+   Vectorcall uses XMM0-XMM5 for vector/float arguments and
+   RCX, RDX, R8, R9 for integer arguments.
+   Vectorcall does not support varargs - all params are named.
+   Note: Large structs (> 8 bytes) are passed by reference (pointer to
+   caller-allocated memory) per the vectorcall ABI, so they appear as
+   pointer types at this point.  */
+
+/* Check if TYPE is a Homogeneous Vector Aggregate (HVA) - a struct where
+   all fields are the same vector or floating-point type.  Such types are
+   passed in SSE registers under vectorcall.
+   An HVA can have at most 4 identical members.
+   Returns the number of fields (1-4) if it's an HVA, 0 otherwise.
+   If LEAF_TYPE_OUT is non-NULL, sets it to the leaf field type.  */
+
+static int
+is_hva_type_1 (const_tree type, tree *leaf_type_out)
+{
+  if (!type || !AGGREGATE_TYPE_P (type))
+    return 0;
+
+  tree first_type = NULL_TREE;
+  int field_count = 0;
+
+  for (tree field = TYPE_FIELDS (type); field; field = DECL_CHAIN (field))
+    {
+      if (TREE_CODE (field) != FIELD_DECL)
+	continue;
+
+      tree field_type = TREE_TYPE (field);
+      if (!field_type || TREE_CODE (field_type) == ERROR_MARK)
+	continue;
+
+      /* Bitfields disqualify the type as an HVA.  */
+      if (DECL_BIT_FIELD (field))
+	return 0;
+
+      int elems = 1;
+      if (TREE_CODE (field_type) == ARRAY_TYPE)
+	{
+	  tree elem_type = TREE_TYPE (field_type);
+	  if (!elem_type)
+	    return 0;
+
+	  HOST_WIDE_INT asize = int_size_in_bytes (field_type);
+	  HOST_WIDE_INT esize = int_size_in_bytes (elem_type);
+
+	  if (asize <= 0 || esize <= 0 || asize % esize != 0)
+	    return 0;
+
+	  elems = asize / esize;
+	  field_type = elem_type;
+	}
+      else if (AGGREGATE_TYPE_P (field_type))
+	{
+	  tree inner_leaf = NULL_TREE;
+	  int inner = is_hva_type_1 (field_type, &inner_leaf);
+	  if (inner == 0)
+	    return 0;
+	  elems = inner;
+	  field_type = inner_leaf;
+	}
+
+      if (first_type == NULL_TREE)
+	{
+	  first_type = field_type;
+	  /* Check early if the first field is a vector/float type.  */
+	  machine_mode mode = TYPE_MODE (first_type);
+	  if (!VECTOR_MODE_P (mode) && !SCALAR_FLOAT_MODE_P (mode))
+	    return 0;
+	  if (leaf_type_out)
+	    *leaf_type_out = field_type;
+	}
+
+      if (!types_compatible_p (first_type, field_type))
+	return 0;
+
+      field_count += elems;
+      if (field_count > 4)
+	return 0;
+    }
+
+  return field_count;
+}
+
+static int
+is_hva_type (const_tree type)
+{
+  return is_hva_type_1 (type, NULL);
+}
+
+static int
+function_arg_advance_vectorcall_64 (CUMULATIVE_ARGS *cum, machine_mode mode,
+				    const_tree type, HOST_WIDE_INT words)
+{
+  /* Vector and floating point types use XMM0-XMM5.  */
+  if (VECTOR_MODE_P (mode) || SCALAR_FLOAT_MODE_P (mode))
+    {
+      if (cum->nregs > 0)
+	{
+	  if (cum->regno < X86_64_VECTORCALL_SSE_REGPARM_MAX)
+	    cum->used_xmm_mask |= (1U << cum->regno);
+	  cum->nregs--;
+	  cum->regno++;
+	  return 1;
+	}
+    }
+  else if (type)
+    {
+      int hva_fields = is_hva_type (type);
+      if (hva_fields > 0)
+	{
+	  unsigned int free_mask = (~cum->used_xmm_mask) & VECTORCALL_SSE_MASK;
+	  if (hva_fields <= popcount_hwi (free_mask))
+	    {
+	      int used = 0;
+	      for (int i = 0;
+		   i < X86_64_VECTORCALL_SSE_REGPARM_MAX && used < hva_fields;
+		   i++)
+		if (!(cum->used_xmm_mask & (1U << i)))
+		  {
+		    cum->used_xmm_mask |= (1U << i);
+		    used++;
+		  }
+
+	      cum->nregs -= 1;
+	      cum->regno += 1;
+	      return 1;
+	    }
+
+	  /* HVA overflow is passed indirectly; account as a pointer.  */
+	  goto pass_on_stack;
+	}
+      else if (AGGREGATE_TYPE_P (type))
+	{
+	  /* Non-HVA aggregates > 8 bytes are passed indirectly.  */
+	  if (words > 2)
+	      goto pass_on_stack;
+	  /* Small aggregates (<= 8 bytes) fall through to use integer
+	   * registers.
+	   */
+	}
+    }
+
+  /* Integer types and pointers use RCX, RDX, R8, R9.  */
+  if (cum->regno < X86_64_MS_SSE_REGPARM_MAX)
+    {
+      cum->nregs--;
+      cum->regno++;
+      return 1;
+    }
+
+pass_on_stack:
+  /* Stack-passed args still consume one vectorcall positional slot when
+     we are within the first six parameter positions.  */
+  if (cum->regno < X86_64_VECTORCALL_SSE_REGPARM_MAX)
+    {
+      cum->nregs--;
+      cum->regno++;
+    }
+
+  /* Passed on stack.  */
+  return 0;
+}
+
+static rtx
+function_arg_vectorcall_64 (CUMULATIVE_ARGS *cum, machine_mode mode,
+			    machine_mode orig_mode, bool named, const_tree type,
+			    HOST_WIDE_INT bytes)
+{
+  /* We need to add clobber for MS_ABI->SYSV ABI calls in expand_call.
+     We use value of -2 to specify that current function call is MSABI.  */
+  if (mode == VOIDmode)
+    return GEN_INT (-2);
+
+  /* Vectorcall does not support varargs - all params are named.  */
+  if (!named)
+    return NULL_RTX;
+
+  /* Vector and floating point types use XMM0-XMM5.  */
+  if (VECTOR_MODE_P (mode) || SCALAR_FLOAT_MODE_P (mode))
+    {
+      if (cum->nregs > 0)
+	{
+	  unsigned int regno = cum->regno + FIRST_SSE_REG;
+	  return gen_reg_or_parallel (mode, orig_mode, regno);
+	}
+    }
+  else if (type)
+    {
+      tree hva_leaf_type = NULL_TREE;
+      int hva_fields = is_hva_type_1 (type, &hva_leaf_type);
+      if (hva_fields > 0)
+	{
+	  unsigned int free_mask = (~cum->used_xmm_mask) & VECTORCALL_SSE_MASK;
+	  if (hva_fields <= popcount_hwi (free_mask))
+	    {
+	      machine_mode field_mode = TYPE_MODE (hva_leaf_type);
+	      int field_size = GET_MODE_SIZE (field_mode);
+	      /* Use BLKmode for HVA PARALLEL containers to preserve the
+	   aggregate's logical size/layout.  */
+	      rtvec regs = rtvec_alloc (hva_fields);
+	      int hva_elem_index = 0;
+
+	      for (int i = 0; i < X86_64_VECTORCALL_SSE_REGPARM_MAX
+			      && hva_elem_index < hva_fields;
+		   i++)
+		{
+		  if (cum->used_xmm_mask & (1U << i))
+		    continue;
+
+		  rtx reg = gen_rtx_REG (field_mode, FIRST_SSE_REG + i);
+		  rtx offset = GEN_INT (hva_elem_index * field_size);
+		  RTVEC_ELT (regs, hva_elem_index)
+		    = gen_rtx_EXPR_LIST (VOIDmode, reg, offset);
+		  hva_elem_index++;
+		}
+
+	      return gen_rtx_PARALLEL (BLKmode, regs);
+	    }
+
+	  return NULL_RTX;
+	}
+      else if (AGGREGATE_TYPE_P (type))
+	{
+	  /* Non-HVA aggregates > 8 bytes are passed by reference (on stack). */
+	  if (bytes > 8)
+	    return NULL_RTX;
+	  /* Small aggregates (≤ 8 bytes) fall through to use integer registers.
+	   */
+	}
+    }
+
+  /* Integer/pointer types use RCX, RDX, R8, R9.  */
+  if (cum->regno < X86_64_MS_SSE_REGPARM_MAX)
+    {
+      unsigned int regno = x86_64_ms_abi_int_parameter_registers[cum->regno];
+      return gen_reg_or_parallel (mode, orig_mode, regno);
+    }
+
+  return NULL_RTX;
+}
+
 /* Return where to put the arguments to a function.
    Return zero to push the argument on the stack, or a hard register in which to store the argument.
 
@@ -3598,8 +3928,15 @@ ix86_function_arg (cumulative_args_t cum_v, const function_arg_info &arg)
   if (TARGET_64BIT)
     {
       if (cum->call_abi == MS_ABI)
-	reg = function_arg_ms_64 (cum, mode, arg.mode, arg.named,
-				  arg.type, bytes);
+	{
+	  /* init_cumulative_args records vectorcall in cum->fastcall.  */
+	  if (cum->fastcall == 2)
+	    reg = function_arg_vectorcall_64 (cum, mode, arg.mode, arg.named,
+					      arg.type, bytes);
+	  else
+	    reg = function_arg_ms_64 (cum, mode, arg.mode, arg.named, arg.type,
+				      bytes);
+	}
       else
 	reg = function_arg_64 (cum, mode, arg.mode, arg.type, arg.named);
     }
@@ -3631,6 +3968,38 @@ ix86_pass_by_reference (cumulative_args_t cum_v, const function_arg_info &arg)
       /* See Windows x64 Software Convention.  */
       if (call_abi == MS_ABI)
 	{
+	  /* Vectorcall passes vectors and HVAs by value in XMM registers.  */
+	  /* Vectorcall state is tracked in cum->fastcall.  */
+	  bool is_vectorcall = cum && cum->fastcall == 2;
+
+	  if (is_vectorcall)
+	    {
+	      machine_mode arg_mode = arg.mode;
+	      if (arg.type && VECTOR_TYPE_P (arg.type))
+		arg_mode = type_natural_mode (arg.type, cum, false);
+
+	      /* Vectorcall: vectors and HVAs go in XMM registers.  */
+	      if (arg.type)
+		{
+		  int hva_fields = is_hva_type (arg.type);
+		  if (hva_fields > 0)
+		    {
+		      unsigned int used = cum ? cum->used_xmm_mask : 0;
+		      unsigned int free = (~used) & VECTORCALL_SSE_MASK;
+
+		      /* HVA fits in free XMM registers: pass by value.
+			 Otherwise: pass by reference.  */
+		      return hva_fields > popcount_hwi (free);
+		    }
+		}
+	      if (VECTOR_MODE_P (arg_mode) || SCALAR_FLOAT_MODE_P (arg_mode))
+		{
+		  /* Vector type arguments in seventh and later positions are
+		     passed by reference under x64 vectorcall.  */
+		  return cum && cum->regno >= X86_64_VECTORCALL_SSE_REGPARM_MAX;
+		}
+	    }
+
 	  HOST_WIDE_INT msize = GET_MODE_SIZE (arg.mode);
 
 	  if (tree type = arg.type)
@@ -3647,7 +4016,7 @@ ix86_pass_by_reference (cumulative_args_t cum_v, const function_arg_info &arg)
 		}
 	    }
 
-	  /* __m128 is passed by reference.  */
+	  /* __m128 is passed by reference (except in vectorcall).  */
 	  return msize != 1 && msize != 2 && msize != 4 && msize != 8;
 	}
       else if (arg.type && int_size_in_bytes (arg.type) == -1)
@@ -3803,6 +4172,17 @@ static unsigned int
 ix86_function_arg_boundary (machine_mode mode, const_tree type)
 {
   unsigned int align;
+  bool is_vectorcall_ms64
+    = (TARGET_64BIT && cfun && cfun->machine
+       && cfun->machine->call_abi == MS_ABI && current_function_decl
+       && (ix86_get_callcvt (TREE_TYPE (current_function_decl))
+	   & IX86_CALLCVT_VECTORCALL));
+
+  if (is_vectorcall_ms64
+      && ((type && ((VECTOR_TYPE_P (type) || is_hva_type (type) > 0)))
+	  || VECTOR_MODE_P (mode)))
+    return PARM_BOUNDARY;
+
   if (type)
     {
       /* Since the main variant type is used for call, we convert it to
@@ -4368,7 +4748,45 @@ function_value_ms_64 (machine_mode orig_mode, machine_mode mode,
 	  break;
 	default:
 	  break;
-        }
+	}
+    }
+  return gen_rtx_REG (orig_mode, regno);
+}
+
+/* Vectorcall return value handling for 64-bit.
+   Vectorcall returns vectors in XMM0/YMM0/ZMM0, integers in RAX.
+   HVA (Homogeneous Vector Aggregate) types are returned in XMM0-XMM3.  */
+
+static rtx
+function_value_vectorcall_64 (machine_mode orig_mode, machine_mode mode,
+			      const_tree valtype)
+{
+  unsigned int regno = AX_REG;
+
+  /* All vector and floating point types return in XMM0/YMM0/ZMM0.  */
+  if (VECTOR_MODE_P (mode) || SCALAR_FLOAT_MODE_P (mode)
+      || (valtype != NULL_TREE
+	  && (VECTOR_INTEGER_TYPE_P (valtype)
+	      || VECTOR_FLOAT_TYPE_P (valtype))))
+    regno = FIRST_SSE_REG;
+  else if (valtype)
+    {
+      tree hva_leaf_type = NULL_TREE;
+      int hva_fields = is_hva_type_1 (valtype, &hva_leaf_type);
+      if (hva_fields > 0)
+	{
+	  /* HVA types return in XMM0-XMM3 (one register per field).  */
+	  machine_mode field_mode = TYPE_MODE (hva_leaf_type);
+	  int field_size = GET_MODE_SIZE (field_mode);
+	  rtvec regs = rtvec_alloc (hva_fields);
+	  for (int i = 0; i < hva_fields; i++)
+	    {
+	      rtx reg = gen_rtx_REG (field_mode, FIRST_SSE_REG + i);
+	      rtx offset = GEN_INT (i * field_size);
+	      RTVEC_ELT (regs, i) = gen_rtx_EXPR_LIST (VOIDmode, reg, offset);
+	    }
+	  return gen_rtx_PARALLEL (BLKmode, regs);
+	}
     }
   return gen_rtx_REG (orig_mode, regno);
 }
@@ -4387,7 +4805,11 @@ ix86_function_value_1 (const_tree valtype, const_tree fntype_or_decl,
   if (ix86_function_type_abi (fntype) == MS_ABI)
     {
       if (TARGET_64BIT)
-	return function_value_ms_64 (orig_mode, mode, valtype);
+	{
+	  if (fntype && (ix86_get_callcvt (fntype) & IX86_CALLCVT_VECTORCALL))
+	    return function_value_vectorcall_64 (orig_mode, mode, valtype);
+	  return function_value_ms_64 (orig_mode, mode, valtype);
+	}
       else
 	return function_value_ms_32 (orig_mode, mode, fntype, fn, valtype);
     }
@@ -4456,6 +4878,13 @@ ix86_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
     {
       if (ix86_function_type_abi (fntype) == MS_ABI)
 	{
+	  /* Vectorcall returns HVA aggregates (up to 4 homogeneous
+	     float/vector members) in XMM0-XMM3 rather than memory.  */
+	  bool is_vectorcall
+	    = fntype && (ix86_get_callcvt (fntype) & IX86_CALLCVT_VECTORCALL);
+	  if (is_vectorcall && type && is_hva_type (type) > 0)
+	    return false;
+
 	  size = int_size_in_bytes (type);
 
 	  /* __m128 is returned in xmm0.  256/512-bit vector values are
@@ -28911,6 +29340,8 @@ static const scoped_attribute_specs *const ix86_attribute_table[] =
 #define TARGET_USE_PSEUDO_PIC_REG ix86_use_pseudo_pic_reg
 #undef TARGET_FUNCTION_ARG_BOUNDARY
 #define TARGET_FUNCTION_ARG_BOUNDARY ix86_function_arg_boundary
+#undef TARGET_FUNCTION_ARG_SLOT_SIZE
+#define TARGET_FUNCTION_ARG_SLOT_SIZE ix86_function_arg_slot_size
 #undef TARGET_PASS_BY_REFERENCE
 #define TARGET_PASS_BY_REFERENCE ix86_pass_by_reference
 #undef TARGET_INTERNAL_ARG_POINTER
