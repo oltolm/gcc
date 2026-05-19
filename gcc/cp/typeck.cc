@@ -11015,6 +11015,15 @@ convert_for_initialization (tree exp, tree type, tree rhs, int flags,
 	   || TREE_CODE (TREE_TYPE (rhs)) == METHOD_TYPE)
     rhs = decay_conversion (rhs, complain);
 
+  /* GNU extension: with -fms-extensions and -Wno-pmf-conversions,
+     allow conversion of a bound member-function expression to a plain
+     function pointer in initialization contexts (including returns).  */
+  if (TYPE_PTR_P (type)
+      && TREE_CODE (TREE_TYPE (rhs)) == METHOD_TYPE
+      && flag_ms_extensions
+      && !warn_pmf2ptr)
+    rhs = convert_member_func_to_ptr (type, rhs, complain);
+
   rhstype = TREE_TYPE (rhs);
   coder = TREE_CODE (rhstype);
 

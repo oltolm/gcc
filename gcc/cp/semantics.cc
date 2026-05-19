@@ -13507,6 +13507,25 @@ finish_decltype_type (tree expr, bool id_expression_or_member_access_p,
 
       if (!type)
 	{
+	  /* GNU extension: with -fms-extensions and -Wno-pmf-conversions,
+	     a bound PMF expression can be converted to a plain function
+	     pointer.  In decltype of a full expression, model that extension
+	     in the deduced type so callers use a consistent function-pointer
+	     ABI instead of a METHOD_TYPE placeholder.  */
+	  if (flag_ms_extensions
+	      && !warn_pmf2ptr
+	      && (TREE_CODE (expr) == OFFSET_REF
+		  || TREE_CODE (expr) == MEMBER_REF
+		  || TREE_CODE (expr) == DOTSTAR_EXPR)
+	      && TREE_TYPE (expr)
+	      && TREE_CODE (TREE_TYPE (expr)) == METHOD_TYPE)
+	    {
+	      tree mtype = TREE_TYPE (expr);
+	      tree fntype = cp_build_function_type (TREE_TYPE (mtype),
+						    TYPE_ARG_TYPES (mtype));
+	      return build_pointer_type (fntype);
+	    }
+
 	  /* Otherwise, where T is the type of e, if e is an lvalue,
 	     decltype(e) is defined as T&; if an xvalue, T&&; otherwise, T. */
 	  cp_lvalue_kind clk = lvalue_kind (expr);
