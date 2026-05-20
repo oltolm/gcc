@@ -10839,6 +10839,7 @@ cp_parser_new_expression (cp_parser* parser)
   vec<tree, va_gc> *initializer;
   tree nelts = NULL_TREE;
   tree ret;
+  bool parenthesized_type_id_p = false;
 
   location_t start_loc = cp_lexer_peek_token (parser->lexer)->location;
 
@@ -10849,60 +10850,101 @@ cp_parser_new_expression (cp_parser* parser)
        != NULL_TREE);
   /* Look for the `new' operator.  */
   cp_parser_require_keyword (parser, RID_NEW, RT_NEW);
-  /* There's no easy way to tell a new-placement from the
-     `( type-id )' construct.  */
-  cp_parser_parse_tentatively (parser);
-  /* Look for a new-placement.  */
-  placement = cp_parser_new_placement (parser);
-  /* If that didn't work out, there's no new-placement.  */
-  if (!cp_parser_parse_definitely (parser))
-    {
-      if (placement != NULL)
-	release_tree_vector (placement);
-      placement = NULL;
-    }
-
-  /* If the next token is a `(', then we have a parenthesized
-     type-id.  */
+  /* If the next token is a parenthesis, try to parse the
+     parenthesized type-id form first.  If that succeeds and what
+     follows cannot begin a new-type-id, commit to that parse;
+     otherwise fall back to trying new-placement.  */
   if (cp_lexer_next_token_is (parser->lexer, CPP_OPEN_PAREN))
     {
-      cp_token *token;
-      const char *saved_message = parser->type_definition_forbidden_message;
-
-      /* Consume the `('.  */
+      cp_parser_parse_tentatively (parser);
       matching_parens parens;
       parens.consume_open (parser);
-
-      /* Parse the type-id.  */
-      parser->type_definition_forbidden_message
-	= G_("types may not be defined in a new-expression");
       {
 	type_id_in_expr_sentinel s (parser);
 	type = cp_parser_type_id (parser);
       }
-      parser->type_definition_forbidden_message = saved_message;
-
-      /* Look for the closing `)'.  */
       parens.require_close (parser);
-      token = cp_lexer_peek_token (parser->lexer);
-      /* There should not be a direct-new-declarator in this production,
-	 but GCC used to allowed this, so we check and emit a sensible error
-	 message for this case.  */
-      if (cp_lexer_next_token_is (parser->lexer, CPP_OPEN_SQUARE))
+      if (!cp_parser_error_occurred (parser))
 	{
-	  {
-	    auto_diagnostic_group d;
-	    error_at (token->location,
-		      "array bound forbidden after parenthesized type-id");
-	    inform (token->location,
-		    "try removing the parentheses around the type-id");
-	  }
-	  cp_parser_direct_new_declarator (parser);
+	  cp_token *tok = cp_lexer_peek_token (parser->lexer);
+	  switch (tok->type)
+	    {
+	    case CPP_SEMICOLON:
+	    case CPP_COMMA:
+	    case CPP_CLOSE_PAREN:
+	    case CPP_CLOSE_SQUARE:
+	    case CPP_COLON:
+	    case CPP_QUERY:
+	    case CPP_EOF:
+	    case CPP_OPEN_BRACE: /* new-initializer starts here.  */
+	      parenthesized_type_id_p = true;
+	      placement = NULL;
+	      break;
+	    default:
+	      break;
+	    }
 	}
+      if (parenthesized_type_id_p)
+	cp_parser_commit_to_topmost_tentative_parse (parser);
+      cp_parser_parse_definitely (parser);
     }
-  /* Otherwise, there must be a new-type-id.  */
-  else
-    type = cp_parser_new_type_id (parser, &nelts);
+  /* There's no easy way to tell a new-placement from the
+     `( type-id )' construct.  */
+  if (!parenthesized_type_id_p)
+    {
+      cp_parser_parse_tentatively (parser);
+      /* Look for a new-placement.  */
+      placement = cp_parser_new_placement (parser);
+      /* If that didn't work out, there's no new-placement.  */
+      if (!cp_parser_parse_definitely (parser))
+	{
+	  if (placement != NULL)
+	    release_tree_vector (placement);
+	  placement = NULL;
+	}
+
+      /* If the next token is a `(', then we have a parenthesized
+	 type-id.  */
+      if (cp_lexer_next_token_is (parser->lexer, CPP_OPEN_PAREN))
+	{
+	  cp_token *token;
+	  const char *saved_message = parser->type_definition_forbidden_message;
+
+	  /* Consume the `('.  */
+	  matching_parens parens;
+	  parens.consume_open (parser);
+
+	  /* Parse the type-id.  */
+	  parser->type_definition_forbidden_message
+	    = G_("types may not be defined in a new-expression");
+	  {
+	    type_id_in_expr_sentinel s (parser);
+	    type = cp_parser_type_id (parser);
+	  }
+	  parser->type_definition_forbidden_message = saved_message;
+
+	  /* Look for the closing `)'.  */
+	  parens.require_close (parser);
+	  token = cp_lexer_peek_token (parser->lexer);
+	  /* There should not be a direct-new-declarator in this production,
+	     but GCC used to allowed this, so we check and emit a sensible error
+	     message for this case.  */
+	  if (cp_lexer_next_token_is (parser->lexer, CPP_OPEN_SQUARE))
+	    {
+	      {
+		auto_diagnostic_group d;
+		error_at (token->location,
+			  "array bound forbidden after parenthesized type-id");
+		inform (token->location,
+			"try removing the parentheses around the type-id");
+	      }
+	      cp_parser_direct_new_declarator (parser);
+	    }
+	}
+      /* Otherwise, there must be a new-type-id.  */
+      else
+	type = cp_parser_new_type_id (parser, &nelts);
+    }
 
   /* If the next token is a `(' or '{', then we have a new-initializer.  */
   cp_token *token = cp_lexer_peek_token (parser->lexer);
