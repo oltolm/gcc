@@ -232,7 +232,7 @@ along with GCC; see the file COPYING3.  If not see
 
 /* Override startfile prefix defaults.  */
 #ifndef STANDARD_STARTFILE_PREFIX_1
-#define STANDARD_STARTFILE_PREFIX_1 "/mingw/lib/"
+#define STANDARD_STARTFILE_PREFIX_1 "C:/msys64/ucrt64/lib/"
 #endif
 #ifndef STANDARD_STARTFILE_PREFIX_2
 #define STANDARD_STARTFILE_PREFIX_2 ""
@@ -241,7 +241,7 @@ along with GCC; see the file COPYING3.  If not see
 /* For native mingw-version we need to take care that NATIVE_SYSTEM_HEADER_DIR
    macro contains POSIX-style path.  See bug 52947.  */
 #undef NATIVE_SYSTEM_HEADER_DIR
-#define NATIVE_SYSTEM_HEADER_DIR "/mingw/include"
+#define NATIVE_SYSTEM_HEADER_DIR "C:/msys64/ucrt64/include"
 
 /* Output STRING, a string representing a filename, to FILE.
    We canonicalize it to be in Unix format (backslashes are replaced
