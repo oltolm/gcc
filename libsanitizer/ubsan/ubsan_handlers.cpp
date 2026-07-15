@@ -855,6 +855,32 @@ void __ubsan::__ubsan_handle_pointer_overflow_abort(PointerOverflowData *Data,
   Die();
 }
 
+// Returns true if this is an artificial debug location created by the
+// LowerTypeTests pass (see createJumpTableDebugInfo in LLVM).
+static bool isArtificialStack(const SymbolizedStack *S) {
+  static constexpr char kSuffix[] = "ubsan_interface.h";
+  if (!S || !S->info.function || !S->info.file)
+    return false;
+  const char *File = S->info.file;
+  uptr FileLen = internal_strlen(File);
+  uptr SuffixLen = internal_strlen(kSuffix);
+  if (FileLen < SuffixLen)
+    return false;
+  return internal_strcmp(File + FileLen - SuffixLen, kSuffix) == 0;
+}
+
+// Stripping the file name from artificial frames forces the UBSan Diag
+// to fall back to module names. This preserves the original behavior
+// of showing the module, while still allowing the symbolizer
+// to include the helpful (.cfi_jt) function suffix.
+static SymbolizedStack *removeArtificialFiles(SymbolizedStack *FS) {
+  for (SymbolizedStack *S = FS; S; S = S->next) {
+    if (isArtificialStack(S))
+      S->info.file = nullptr;
+  }
+  return FS;
+}
+
 static void handleCFIBadIcall(CFICheckFailData *Data, ValueHandle Function,
                               ReportOptions Opts) {
   if (Data->CheckKind != CFITCK_ICall && Data->CheckKind != CFITCK_NVMFCall)
@@ -875,7 +901,9 @@ static void handleCFIBadIcall(CFICheckFailData *Data, ValueHandle Function,
        "control flow integrity check for type %0 failed during %1")
       << Data->Type << CheckKindStr;
 
-  SymbolizedStackHolder FLoc(getSymbolizedLocation(Function));
+  SymbolizedStackHolder FLoc(
+      removeArtificialFiles(getSymbolizedLocation(Function)));
+
   const char *FName = FLoc.get()->info.function;
   if (!FName)
     FName = "(unknown)";
@@ -899,7 +927,7 @@ static void handleCFIBadIcall(CFICheckFailData *Data, ValueHandle Function,
 
 namespace __ubsan {
 
-#ifdef _WIN32
+#if defined(_WIN32) && (!defined(__GNUC__) || defined(__clang__))
 extern "C" void __ubsan_handle_cfi_bad_type_default(CFICheckFailData *Data,
                                                     ValueHandle Vtable,
                                                     bool ValidVtable,
@@ -908,6 +936,11 @@ extern "C" void __ubsan_handle_cfi_bad_type_default(CFICheckFailData *Data,
 }
 
 WIN_WEAK_ALIAS(__ubsan_handle_cfi_bad_type, __ubsan_handle_cfi_bad_type_default)
+void __ubsan_handle_cfi_bad_type(CFICheckFailData *Data, ValueHandle Vtable,
+                                 bool ValidVtable, ReportOptions Opts);
+#elif defined(_WIN32)
+// GNU ld does not support /alternatename. The real implementation lives in
+// ubsan_handlers_cxx.cpp.
 void __ubsan_handle_cfi_bad_type(CFICheckFailData *Data, ValueHandle Vtable,
                                  bool ValidVtable, ReportOptions Opts);
 #else
@@ -919,21 +952,6 @@ void __ubsan_handle_cfi_bad_type(CFICheckFailData *Data, ValueHandle Vtable,
 #endif
 
 } // namespace __ubsan
-
-void __ubsan::__ubsan_handle_cfi_bad_icall(CFIBadIcallData *CallData,
-                                           ValueHandle Function) {
-  GET_REPORT_OPTIONS(false);
-  CFICheckFailData Data = {CFITCK_ICall, CallData->Loc, CallData->Type};
-  handleCFIBadIcall(&Data, Function, Opts);
-}
-
-void __ubsan::__ubsan_handle_cfi_bad_icall_abort(CFIBadIcallData *CallData,
-                                                 ValueHandle Function) {
-  GET_REPORT_OPTIONS(true);
-  CFICheckFailData Data = {CFITCK_ICall, CallData->Loc, CallData->Type};
-  handleCFIBadIcall(&Data, Function, Opts);
-  Die();
-}
 
 void __ubsan::__ubsan_handle_cfi_check_fail(CFICheckFailData *Data,
                                             ValueHandle Value,

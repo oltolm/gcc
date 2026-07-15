@@ -16,6 +16,7 @@
 
 #  include "sanitizer_dbghelp.h"
 #  include "sanitizer_symbolizer_internal.h"
+#  include "sanitizer_symbolizer_libbacktrace.h"
 
 namespace __sanitizer {
 
@@ -279,6 +280,12 @@ static void ChooseSymbolizerTools(IntrusiveList<SymbolizerTool> *list,
     return;
   }
 
+#if defined(__GNUC__) && !defined(__clang__)
+  if (SymbolizerTool *tool = LibbacktraceSymbolizer::get(allocator)) {
+    VReport(2, "Using libbacktrace symbolizer.\n");
+    list->push_back(tool);
+  }
+#else
   // Add llvm-symbolizer.
   const char *user_path = common_flags()->external_symbolizer_path;
 
@@ -301,6 +308,18 @@ static void ChooseSymbolizerTools(IntrusiveList<SymbolizerTool> *list,
   } else {
     VReport(2, "External symbolizer is not present.\n");
   }
+#endif
+
+  // Try addr2line from binutils (reads DWARF, used by GCC/MinGW).
+#if 0 && defined(__GNUC__) && !defined(__clang__)
+  {
+    const char *addr2line_path = FindPathToBinary("addr2line.exe");
+    if (addr2line_path) {
+      VReport(2, "Using addr2line at path: %s\n", addr2line_path);
+      list->push_back(new (*allocator) Addr2LinePool(addr2line_path, allocator));
+    }
+  }
+#endif
 
   // Add the dbghelp based symbolizer.
   list->push_back(new(*allocator) WinSymbolizerTool());
