@@ -83,7 +83,7 @@ class SymbolizerProcess {
   const char *SendCommand(const char *command);
 
  protected:
-  ~SymbolizerProcess() {}
+  ~SymbolizerProcess();
 
   /// The maximum number of arguments required to invoke a tool process.
   static const unsigned kArgVMax = 16;
@@ -113,6 +113,10 @@ class SymbolizerProcess {
   const char *path_;
   fd_t input_fd_;
   fd_t output_fd_;
+
+  // We hold on to the child's stdin fd (the read end of the pipe)
+  // so that when we write to it, we don't get a SIGPIPE
+  fd_t child_stdin_fd_;
 
   InternalMmapVector<char> buffer_;
 
@@ -144,6 +148,43 @@ class LLVMSymbolizer final : public SymbolizerTool {
   LLVMSymbolizerProcess *symbolizer_process_;
   static const uptr kBufferSize = 16 * 1024;
   char buffer_[kBufferSize];
+};
+
+// This tool invokes addr2line in a subprocess to symbolize using DWARF
+// debug info.
+class Addr2LinePool final : public SymbolizerTool {
+ public:
+  explicit Addr2LinePool(const char *addr2line_path,
+                         LowLevelAllocator *allocator);
+
+  bool SymbolizePC(uptr addr, SymbolizedStack *stack) override;
+  bool SymbolizeData(uptr addr, DataInfo *info) override;
+
+ protected:
+  class Addr2LineProcess final : public SymbolizerProcess {
+   public:
+    Addr2LineProcess(const char *path, const char *module_name)
+        : SymbolizerProcess(path), module_name_(internal_strdup(module_name)) {}
+
+    const char *module_name() const { return module_name_; }
+
+   protected:
+    void GetArgV(const char *path_to_binary,
+                 const char *(&argv)[kArgVMax]) const override;
+    bool ReachedEndOfOutput(const char *buffer, uptr length) const override;
+    bool ReadFromSymbolizer() override;
+
+    const char *module_name_;
+    static const char output_terminator_[];
+  };
+
+  const char *SendCommand(const char *module_name, uptr module_offset);
+
+  const char *addr2line_path_;
+  LowLevelAllocator *allocator_;
+  InternalMmapVector<Addr2LineProcess *> addr2line_pool_;
+  static const uptr kBufferSize = 64;
+  static const uptr dummy_address_;
 };
 
 // Parses one or more two-line strings in the following format:
