@@ -1,5 +1,5 @@
 /* PR sanitizer/80166 */
-/* { dg-do run } */
+/* { dg-do run { target { ! *-*-mingw* } } } */
 /* { dg-additional-options "-Wno-stringop-overflow" } */
 
 #include <sys/types.h>

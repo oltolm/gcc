@@ -23,5 +23,5 @@ main ()
   return 0;
 }
 
-/* { dg-output "signed integer overflow: 65535 \\\* 65535 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "signed integer overflow: 65535 \\\* 65535 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*signed integer overflow: 65534 \\\* 65534 cannot be represented in type 'int'" } */

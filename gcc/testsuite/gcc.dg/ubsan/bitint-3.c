@@ -35,11 +35,11 @@ main ()
 }
 
 /* These print unsigned integer overflow even when it is signed.  */
-/* { dg-output "signed integer overflow: <unknown> \\+ <unknown> cannot be represented in type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: <unknown> - <unknown> cannot be represented in type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: <unknown> \\* <unknown> cannot be represented in type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "signed integer overflow: <unknown> \\+ <unknown> cannot be represented in type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: <unknown> - <unknown> cannot be represented in type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: <unknown> \\* <unknown> cannot be represented in type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* Inaccurate.  */
-/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* The wording is totally incorrect, but at least it is diagnosed.  */
-/* { dg-output "\[^\n\r]*shift exponent 575 is too large for \[0-9]*-bit type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "\[^\n\r]*shift exponent 575 is too large for \[0-9]*-bit type '_BitInt\\\(575\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*shift exponent 575 is too large for \[0-9]*-bit type '_BitInt\\\(575\\\)'" } */

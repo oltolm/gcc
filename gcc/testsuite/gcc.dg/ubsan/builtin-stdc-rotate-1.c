@@ -10,5 +10,5 @@ main ()
   unsigned d = __builtin_stdc_rotate_right (b, a - 1);
   volatile int e = c + d;
 }
-/* { dg-output "shift exponent -42 is negative\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "shift exponent -42 is negative\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*shift exponent -43 is negative" } */

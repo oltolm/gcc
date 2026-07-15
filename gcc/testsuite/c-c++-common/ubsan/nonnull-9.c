@@ -33,9 +33,9 @@ main ()
   foo (&x, -82, &x, 68, 0, 9, 0);
 }
 
-/* { dg-output "\.c:21:\[0-9]*:\[^\n\r]*null pointer passed as argument 3, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\.c:21:\[0-9]*:\[^\n\r]*null pointer passed as argument 1, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\.c:21:\[0-9]*:\[^\n\r]*null pointer passed as argument 5, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\.c:31:\[0-9]*:\[^\n\r]*null pointer passed as argument 3, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\.c:32:\[0-9]*:\[^\n\r]*null pointer passed as argument 1, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "\.c:21:\[0-9]*:\[^\n\r]*null pointer passed as argument 3, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\.c:21:\[0-9]*:\[^\n\r]*null pointer passed as argument 1, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\.c:21:\[0-9]*:\[^\n\r]*null pointer passed as argument 5, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\.c:31:\[0-9]*:\[^\n\r]*null pointer passed as argument 3, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\.c:32:\[0-9]*:\[^\n\r]*null pointer passed as argument 1, which is declared to never be null\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*\.c:33:\[0-9]*:\[^\n\r]*null pointer passed as argument 5, which is declared to never be null" } */

@@ -1,4 +1,5 @@
 /* { dg-do run } */
+/* { dg-additional-options "-Wno-pointer-to-int-cast" } */
 
 /* This is a simplified version of what Emacs does internally,
    when marking its stack.  */

@@ -14,6 +14,7 @@
 
 @SET_MAKE@
 
+
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -143,18 +144,32 @@ am__uninstall_files_from_dir = { \
     || { echo " ( cd '$$dir' && rm -f" $$files ")"; \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
-am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
+am__installdirs = "$(DESTDIR)$(toolexeclibdir)" \
+	"$(DESTDIR)$(toolexeclibdir)"
+LIBRARIES = $(toolexeclib_LIBRARIES)
+ARFLAGS = cru
+AM_V_AR = $(am__v_AR_@AM_V@)
+am__v_AR_ = $(am__v_AR_@AM_DEFAULT_V@)
+am__v_AR_0 = @echo "  AR      " $@;
+am__v_AR_1 = 
+libubsan_dynamic_runtime_thunk_a_AR = $(AR) $(ARFLAGS)
+libubsan_dynamic_runtime_thunk_a_LIBADD =
+@SANITIZER_WINDOWS_TRUE@am__objects_1 = libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.$(OBJEXT)
+@SANITIZER_WINDOWS_TRUE@am_libubsan_dynamic_runtime_thunk_a_OBJECTS =  \
+@SANITIZER_WINDOWS_TRUE@	$(am__objects_1)
+libubsan_dynamic_runtime_thunk_a_OBJECTS =  \
+	$(am_libubsan_dynamic_runtime_thunk_a_OBJECTS)
 LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 libubsan_la_DEPENDENCIES =  \
 	$(top_builddir)/sanitizer_common/libsanitizer_common.la \
 	$(am__append_1) $(am__append_2) $(am__DEPENDENCIES_1)
-am__objects_1 = ubsan_diag.lo ubsan_flags.lo ubsan_handlers.lo \
+am__objects_2 = ubsan_diag.lo ubsan_flags.lo ubsan_handlers.lo \
 	ubsan_handlers_cxx.lo ubsan_init.lo ubsan_monitor.lo \
 	ubsan_type_hash.lo ubsan_type_hash_itanium.lo \
 	ubsan_type_hash_win.lo ubsan_value.lo
-am__objects_2 = $(am__objects_1)
-am_libubsan_la_OBJECTS = $(am__objects_2)
+am__objects_3 = $(am__objects_2)
+am_libubsan_la_OBJECTS = $(am__objects_3)
 libubsan_la_OBJECTS = $(am_libubsan_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -197,7 +212,8 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(libubsan_la_SOURCES)
+SOURCES = $(libubsan_dynamic_runtime_thunk_a_SOURCES) \
+	$(libubsan_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -227,6 +243,7 @@ ALLOC_FILE = @ALLOC_FILE@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
+AS = @AS@
 AS_SYM_ASSIGN_DEFS = @AS_SYM_ASSIGN_DEFS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
@@ -250,6 +267,7 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = -D_GNU_SOURCE -D_DEBUG -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -DPIC -DCAN_SANITIZE_UB=1 -DUBSAN_CAN_USE_CXXABI=1
 DEPDIR = @DEPDIR@
+DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -400,16 +418,27 @@ ubsan_plugin_files = \
 	ubsan_value.cpp
 
 ubsan_files = $(ubsan_plugin_files)
-libubsan_la_SOURCES = $(ubsan_files) 
+libubsan_la_SOURCES = $(ubsan_files)
 libubsan_la_LIBADD =  \
 	$(top_builddir)/sanitizer_common/libsanitizer_common.la \
 	$(am__append_1) $(am__append_2) $(LIBSTDCXX_RAW_CXX_LDFLAGS)
 @ENABLE_DARWIN_AT_RPATH_TRUE@libubsan_darwin_rpath =  \
 @ENABLE_DARWIN_AT_RPATH_TRUE@	-Wc,-nodefaultrpaths \
 @ENABLE_DARWIN_AT_RPATH_TRUE@	-Wl,-rpath,@loader_path
+@SANITIZER_WINDOWS_TRUE@libubsan_win_ldflags = -no-undefined
 libubsan_la_LDFLAGS = -version-info `grep -v '^\#' $(srcdir)/libtool-version` \
-	$(link_libubsan) $(libubsan_darwin_rpath)
+	$(link_libubsan) $(libubsan_darwin_rpath) $(libubsan_win_ldflags)
 
+
+# Dynamic runtime thunk: a static library linked into each instrumented DLL
+# to initialize the UBSan DLL runtime correctly.
+@SANITIZER_WINDOWS_TRUE@toolexeclib_LIBRARIES = libubsan_dynamic_runtime_thunk.a
+@SANITIZER_WINDOWS_TRUE@thunk_files = \
+@SANITIZER_WINDOWS_TRUE@	ubsan_win_runtime_thunk.cpp
+
+@SANITIZER_WINDOWS_TRUE@libubsan_dynamic_runtime_thunk_a_SOURCES = $(thunk_files)
+@SANITIZER_WINDOWS_TRUE@libubsan_dynamic_runtime_thunk_a_CPPFLAGS = $(AM_CPPFLAGS) -DSANITIZER_DYNAMIC_RUNTIME_THUNK
+@SANITIZER_WINDOWS_TRUE@libubsan_dynamic_runtime_thunk_a_CXXFLAGS = $(AM_CXXFLAGS)
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and
@@ -483,6 +512,42 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+install-toolexeclibLIBRARIES: $(toolexeclib_LIBRARIES)
+	@$(NORMAL_INSTALL)
+	@list='$(toolexeclib_LIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(toolexeclibdir)" || exit 1; \
+	  echo " $(INSTALL_DATA) $$list2 '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(INSTALL_DATA) $$list2 "$(DESTDIR)$(toolexeclibdir)" || exit $$?; }
+	@$(POST_INSTALL)
+	@list='$(toolexeclib_LIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	for p in $$list; do \
+	  if test -f $$p; then \
+	    $(am__strip_dir) \
+	    echo " ( cd '$(DESTDIR)$(toolexeclibdir)' && $(RANLIB) $$f )"; \
+	    ( cd "$(DESTDIR)$(toolexeclibdir)" && $(RANLIB) $$f ) || exit $$?; \
+	  else :; fi; \
+	done
+
+uninstall-toolexeclibLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(toolexeclib_LIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	dir='$(DESTDIR)$(toolexeclibdir)'; $(am__uninstall_files_from_dir)
+
+clean-toolexeclibLIBRARIES:
+	-test -z "$(toolexeclib_LIBRARIES)" || rm -f $(toolexeclib_LIBRARIES)
+
+libubsan_dynamic_runtime_thunk.a: $(libubsan_dynamic_runtime_thunk_a_OBJECTS) $(libubsan_dynamic_runtime_thunk_a_DEPENDENCIES) $(EXTRA_libubsan_dynamic_runtime_thunk_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libubsan_dynamic_runtime_thunk.a
+	$(AM_V_AR)$(libubsan_dynamic_runtime_thunk_a_AR) libubsan_dynamic_runtime_thunk.a $(libubsan_dynamic_runtime_thunk_a_OBJECTS) $(libubsan_dynamic_runtime_thunk_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libubsan_dynamic_runtime_thunk.a
 
 install-toolexeclibLTLIBRARIES: $(toolexeclib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
@@ -528,6 +593,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ubsan_diag.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ubsan_flags.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ubsan_handlers.Plo@am__quote@
@@ -559,6 +625,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
+
+libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.o: ubsan_win_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libubsan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libubsan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.o -MD -MP -MF $(DEPDIR)/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.Tpo -c -o libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.o `test -f 'ubsan_win_runtime_thunk.cpp' || echo '$(srcdir)/'`ubsan_win_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.Tpo $(DEPDIR)/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='ubsan_win_runtime_thunk.cpp' object='libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libubsan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libubsan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.o `test -f 'ubsan_win_runtime_thunk.cpp' || echo '$(srcdir)/'`ubsan_win_runtime_thunk.cpp
+
+libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.obj: ubsan_win_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libubsan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libubsan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.obj -MD -MP -MF $(DEPDIR)/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.Tpo -c -o libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.obj `if test -f 'ubsan_win_runtime_thunk.cpp'; then $(CYGPATH_W) 'ubsan_win_runtime_thunk.cpp'; else $(CYGPATH_W) '$(srcdir)/ubsan_win_runtime_thunk.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.Tpo $(DEPDIR)/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='ubsan_win_runtime_thunk.cpp' object='libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libubsan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libubsan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.obj `if test -f 'ubsan_win_runtime_thunk.cpp'; then $(CYGPATH_W) 'ubsan_win_runtime_thunk.cpp'; else $(CYGPATH_W) '$(srcdir)/ubsan_win_runtime_thunk.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -619,9 +699,9 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES)
+all-am: Makefile $(LIBRARIES) $(LTLIBRARIES)
 installdirs:
-	for dir in "$(DESTDIR)$(toolexeclibdir)"; do \
+	for dir in "$(DESTDIR)$(toolexeclibdir)" "$(DESTDIR)$(toolexeclibdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -656,8 +736,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-toolexeclibLTLIBRARIES \
-	mostlyclean-am
+clean-am: clean-generic clean-libtool clean-toolexeclibLIBRARIES \
+	clean-toolexeclibLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -683,7 +763,8 @@ install-dvi: install-dvi-am
 
 install-dvi-am:
 
-install-exec-am: install-toolexeclibLTLIBRARIES
+install-exec-am: install-toolexeclibLIBRARIES \
+	install-toolexeclibLTLIBRARIES
 
 install-html: install-html-am
 
@@ -723,23 +804,26 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-toolexeclibLTLIBRARIES
+uninstall-am: uninstall-toolexeclibLIBRARIES \
+	uninstall-toolexeclibLTLIBRARIES
 
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-toolexeclibLTLIBRARIES cscopelist-am ctags \
-	ctags-am distclean distclean-compile distclean-generic \
+	clean-libtool clean-toolexeclibLIBRARIES \
+	clean-toolexeclibLTLIBRARIES cscopelist-am ctags ctags-am \
+	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags dvi dvi-am html html-am info \
 	info-am install install-am install-data install-data-am \
 	install-dvi install-dvi-am install-exec install-exec-am \
 	install-html install-html-am install-info install-info-am \
 	install-man install-pdf install-pdf-am install-ps \
-	install-ps-am install-strip install-toolexeclibLTLIBRARIES \
-	installcheck installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags tags-am uninstall uninstall-am \
+	install-ps-am install-strip install-toolexeclibLIBRARIES \
+	install-toolexeclibLTLIBRARIES installcheck installcheck-am \
+	installdirs maintainer-clean maintainer-clean-generic \
+	mostlyclean mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
+	uninstall-am uninstall-toolexeclibLIBRARIES \
 	uninstall-toolexeclibLTLIBRARIES
 
 .PRECIOUS: Makefile

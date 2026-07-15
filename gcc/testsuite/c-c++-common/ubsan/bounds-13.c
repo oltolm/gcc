@@ -28,5 +28,5 @@ main ()
   return 0;
 }
 
-/* { dg-output "index 100 out of bounds for type 'int \\\[100\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 100 out of bounds for type 'int \\\[100\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "index 100 out of bounds for type 'int \\\[100\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 100 out of bounds for type 'int \\\[100\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */

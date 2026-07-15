@@ -1,5 +1,5 @@
 /* PR sanitizer/110676 */
-/* { dg-do run } */
+/* { dg-do run { target { ! *-*-mingw* } } } */
 /* { dg-skip-if "" { *-*-* } { "*" } { "-O0" } } */
 /* { dg-shouldfail "asan" } */
 

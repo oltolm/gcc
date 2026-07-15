@@ -13,6 +13,6 @@ main (void)
   a << 1;
   d <<= 31;
 }
-/* { dg-output "left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*left shift of 1 by 31 places cannot be represented in type 'int'" } */

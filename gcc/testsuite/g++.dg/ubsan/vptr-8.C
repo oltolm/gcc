@@ -25,8 +25,8 @@ T::~T ()
    abort ();
 }
 
-// { dg-output "\[^\n\r]*vptr-8.C:24:\[0-9]*: runtime error: cast to virtual base of address 0x\[0-9a-fA-F]* which does not point to an object of type 'V'(\n|\r\n|\r)" }
-// { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'T'(\n|\r\n|\r)" }
-// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?vptr for 'T'" }
+// { dg-output "\[^\n\r]*vptr-8.C:24:\[0-9]*: runtime error: cast to virtual base of address 0x\[0-9a-fA-F]* which does not point to an object of type 'V'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "0x\[0-9a-fA-F]*: note: object is of type '\[0-9]*T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?vptr for '\[0-9]*T'" }

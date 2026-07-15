@@ -48,7 +48,7 @@ main (void)
   return 0;
 }
 
-/* { dg-output "index -1 out of bounds for type 'int \\\[7\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index -1 out of bounds for type 'int \\\[7\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index -1 out of bounds for type 'int \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "index -1 out of bounds for type 'int \\\[7\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index -1 out of bounds for type 'int \\\[7\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index -1 out of bounds for type 'int \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*index -1 out of bounds for type 'int \\\[10\\\]'" } */

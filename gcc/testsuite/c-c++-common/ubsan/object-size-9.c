@@ -21,10 +21,10 @@ f1 (struct T x, int i)
   return *p;
 }
 
-/* { dg-output "load of address \[^\n\r]* with insufficient space for an object of type 'char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "load of address \[^\n\r]* with insufficient space for an object of type 'char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 
 #ifdef __cplusplus
 static struct C
@@ -35,11 +35,11 @@ f2 (int i)
   return x;
 }
 
-/* { dg-output "\[^\n\r]*index 12 out of bounds for type 'char \\\[8\\\]'\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
-/* { dg-output "\[^\n\r]*store to address \[^\n\r]* with insufficient space for an object of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
-/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
-/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
-/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*index 12 out of bounds for type 'char \\\[8\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*store to address \[^\n\r]* with insufficient space for an object of type 'char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
 
 static struct C
 f3 (int i)
@@ -51,10 +51,10 @@ f3 (int i)
   return x;
 }
 
-/* { dg-output "\[^\n\r]*store to address \[^\n\r]* with insufficient space for an object of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
-/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
-/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
-/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*store to address \[^\n\r]* with insufficient space for an object of type 'char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
+/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target { c++ } } } */
 
 #endif
 
@@ -64,11 +64,11 @@ f4 (int i)
   return s.d[i].b;
 }
 
-/* { dg-output "\[^\n\r]*index 12 out of bounds for type 'U \\\[10\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*load of address \[^\n\r]* with insufficient space for an object of type 'unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "\[^\n\r]*index 12 out of bounds for type 'U \\\[10\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*load of address \[^\n\r]* with insufficient space for an object of type 'unsigned int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\\^\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 
 int
 f5 (int i)
@@ -78,9 +78,9 @@ f5 (int i)
   return u->b;
 }
 
-/* { dg-output "\[^\n\r]*load of address \[^\n\r]* with insufficient space for an object of type 'unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "\[^\n\r]*load of address \[^\n\r]* with insufficient space for an object of type 'unsigned int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*note: pointer points here\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*\\^" } */
 
 int

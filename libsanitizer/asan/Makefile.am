@@ -1,5 +1,5 @@
 AM_CPPFLAGS = -I $(top_srcdir)/include -I $(top_srcdir)
- 
+
 # May be used by toolexeclibdir.
 gcc_version := $(shell @get_gcc_base_ver@ $(top_srcdir)/../gcc/BASE-VER)
 
@@ -26,6 +26,7 @@ asan_files = \
 	asan_fake_stack.cpp \
 	asan_flags.cpp \
 	asan_globals.cpp \
+	asan_globals_win.cpp \
 	asan_interceptors.cpp \
 	asan_interceptors_memintrinsics.cpp \
 	asan_linux.cpp \
@@ -63,8 +64,25 @@ if ENABLE_DARWIN_AT_RPATH
 libasan_darwin_rpath = -Wc,-nodefaultrpaths
 libasan_darwin_rpath += -Wl,-rpath,@loader_path
 endif
+
+if SANITIZER_WINDOWS
+libasan_win_ldflags = -no-undefined
+endif
+
 libasan_la_LDFLAGS = -version-info `grep -v '^\#' $(srcdir)/libtool-version` \
-	$(link_libasan) $(libasan_darwin_rpath)
+	$(link_libasan) $(libasan_darwin_rpath) $(libasan_win_ldflags)
+
+# Dynamic runtime thunk: a static library linked into each instrumented DLL
+# to initialize the ASan DLL runtime correctly.
+if SANITIZER_WINDOWS
+toolexeclib_LIBRARIES = libasan_dynamic_runtime_thunk.a
+thunk_files = \
+	asan_win_common_runtime_thunk.cpp \
+	asan_win_dynamic_runtime_thunk.cpp
+libasan_dynamic_runtime_thunk_a_SOURCES = $(thunk_files)
+libasan_dynamic_runtime_thunk_a_CPPFLAGS = $(AM_CPPFLAGS) -DSANITIZER_DYNAMIC_RUNTIME_THUNK
+libasan_dynamic_runtime_thunk_a_CXXFLAGS = $(AM_CXXFLAGS)
+endif
 
 libasan_preinit.o: asan_preinit.o
 	cp $< $@

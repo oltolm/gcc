@@ -15,6 +15,7 @@
 @SET_MAKE@
 
 
+
 VPATH = @srcdir@
 am__is_gnu_make = { \
   if test -z '$(MAKELEVEL)'; then \
@@ -146,24 +147,42 @@ am__uninstall_files_from_dir = { \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
 am__installdirs = "$(DESTDIR)$(toolexeclibdir)" \
-	"$(DESTDIR)$(toolexeclibdir)"
+	"$(DESTDIR)$(toolexeclibdir)" "$(DESTDIR)$(toolexeclibdir)"
+LIBRARIES = $(toolexeclib_LIBRARIES)
+ARFLAGS = cru
+AM_V_AR = $(am__v_AR_@AM_V@)
+am__v_AR_ = $(am__v_AR_@AM_DEFAULT_V@)
+am__v_AR_0 = @echo "  AR      " $@;
+am__v_AR_1 = 
+libasan_dynamic_runtime_thunk_a_AR = $(AR) $(ARFLAGS)
+@SANITIZER_WINDOWS_TRUE@libasan_dynamic_runtime_thunk_a_LIBADD = $(top_builddir)/ubsan/libubsan_dynamic_runtime_thunk_a-ubsan_win_runtime_thunk.$(OBJEXT)
+@SANITIZER_WINDOWS_TRUE@libasan_dynamic_runtime_thunk_a_DEPENDENCIES = $(libasan_dynamic_runtime_thunk_a_LIBADD)
+@SANITIZER_WINDOWS_TRUE@am__objects_1 = libasan_dynamic_runtime_thunk_a-asan_globals_win.$(OBJEXT) \
+@SANITIZER_WINDOWS_TRUE@	libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.$(OBJEXT) \
+@SANITIZER_WINDOWS_TRUE@	libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.$(OBJEXT) \
+@SANITIZER_WINDOWS_TRUE@	libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.$(OBJEXT)
+@SANITIZER_WINDOWS_TRUE@am_libasan_dynamic_runtime_thunk_a_OBJECTS =  \
+@SANITIZER_WINDOWS_TRUE@	$(am__objects_1)
+libasan_dynamic_runtime_thunk_a_OBJECTS =  \
+	$(am_libasan_dynamic_runtime_thunk_a_OBJECTS)
 LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 libasan_la_DEPENDENCIES =  \
 	$(top_builddir)/sanitizer_common/libsanitizer_common.la \
 	$(top_builddir)/lsan/libsanitizer_lsan.la $(am__append_2) \
 	$(am__append_3) $(am__DEPENDENCIES_1)
-am__objects_1 = asan_activation.lo asan_allocator.lo asan_debugging.lo \
+am__objects_2 = asan_activation.lo asan_allocator.lo asan_debugging.lo \
 	asan_descriptions.lo asan_errors.lo asan_fake_stack.lo \
-	asan_flags.lo asan_globals.lo asan_interceptors.lo \
-	asan_interceptors_memintrinsics.lo asan_linux.lo asan_mac.lo \
-	asan_malloc_linux.lo asan_malloc_mac.lo asan_malloc_win.lo \
-	asan_memory_profile.lo asan_new_delete.lo asan_poisoning.lo \
-	asan_posix.lo asan_premap_shadow.lo asan_report.lo asan_rtl.lo \
+	asan_flags.lo asan_globals.lo asan_globals_win.lo \
+	asan_interceptors.lo asan_interceptors_memintrinsics.lo \
+	asan_linux.lo asan_mac.lo asan_malloc_linux.lo \
+	asan_malloc_mac.lo asan_malloc_win.lo asan_memory_profile.lo \
+	asan_new_delete.lo asan_poisoning.lo asan_posix.lo \
+	asan_premap_shadow.lo asan_report.lo asan_rtl.lo \
 	asan_shadow_setup.lo asan_stack.lo asan_stats.lo \
 	asan_suppressions.lo asan_thread.lo asan_win.lo \
 	asan_win_dynamic_runtime_thunk.lo asan_interceptors_vfork.lo
-am_libasan_la_OBJECTS = $(am__objects_1)
+am_libasan_la_OBJECTS = $(am__objects_2)
 libasan_la_OBJECTS = $(am_libasan_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -234,7 +253,8 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libasan_la_SOURCES)
+SOURCES = $(libasan_dynamic_runtime_thunk_a_SOURCES) \
+	$(libasan_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -265,6 +285,7 @@ ALLOC_FILE = @ALLOC_FILE@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
+AS = @AS@
 AS_SYM_ASSIGN_DEFS = @AS_SYM_ASSIGN_DEFS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
@@ -292,6 +313,7 @@ DEFS = -D_GNU_SOURCE -D_DEBUG -D__STDC_CONSTANT_MACROS \
 	-DCAN_SANITIZE_UB=0 -DASAN_HAS_CXA_RETHROW_PRIMARY_EXCEPTION=0 \
 	@AS_SYM_ASSIGN_DEFS@ $(am__append_1)
 DEPDIR = @DEPDIR@
+DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -439,6 +461,7 @@ asan_files = \
 	asan_fake_stack.cpp \
 	asan_flags.cpp \
 	asan_globals.cpp \
+	asan_globals_win.cpp \
 	asan_interceptors.cpp \
 	asan_interceptors_memintrinsics.cpp \
 	asan_linux.cpp \
@@ -466,13 +489,28 @@ libasan_la_SOURCES = $(asan_files)
 libasan_la_LIBADD =  \
 	$(top_builddir)/sanitizer_common/libsanitizer_common.la \
 	$(top_builddir)/lsan/libsanitizer_lsan.la $(am__append_2) \
-	$(am__append_3) $(LIBSTDCXX_RAW_CXX_LDFLAGS)
+	$(am__append_3) $(top_builddir)/ubsan/libubsan_plugin.la \
+	$(LIBSTDCXX_RAW_CXX_LDFLAGS)
 @ENABLE_DARWIN_AT_RPATH_TRUE@libasan_darwin_rpath =  \
 @ENABLE_DARWIN_AT_RPATH_TRUE@	-Wc,-nodefaultrpaths \
 @ENABLE_DARWIN_AT_RPATH_TRUE@	-Wl,-rpath,@loader_path
+@SANITIZER_WINDOWS_TRUE@libasan_win_ldflags = -no-undefined
 libasan_la_LDFLAGS = -version-info `grep -v '^\#' $(srcdir)/libtool-version` \
-	$(link_libasan) $(libasan_darwin_rpath)
+	$(link_libasan) $(libasan_darwin_rpath) $(libasan_win_ldflags)
 
+
+# Dynamic runtime thunk: a static library linked into each instrumented DLL
+# to initialize the ASan DLL runtime correctly.
+@SANITIZER_WINDOWS_TRUE@toolexeclib_LIBRARIES = libasan_dynamic_runtime_thunk.a
+@SANITIZER_WINDOWS_TRUE@thunk_files = \
+@SANITIZER_WINDOWS_TRUE@	asan_globals_win.cpp \
+@SANITIZER_WINDOWS_TRUE@	asan_win_common_runtime_thunk.cpp \
+@SANITIZER_WINDOWS_TRUE@	asan_win_dynamic_runtime_thunk.cpp \
+@SANITIZER_WINDOWS_TRUE@	../sanitizer_common/sanitizer_win_thunk_interception.cpp
+
+@SANITIZER_WINDOWS_TRUE@libasan_dynamic_runtime_thunk_a_SOURCES = $(thunk_files)
+@SANITIZER_WINDOWS_TRUE@libasan_dynamic_runtime_thunk_a_CPPFLAGS = $(AM_CPPFLAGS) -DSANITIZER_DYNAMIC_RUNTIME_THUNK
+@SANITIZER_WINDOWS_TRUE@libasan_dynamic_runtime_thunk_a_CXXFLAGS = $(AM_CXXFLAGS)
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
 # values defined in terms of make variables, as is the case for CC and
@@ -546,6 +584,42 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
+install-toolexeclibLIBRARIES: $(toolexeclib_LIBRARIES)
+	@$(NORMAL_INSTALL)
+	@list='$(toolexeclib_LIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	list2=; for p in $$list; do \
+	  if test -f $$p; then \
+	    list2="$$list2 $$p"; \
+	  else :; fi; \
+	done; \
+	test -z "$$list2" || { \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(toolexeclibdir)" || exit 1; \
+	  echo " $(INSTALL_DATA) $$list2 '$(DESTDIR)$(toolexeclibdir)'"; \
+	  $(INSTALL_DATA) $$list2 "$(DESTDIR)$(toolexeclibdir)" || exit $$?; }
+	@$(POST_INSTALL)
+	@list='$(toolexeclib_LIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	for p in $$list; do \
+	  if test -f $$p; then \
+	    $(am__strip_dir) \
+	    echo " ( cd '$(DESTDIR)$(toolexeclibdir)' && $(RANLIB) $$f )"; \
+	    ( cd "$(DESTDIR)$(toolexeclibdir)" && $(RANLIB) $$f ) || exit $$?; \
+	  else :; fi; \
+	done
+
+uninstall-toolexeclibLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	@list='$(toolexeclib_LIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	dir='$(DESTDIR)$(toolexeclibdir)'; $(am__uninstall_files_from_dir)
+
+clean-toolexeclibLIBRARIES:
+	-test -z "$(toolexeclib_LIBRARIES)" || rm -f $(toolexeclib_LIBRARIES)
+
+libasan_dynamic_runtime_thunk.a: $(libasan_dynamic_runtime_thunk_a_OBJECTS) $(libasan_dynamic_runtime_thunk_a_DEPENDENCIES) $(EXTRA_libasan_dynamic_runtime_thunk_a_DEPENDENCIES) 
+	$(AM_V_at)-rm -f libasan_dynamic_runtime_thunk.a
+	$(AM_V_AR)$(libasan_dynamic_runtime_thunk_a_AR) libasan_dynamic_runtime_thunk.a $(libasan_dynamic_runtime_thunk_a_OBJECTS) $(libasan_dynamic_runtime_thunk_a_LIBADD)
+	$(AM_V_at)$(RANLIB) libasan_dynamic_runtime_thunk.a
 
 install-toolexeclibLTLIBRARIES: $(toolexeclib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
@@ -599,6 +673,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_fake_stack.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_flags.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_globals.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_globals_win.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_interceptors.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_interceptors_memintrinsics.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_interceptors_vfork.Plo@am__quote@
@@ -621,6 +696,10 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_thread.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_win.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/asan_win_dynamic_runtime_thunk.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_globals_win.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.Po@am__quote@
 
 .S.o:
 @am__fastdepCCAS_TRUE@	$(AM_V_CPPAS)$(CPPASCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
@@ -663,6 +742,62 @@ distclean-compile:
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(LTCXXCOMPILE) -c -o $@ $<
+
+libasan_dynamic_runtime_thunk_a-asan_globals_win.o: asan_globals_win.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-asan_globals_win.o -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_globals_win.Tpo -c -o libasan_dynamic_runtime_thunk_a-asan_globals_win.o `test -f 'asan_globals_win.cpp' || echo '$(srcdir)/'`asan_globals_win.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_globals_win.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_globals_win.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='asan_globals_win.cpp' object='libasan_dynamic_runtime_thunk_a-asan_globals_win.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-asan_globals_win.o `test -f 'asan_globals_win.cpp' || echo '$(srcdir)/'`asan_globals_win.cpp
+
+libasan_dynamic_runtime_thunk_a-asan_globals_win.obj: asan_globals_win.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-asan_globals_win.obj -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_globals_win.Tpo -c -o libasan_dynamic_runtime_thunk_a-asan_globals_win.obj `if test -f 'asan_globals_win.cpp'; then $(CYGPATH_W) 'asan_globals_win.cpp'; else $(CYGPATH_W) '$(srcdir)/asan_globals_win.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_globals_win.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_globals_win.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='asan_globals_win.cpp' object='libasan_dynamic_runtime_thunk_a-asan_globals_win.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-asan_globals_win.obj `if test -f 'asan_globals_win.cpp'; then $(CYGPATH_W) 'asan_globals_win.cpp'; else $(CYGPATH_W) '$(srcdir)/asan_globals_win.cpp'; fi`
+
+libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.o: asan_win_common_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.o -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.Tpo -c -o libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.o `test -f 'asan_win_common_runtime_thunk.cpp' || echo '$(srcdir)/'`asan_win_common_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='asan_win_common_runtime_thunk.cpp' object='libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.o `test -f 'asan_win_common_runtime_thunk.cpp' || echo '$(srcdir)/'`asan_win_common_runtime_thunk.cpp
+
+libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.obj: asan_win_common_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.obj -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.Tpo -c -o libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.obj `if test -f 'asan_win_common_runtime_thunk.cpp'; then $(CYGPATH_W) 'asan_win_common_runtime_thunk.cpp'; else $(CYGPATH_W) '$(srcdir)/asan_win_common_runtime_thunk.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='asan_win_common_runtime_thunk.cpp' object='libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-asan_win_common_runtime_thunk.obj `if test -f 'asan_win_common_runtime_thunk.cpp'; then $(CYGPATH_W) 'asan_win_common_runtime_thunk.cpp'; else $(CYGPATH_W) '$(srcdir)/asan_win_common_runtime_thunk.cpp'; fi`
+
+libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.o: asan_win_dynamic_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.o -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.Tpo -c -o libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.o `test -f 'asan_win_dynamic_runtime_thunk.cpp' || echo '$(srcdir)/'`asan_win_dynamic_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='asan_win_dynamic_runtime_thunk.cpp' object='libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.o `test -f 'asan_win_dynamic_runtime_thunk.cpp' || echo '$(srcdir)/'`asan_win_dynamic_runtime_thunk.cpp
+
+libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.obj: asan_win_dynamic_runtime_thunk.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.obj -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.Tpo -c -o libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.obj `if test -f 'asan_win_dynamic_runtime_thunk.cpp'; then $(CYGPATH_W) 'asan_win_dynamic_runtime_thunk.cpp'; else $(CYGPATH_W) '$(srcdir)/asan_win_dynamic_runtime_thunk.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='asan_win_dynamic_runtime_thunk.cpp' object='libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-asan_win_dynamic_runtime_thunk.obj `if test -f 'asan_win_dynamic_runtime_thunk.cpp'; then $(CYGPATH_W) 'asan_win_dynamic_runtime_thunk.cpp'; else $(CYGPATH_W) '$(srcdir)/asan_win_dynamic_runtime_thunk.cpp'; fi`
+
+libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.o: ../sanitizer_common/sanitizer_win_thunk_interception.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.o -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.Tpo -c -o libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.o `test -f '../sanitizer_common/sanitizer_win_thunk_interception.cpp' || echo '$(srcdir)/'`../sanitizer_common/sanitizer_win_thunk_interception.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../sanitizer_common/sanitizer_win_thunk_interception.cpp' object='libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.o `test -f '../sanitizer_common/sanitizer_win_thunk_interception.cpp' || echo '$(srcdir)/'`../sanitizer_common/sanitizer_win_thunk_interception.cpp
+
+libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.obj: ../sanitizer_common/sanitizer_win_thunk_interception.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -MT libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.obj -MD -MP -MF $(DEPDIR)/libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.Tpo -c -o libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.obj `if test -f '../sanitizer_common/sanitizer_win_thunk_interception.cpp'; then $(CYGPATH_W) '../sanitizer_common/sanitizer_win_thunk_interception.cpp'; else $(CYGPATH_W) '$(srcdir)/../sanitizer_common/sanitizer_win_thunk_interception.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.Tpo $(DEPDIR)/libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='../sanitizer_common/sanitizer_win_thunk_interception.cpp' object='libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(libasan_dynamic_runtime_thunk_a_CPPFLAGS) $(CPPFLAGS) $(libasan_dynamic_runtime_thunk_a_CXXFLAGS) $(CXXFLAGS) -c -o libasan_dynamic_runtime_thunk_a-sanitizer_win_thunk_interception.obj `if test -f '../sanitizer_common/sanitizer_win_thunk_interception.cpp'; then $(CYGPATH_W) '../sanitizer_common/sanitizer_win_thunk_interception.cpp'; else $(CYGPATH_W) '$(srcdir)/../sanitizer_common/sanitizer_win_thunk_interception.cpp'; fi`
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -744,9 +879,9 @@ distclean-tags:
 	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH tags
 check-am: all-am
 check: check-am
-all-am: Makefile $(LTLIBRARIES) $(HEADERS)
+all-am: Makefile $(LIBRARIES) $(LTLIBRARIES) $(HEADERS)
 installdirs:
-	for dir in "$(DESTDIR)$(toolexeclibdir)" "$(DESTDIR)$(toolexeclibdir)"; do \
+	for dir in "$(DESTDIR)$(toolexeclibdir)" "$(DESTDIR)$(toolexeclibdir)" "$(DESTDIR)$(toolexeclibdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -781,8 +916,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-toolexeclibLTLIBRARIES \
-	mostlyclean-am
+clean-am: clean-generic clean-libtool clean-toolexeclibLIBRARIES \
+	clean-toolexeclibLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -809,7 +944,7 @@ install-dvi: install-dvi-am
 install-dvi-am:
 
 install-exec-am: install-nodist_toolexeclibHEADERS \
-	install-toolexeclibLTLIBRARIES
+	install-toolexeclibLIBRARIES install-toolexeclibLTLIBRARIES
 
 install-html: install-html-am
 
@@ -850,24 +985,28 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-nodist_toolexeclibHEADERS \
+	uninstall-toolexeclibLIBRARIES \
 	uninstall-toolexeclibLTLIBRARIES
 
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-toolexeclibLTLIBRARIES cscopelist-am ctags \
-	ctags-am distclean distclean-compile distclean-generic \
+	clean-libtool clean-toolexeclibLIBRARIES \
+	clean-toolexeclibLTLIBRARIES cscopelist-am ctags ctags-am \
+	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags dvi dvi-am html html-am info \
 	info-am install install-am install-data install-data-am \
 	install-dvi install-dvi-am install-exec install-exec-am \
 	install-html install-html-am install-info install-info-am \
 	install-man install-nodist_toolexeclibHEADERS install-pdf \
 	install-pdf-am install-ps install-ps-am install-strip \
-	install-toolexeclibLTLIBRARIES installcheck installcheck-am \
-	installdirs maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-compile mostlyclean-generic \
-	mostlyclean-libtool pdf pdf-am ps ps-am tags tags-am uninstall \
-	uninstall-am uninstall-nodist_toolexeclibHEADERS \
+	install-toolexeclibLIBRARIES install-toolexeclibLTLIBRARIES \
+	installcheck installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags tags-am uninstall uninstall-am \
+	uninstall-nodist_toolexeclibHEADERS \
+	uninstall-toolexeclibLIBRARIES \
 	uninstall-toolexeclibLTLIBRARIES
 
 .PRECIOUS: Makefile

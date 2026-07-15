@@ -27,8 +27,8 @@ ubsan_plugin_files = \
 
 ubsan_files = $(ubsan_plugin_files)
 
-libubsan_la_SOURCES = $(ubsan_files) 
-libubsan_la_LIBADD = $(top_builddir)/sanitizer_common/libsanitizer_common.la 
+libubsan_la_SOURCES = $(ubsan_files)
+libubsan_la_LIBADD = $(top_builddir)/sanitizer_common/libsanitizer_common.la
 if !USING_MAC_INTERPOSE
 libubsan_la_LIBADD += $(top_builddir)/interception/libinterception.la
 endif
@@ -40,8 +40,24 @@ if ENABLE_DARWIN_AT_RPATH
 libubsan_darwin_rpath = -Wc,-nodefaultrpaths
 libubsan_darwin_rpath += -Wl,-rpath,@loader_path
 endif
+
+if SANITIZER_WINDOWS
+libubsan_win_ldflags = -no-undefined
+endif
+
 libubsan_la_LDFLAGS = -version-info `grep -v '^\#' $(srcdir)/libtool-version` \
-	$(link_libubsan) $(libubsan_darwin_rpath)
+	$(link_libubsan) $(libubsan_darwin_rpath) $(libubsan_win_ldflags)
+
+# Dynamic runtime thunk: a static library linked into each instrumented DLL
+# to initialize the UBSan DLL runtime correctly.
+if SANITIZER_WINDOWS
+toolexeclib_LIBRARIES = libubsan_dynamic_runtime_thunk.a
+thunk_files = \
+	ubsan_win_runtime_thunk.cpp
+libubsan_dynamic_runtime_thunk_a_SOURCES = $(thunk_files)
+libubsan_dynamic_runtime_thunk_a_CPPFLAGS = $(AM_CPPFLAGS) -DSANITIZER_DYNAMIC_RUNTIME_THUNK
+libubsan_dynamic_runtime_thunk_a_CXXFLAGS = $(AM_CXXFLAGS)
+endif
 
 # Use special rules for files that require RTTI support.
 ubsan_handlers_cxx.% ubsan_type_hash.% ubsan_type_hash_itanium.% : AM_CXXFLAGS += -frtti

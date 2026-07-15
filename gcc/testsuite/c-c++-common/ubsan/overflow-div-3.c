@@ -37,5 +37,5 @@ main (void)
   return 0;
 }
 
-/* { dg-output "division by zero\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "division by zero\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*division of -2147483648 by -1 cannot be represented in type 'int'" } */

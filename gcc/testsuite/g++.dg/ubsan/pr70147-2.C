@@ -55,23 +55,23 @@ main ()
   C c;
 }
 
-// { dg-output "\[^\n\r]*pr70147-2.C:49:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'A'(\n|\r\n|\r)" }
-// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)" }
-// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?invalid vptr\[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "\[^\n\r]*pr70147-2.C:33:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'E'(\n|\r\n|\r)" }
-// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)" }
-// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?invalid vptr(\n|\r\n|\r)" }
-// { dg-output "\[^\n\r]*pr70147-2.C:34:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'F'(\n|\r\n|\r)" }
-// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)" }
-// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?invalid vptr\[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "\[^\n\r]*pr70147-2.C:38:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'F'(\n|\r\n|\r)" }
-// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)" }
-// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)" }
-// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
+// { dg-output "\[^\n\r]*pr70147-2.C:49:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'A'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?invalid vptr\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "\[^\n\r]*pr70147-2.C:33:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'E'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?invalid vptr(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "\[^\n\r]*pr70147-2.C:34:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'F'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?invalid vptr\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "\[^\n\r]*pr70147-2.C:38:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'F'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "  ?.. .. .. ..  ?.. .. .. ..  ?.. .. .. .. \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+// { dg-output "              ?\\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
 // { dg-output "              ?invalid vptr" }

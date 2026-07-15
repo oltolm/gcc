@@ -73,66 +73,66 @@ bar (T *p, int q)
     // These should:
     case 0x11:
       return p->b;
-    // { dg-output "\[^\n\r]*vptr-3.C:75:\[0-9]*: runtime error: member access within address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'S'(\n|\r\n|\r)" }
-    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              vptr for 'S'\[^\n\r]*(\n|\r\n|\r)" }
+    // { dg-output "\[^\n\r]*vptr-3.C:75:\[0-9]*: runtime error: member access within address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'S'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              vptr for 'S'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
     case 0x12:
       return p->g ();
-    // { dg-output "\[^\n\r]*vptr-3.C:82:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'S'(\n|\r\n|\r)" }
-    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              vptr for 'S'\[^\n\r]*(\n|\r\n|\r)" }
+    // { dg-output "\[^\n\r]*vptr-3.C:82:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'S'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              vptr for 'S'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
     case 0x13:
       x = static_cast<T*>(reinterpret_cast<S*>(p));
       break;
-    // { dg-output "\[^\n\r]*vptr-3.C:89:\[0-9]*: runtime error: downcast of address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'S'(\n|\r\n|\r)" }
-    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              vptr for 'S'\[^\n\r]*(\n|\r\n|\r)" }
+    // { dg-output "\[^\n\r]*vptr-3.C:89:\[0-9]*: runtime error: downcast of address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'S'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              vptr for 'S'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
     case 0x34:
       return reinterpret_cast<U*>(p)->v() - 2;
-    // { dg-output "\[^\n\r]*vptr-3.C:97:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'U'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is base class subobject at offset 16 within object of type 'U'(\n|\r\n|\r)" { target lp64 } }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is base class subobject at offset 8 within object of type 'U'(\n|\r\n|\r)" { target ilp32 } }
-    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  .. .. .. .. .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              \\^                                                 ~~~~~~~~~~~~~~~~~~~~~~~(\n|\r\n|\r)" { target lp64 } }
-    // { dg-output "                                                                vptr for 'T' base class of 'U'\[^\n\r]*(\n|\r\n|\r)" { target lp64 } }
-    // { dg-output "              \\^                        ~~~~~~~~~~~(\n|\r\n|\r)" { target ilp32 } }
-    // { dg-output "                                       vptr for 'T' base class of 'U'\[^\n\r]*(\n|\r\n|\r)" { target ilp32 } }
+    // { dg-output "\[^\n\r]*vptr-3.C:97:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'U'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is base class subobject at offset 16 within object of type 'U'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target lp64 } }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is base class subobject at offset 8 within object of type 'U'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target ilp32 } }
+    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  .. .. .. .. .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              \\^                                                 ~~~~~~~~~~~~~~~~~~~~~~~(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target lp64 } }
+    // { dg-output "                                                                vptr for 'T' base class of 'U'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target lp64 } }
+    // { dg-output "              \\^                        ~~~~~~~~~~~(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target ilp32 } }
+    // { dg-output "                                       vptr for 'T' base class of 'U'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target ilp32 } }
     case 0x41:
       return p->b;
-    // { dg-output "\[^\n\r]*vptr-3.C:107:\[0-9]*: runtime error: member access within address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'U'(\n|\r\n|\r)" }
-    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              vptr for 'U'\[^\n\r]*(\n|\r\n|\r)" }
+    // { dg-output "\[^\n\r]*vptr-3.C:107:\[0-9]*: runtime error: member access within address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'U'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              vptr for 'U'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
     case 0x42:
       return p->g ();
-    // { dg-output "\[^\n\r]*vptr-3.C:114:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'U'(\n|\r\n|\r)" }
-    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              vptr for 'U'\[^\n\r]*(\n|\r\n|\r)" }
+    // { dg-output "\[^\n\r]*vptr-3.C:114:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'U'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              vptr for 'U'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
     case 0x43:
       x = static_cast<T*>(reinterpret_cast<S*>(p));
       break;
-    // { dg-output "\[^\n\r]*vptr-3.C:121:\[0-9]*: runtime error: downcast of address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'U'(\n|\r\n|\r)" }
-    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" }
-    // { dg-output "              vptr for 'U'\[^\n\r]*(\n|\r\n|\r)" }
+    // { dg-output "\[^\n\r]*vptr-3.C:121:\[0-9]*: runtime error: downcast of address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object is of type 'U'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output " .. .. .. ..  .. .. .. .. .. .. .. ..  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "              vptr for 'U'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
     case 0x51:
       return p->b;
-    // { dg-output "\[^\n\r]*vptr-3.C:129:\[0-9]*: runtime error: member access within address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)" }
-    // { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)" }
-    // { dg-output " .. .. .. ..  00 00 00 00 00 00 00 00  \[^\n\r]*(\n|\r\n|\r)" { target lp64 } }
-    // { dg-output "              \\^~~~~~~~~~~~~~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" { target lp64 } }
-    // { dg-output "  ?.. .. .. ..  ?00 00 00 00  ?.. .. .. ..  ?\[^\n\r]*(\n|\r\n|\r)" { target ilp32 } }
-    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)" { target ilp32 } }
+    // { dg-output "\[^\n\r]*vptr-3.C:129:\[0-9]*: runtime error: member access within address 0x\[0-9a-fA-F]* which does not point to an object of type 'T'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
+    // { dg-output " .. .. .. ..  00 00 00 00 00 00 00 00  \[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target lp64 } }
+    // { dg-output "              \\^~~~~~~~~~~~~~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target lp64 } }
+    // { dg-output "  ?.. .. .. ..  ?00 00 00 00  ?.. .. .. ..  ?\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target ilp32 } }
+    // { dg-output "              \\^~~~~~~~~~~\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" { target ilp32 } }
     // { dg-output "              invalid vptr" }
     }
   return 0;

@@ -35,8 +35,8 @@ main ()
   return 0;
 }
 
-/* { dg-output "member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*member access within null pointer of type 'struct S'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*member access within null pointer of type 'struct T'" } */

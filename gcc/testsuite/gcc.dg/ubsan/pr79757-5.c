@@ -25,5 +25,5 @@ main (void)
   return 0;
 }
 
-/* { dg-output "shift exponent 100 is too large for \[^\n\r]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "shift exponent 100 is too large for \[^\n\r]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*division by zero" } */

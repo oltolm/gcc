@@ -25,5 +25,5 @@ main ()
   return 0;
 }
 
-/* { dg-output "signed integer overflow: 1956816000 - -1999200513 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "signed integer overflow: 1956816000 - -1999200513 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*negation of -2147483648 cannot be represented in type 'int'; cast to an unsigned type to negate this value to itself" } */

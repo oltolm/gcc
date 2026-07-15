@@ -16,7 +16,7 @@ main ()
   return 0;
 }
 
-/* { dg-output "shift exponent \[0-9a-fx]* is too large for \[0-9]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*shift exponent \[0-9a-fx]* is too large for \[0-9]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*shift exponent \[0-9a-fx-]* is negative\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "shift exponent \[0-9a-fx]* is too large for \[0-9]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*shift exponent \[0-9a-fx]* is too large for \[0-9]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*shift exponent \[0-9a-fx-]* is negative\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*shift exponent \[0-9a-fx-]* is negative" } */

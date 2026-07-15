@@ -74,8 +74,7 @@ AC_PROG_CXX
 AM_PROG_AS
 AC_PROG_RANLIB
 
-AC_LIBTOOL_DLOPEN
-LT_INIT
+LT_INIT([win32-dll dlopen])
 
 AC_PROG_AWK
 case "$AWK" in
@@ -109,6 +108,12 @@ AC_CHECK_FUNCS(clock_getres clock_gettime clock_settime lstat readlink)
 
 # Common libraries that we need to link against for all sanitizer libs.
 link_sanitizer_common='-lpthread -lm'
+
+case "$target" in
+  *-*-mingw*) link_sanitizer_common='-lsynchronization' ;;
+esac
+
+AM_CONDITIONAL(SANITIZER_WINDOWS, [case "$target" in x86_64-*-mingw*) true ;; *) false ;; esac])
 
 # At least for glibc, shm_open is in librt.  But don't pull that
 # in if it still doesn't give us the function we want.  This

@@ -15,7 +15,7 @@ main (void)
   b << c;
   a << 1;
 }
-/* { dg-output "left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*left shift of 1 by 31 places cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*left shift of negative value -42\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*left shift of 1 by 31 places cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*shift exponent 129 is too large for \[^\n\r]*-bit type 'int'" } */

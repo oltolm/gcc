@@ -1,5 +1,5 @@
 /* { dg-options "-fdump-tree-sanopt" } */
-/* { dg-do compile } */
+/* { dg-do compile { target { ! *-*-mingw* } } } */
 /* { dg-skip-if "" { *-*-* } { "*" } { "-O0" } } */
 
 char

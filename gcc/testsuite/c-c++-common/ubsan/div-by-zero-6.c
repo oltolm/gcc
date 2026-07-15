@@ -37,14 +37,14 @@ main (void)
   return 0;
 }
 
-/* { dg-output "1st(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "2nd(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "3rd(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "4th(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "5th(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "1st(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "2nd(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "3rd(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "4th(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "5th(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*division by zero\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "6th" } */

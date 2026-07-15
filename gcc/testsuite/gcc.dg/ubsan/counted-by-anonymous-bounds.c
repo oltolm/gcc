@@ -2,8 +2,8 @@
    type and as the type for an unnamed field.  */ 
 /* { dg-do run } */
 /* { dg-options "-O2 -fsanitize=bounds" } */
-/* { dg-output "index 11 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 22 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "index 11 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 22 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 
 
 struct { int a; char b[] __attribute__ ((counted_by (a))); } *x;

@@ -143,27 +143,27 @@ main (void)
   return 0;
 }
 
-/* { dg-output "signed integer overflow: 3 \\+ 125 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 125 \\+ 3 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 3 \\+ 32765 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 32765 \\+ 3 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 6 \\+ 2147483642 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 2147483642 \\+ 6 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 3 \\+ 2147483645 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 2147483645 \\+ 3 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -128 - 3 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -128 - 125 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -32768 - 3 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -32768 - 32765 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 6 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 2147483642 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 3 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 2147483645 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 31 \\* 5 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 4681 \\* 17 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 357913941 \\* 7 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 238609294 \\* 10 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*negation of -128 cannot be represented in type 'signed char'; cast to an unsigned type to negate this value to itself\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*negation of -32768 cannot be represented in type 'short int'; cast to an unsigned type to negate this value to itself\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*negation of -2147483648 cannot be represented in type 'int'; cast to an unsigned type to negate this value to itself\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "signed integer overflow: 3 \\+ 125 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 125 \\+ 3 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 3 \\+ 32765 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 32765 \\+ 3 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 6 \\+ 2147483642 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 2147483642 \\+ 6 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 3 \\+ 2147483645 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 2147483645 \\+ 3 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -128 - 3 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -128 - 125 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -32768 - 3 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -32768 - 32765 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 6 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 2147483642 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 3 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -2147483648 - 2147483645 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 31 \\* 5 cannot be represented in type 'signed char'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 4681 \\* 17 cannot be represented in type 'short int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 357913941 \\* 7 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 238609294 \\* 10 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*negation of -128 cannot be represented in type 'signed char'; cast to an unsigned type to negate this value to itself\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*negation of -32768 cannot be represented in type 'short int'; cast to an unsigned type to negate this value to itself\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*negation of -2147483648 cannot be represented in type 'int'; cast to an unsigned type to negate this value to itself\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*negation of -2147483648 cannot be represented in type 'int'; cast to an unsigned type to negate this value to itself" } */

@@ -15,5 +15,5 @@ main ()
   return 0;
 }
 
-/* { dg-output "signed integer overflow: 0 - -9223372036854775808 cannot be represented in type 'long long int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "signed integer overflow: 0 - -9223372036854775808 cannot be represented in type 'long long int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*negation of -9223372036854775808 cannot be represented in type 'long long int'\[^\n\r]*; cast to an unsigned type to negate this value to itself" } */

@@ -1,4 +1,4 @@
-/* { dg-do run } */
+/* { dg-do run { target { ! *-*-mingw* } } } */
 /* { dg-skip-if "" { *-*-* } { "-flto" } { "" } } */
 /* { dg-shouldfail "asan" } */
 

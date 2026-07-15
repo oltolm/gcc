@@ -14,5 +14,5 @@ main (void)
   d <<= 31;
   b << (c + 1);
 }
-/* { dg-output "shift exponent 129 is too large for \[^\n\r]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "shift exponent 129 is too large for \[^\n\r]*-bit type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*shift exponent 130 is too large for \[^\n\r]*-bit type 'int'" } */

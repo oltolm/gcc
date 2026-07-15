@@ -23,5 +23,5 @@ main ()
   bar (1ULL, 0x100000000ULL);
 }
 
-/* { dg-output "shift exponent 4294967296 is too large for \[^\n\r]*-bit type 'long long unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "shift exponent 4294967296 is too large for \[^\n\r]*-bit type 'long long unsigned int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*shift exponent 4294967296 is too large for \[^\n\r]*-bit type 'long long unsigned int'" } */

@@ -37,13 +37,13 @@ main ()
 }
 
 /* The 16-bit type vs. 15-bit is small inaccuracy.  */
-/* { dg-output "shift exponent 16 is too large for 16-bit type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*shift exponent 16 is too large for 16-bit type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 16383 \\+ 1 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: -16384 - 1 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 127 \\* 130 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*division of -16384 by -1 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "shift exponent 16 is too large for 16-bit type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*shift exponent 16 is too large for 16-bit type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 16383 \\+ 1 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: -16384 - 1 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 127 \\* 130 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*division of -16384 by -1 cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* This isn't accurate, but libubsan right now doesn't know it is 15-bit type rather than 16-bit.  */
-/* { dg-output "\[^\n\r]*left shift of 0 by 15 places cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "\[^\n\r]*left shift of 0 by 15 places cannot be represented in type '_BitInt\\\(15\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* The wording is totally incorrect, but at least it is diagnosed.  */
 /* { dg-output "\[^\n\r]*left shift of 1 by 15 places cannot be represented in type '_BitInt\\\(15\\\)'" } */

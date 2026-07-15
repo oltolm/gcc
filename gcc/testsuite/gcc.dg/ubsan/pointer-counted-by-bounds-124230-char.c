@@ -2,8 +2,8 @@
    bounds sanitizer.  */
 /* { dg-do run } */
 /* { dg-options "-fsanitize=bounds" } */
-/* { dg-output "index 10 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 11 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "index 10 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 11 out of bounds for type 'char \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 
 #define PTR_TYPE char
 #include "pointer-counted-by-bounds-124230.c"

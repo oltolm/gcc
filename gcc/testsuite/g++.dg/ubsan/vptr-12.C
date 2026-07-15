@@ -18,5 +18,5 @@ main ()
   return 0;
 }
 
-// { dg-output "\[^\n\r]*vptr-12.C:16:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'MyClass'(\n|\r\n|\r)" }
+// { dg-output "\[^\n\r]*vptr-12.C:16:\[0-9]*: runtime error: member call on address 0x\[0-9a-fA-F]* which does not point to an object of type 'MyClass'(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" }
 // { dg-output "0x\[0-9a-fA-F]*: note: object has invalid vptr" }

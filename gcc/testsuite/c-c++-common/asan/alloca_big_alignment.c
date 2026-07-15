@@ -7,7 +7,7 @@ volatile int ten = 10;
 
 __attribute__((noinline)) void foo(int index, int len) {
   volatile char str[len] __attribute__((aligned(128)));
-  assert(!((long) str & 127L));
+  assert(!(((__UINTPTR_TYPE__) str) & 127));
   str[index] = '1'; // BOOM
 }
 

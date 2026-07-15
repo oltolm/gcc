@@ -26,15 +26,15 @@ main (void)
   return 0;
 }
 
-/* { dg-output " -133* is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* -129.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* -129 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* 128 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* 128.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* 132 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* 256 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* 256.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* 260 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* -5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* -1.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output " -133* is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* -129.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* -129 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* 128 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* 128.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* 132 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* 256 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* 256.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* 260 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* -5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]* -1.5 is outside the range of representable values of type\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type" } */

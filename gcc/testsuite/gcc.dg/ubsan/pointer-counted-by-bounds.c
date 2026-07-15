@@ -19,12 +19,12 @@ void __attribute__((__noinline__)) setup (int normal_count, int annotated_count)
 {
   p_array
     = (struct pointer_array *) malloc (sizeof (struct pointer_array));
-  p_array->c = (int *) malloc (normal_count * sizeof (int));
+  p_array->c = (int *) malloc ((2 + normal_count) * sizeof (int));
   p_array->b = normal_count;
 
   p_array_annotated
     = (struct annotated *) malloc (sizeof (struct annotated));
-  p_array_annotated->c = (int *) malloc (annotated_count * sizeof (int));
+  p_array_annotated->c = (int *) malloc ((2 + annotated_count) * sizeof (int));
   p_array_annotated->b = annotated_count;
 
   return;
@@ -43,4 +43,4 @@ int main(int argc, char *argv[])
   return 0;
 }
 
-/* { dg-output "36:23: runtime error: index 10 out of bounds for type" } */
+/* { dg-output "36:23: runtime error: index 10 out of bounds for type\[^\n\r\]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */

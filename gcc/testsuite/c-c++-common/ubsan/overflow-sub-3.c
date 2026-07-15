@@ -30,5 +30,5 @@ main ()
 	__builtin_abort ();
   return 0;
 }
-/* { dg-output ":7:\[0-9]\[^\n\r]*signed integer overflow: 2147483647 - -1 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output ":7:\[0-9]\[^\n\r]*signed integer overflow: 2147483647 - -1 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*:19:\[0-9]\[^\n\r]*signed integer overflow: 2147483647 - -1 cannot be represented in type 'int'" } */

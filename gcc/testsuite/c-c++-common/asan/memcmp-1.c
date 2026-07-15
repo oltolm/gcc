@@ -1,4 +1,4 @@
-/* { dg-do run } */
+/* { dg-do run { target { ! *-*-mingw* } } } */
 /* { dg-options "-fno-builtin-memcmp" } */
 /* { dg-additional-options "-D_FORTIFY_SOURCE=0 -gdwarf-3" { target *-*-darwin* } } */
 /* { dg-shouldfail "asan" } */

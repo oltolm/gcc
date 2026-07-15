@@ -21,5 +21,5 @@ main ()
   return 0;
 }
 
-/* { dg-output "signed integer overflow: -2147483648 - 1 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "signed integer overflow: -2147483648 - 1 cannot be represented in type 'int'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*signed integer overflow: 2147483647 \\+ 40 cannot be represented in type 'int'" } */

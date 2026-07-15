@@ -508,3 +508,13 @@ do {						\
 /* For now, do not handle .res because some packages pass
 COFF files named .res to gcc directly, expecting them to
 be passed to the linker, not windres. See PR123504.  */
+
+#define TARGET_ASAN_DYNAMIC_SHADOW_OFFSET_P hook_bool_void_true
+
+/* Link the ASan dynamic runtime thunk into every instrumented binary
+   on Windows, matching what Clang does.  The thunk references __imp_
+   symbols from the ASan DLL, so it must come before -lasan.  */
+#undef LIBASAN_SPEC
+#define LIBASAN_SPEC \
+  " -lasan_dynamic_runtime_thunk -lasan -lsynchronization" \
+  " %{static-libasan|static:%:include(libsanitizer.spec)%(link_libasan)}"

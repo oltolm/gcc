@@ -20,5 +20,5 @@ main ()
   return 0;
 }
 
-/* { dg-output "index 3 out of bounds for type 'int \\\[3\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "index 3 out of bounds for type 'int \\\[3\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*index 4 out of bounds for type 'int \\\[3\\\]'" } */

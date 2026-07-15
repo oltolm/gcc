@@ -1,4 +1,5 @@
 /* { dg-do run } */
+/* { dg-skip-if "VLA negative bound crashes on Windows stack probing" { *-*-mingw* } } */
 /* { dg-options "-fsanitize=vla-bound -Wall -Wno-unused-variable -fno-stack-clash-protection -ftrivial-auto-var-init=uninitialized" } */
 
 typedef long int V;
@@ -102,18 +103,18 @@ main (void)
   return 0;
 }
 
-/* { dg-output "variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -5\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -3\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value 0\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value 0\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -6\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -5\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -3\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value 0\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value 0\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -1\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -6\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*variable length array bound evaluates to non-positive value -4" } */

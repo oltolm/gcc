@@ -37,13 +37,13 @@ main ()
 }
 
 /* The 128-bit type vs. 125-bit is small inaccuracy.  */
-/* { dg-output "shift exponent 128 is too large for 128-bit type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*shift exponent 128 is too large for 128-bit type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 0x0fffffffffffffffffffffffffffffff \\+ 1 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 0xf0000000000000000000000000000000 - 1 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*signed integer overflow: 4611686018427387903 \\* 4611686018427387906 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*division of 0xf0000000000000000000000000000000 by -1 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "shift exponent 128 is too large for 128-bit type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*shift exponent 128 is too large for 128-bit type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 0x0fffffffffffffffffffffffffffffff \\+ 1 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 0xf0000000000000000000000000000000 - 1 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*signed integer overflow: 4611686018427387903 \\* 4611686018427387906 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*division of 0xf0000000000000000000000000000000 by -1 cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* This isn't accurate, but libubsan right now doesn't know it is 125-bit type rather than 128-bit.  */
-/* { dg-output "\[^\n\r]*left shift of 0 by 125 places cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "\[^\n\r]*left shift of 0 by 125 places cannot be represented in type '_BitInt\\\(125\\\)'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* The wording is totally incorrect, but at least it is diagnosed.  */
 /* { dg-output "\[^\n\r]*left shift of 1 by 125 places cannot be represented in type '_BitInt\\\(125\\\)'" } */

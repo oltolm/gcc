@@ -204,6 +204,11 @@ asan_intercepted_p (enum built_in_function fcode)
 	 || fcode == BUILT_IN_MEMMOVE
 	 || fcode == BUILT_IN_MEMSET;
 
+  /* On Windows (PE/COFF), the runtime cannot intercept functions via
+     LD_PRELOAD.  All instrumentation must be done at compile time.  */
+  if (TARGET_PECOFF)
+    return false;
+
   return fcode == BUILT_IN_INDEX
 	 || fcode == BUILT_IN_MEMCHR
 	 || fcode == BUILT_IN_MEMCMP

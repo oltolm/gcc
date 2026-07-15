@@ -27,5 +27,5 @@ main ()
   return 0;
 }
 
-/* { dg-output "index -1 out of bounds for type 'long int \\\[10\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "index -1 out of bounds for type 'long int \\\[10\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*signed integer overflow: \[0-9]+ \\* \[0-9]+ cannot be represented in type 'long int'" } */

@@ -103,11 +103,11 @@ main (void)
   return 0;
 }
 
-/* { dg-output "index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 4 out of bounds for type 'char \\\[4\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 4 out of bounds for type 'char \\\[4\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)" } */
+/* { dg-output "index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 4 out of bounds for type 'char \\\[4\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 4 out of bounds for type 'char \\\[4\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*index 1 out of bounds for type 'char \\\[1\\\]'" } */
