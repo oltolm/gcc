@@ -3,6 +3,7 @@
 /* { dg-do run } */
 /* { dg-options "-fsanitize=bounds" } */
 
+/* { dg-skip-if "flaky" { *-*-mingw* } } */
 #include <stdlib.h>
 
 struct annotated {

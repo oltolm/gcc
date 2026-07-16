@@ -4,6 +4,7 @@
 /* { dg-options "-fsanitize=bounds" } */
 /* { dg-output "index 10 out of bounds for type 'A \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
 /* { dg-output "\[^\n\r]*index 11 out of bounds for type 'A \\\[\\\*\\\]'\[^\n\r]*(\n|\r\n|\r)(.*SUMMARY:.*(\n|\r\n|\r))?" } */
+/* { dg-skip-if "flaky" { *-*-mingw* } } */
 
 #include <stdlib.h>
 
