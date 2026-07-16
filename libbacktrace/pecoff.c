@@ -48,7 +48,9 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #define NOMINMAX
 #endif
 
+#define PSAPI_VERSION 2
 #include <windows.h>
+#include <psapi.h>
 
 #ifdef HAVE_TLHELP32_H
 #include <tlhelp32.h>
@@ -383,6 +385,7 @@ coff_is_function_symbol (const b_coff_internal_symbol *isym)
 static int
 coff_initialize_syminfo (struct backtrace_state *state,
 			 struct libbacktrace_base_address base_address,
+			 uintptr_t module_end,
 			 int is_64, const b_coff_section_header *sects,
 			 size_t sects_num, const b_coff_external_symbol *syms,
 			 size_t syms_size, const unsigned char *strtab,
@@ -503,7 +506,7 @@ coff_initialize_syminfo (struct backtrace_state *state,
 
   /* End of symbols marker.  */
   coff_sym->name = NULL;
-  coff_sym->address = -1;
+  coff_sym->address = module_end != 0 ? module_end : (uintptr_t) -1;
 
   backtrace_qsort (coff_symbols, coff_symbol_count,
 		   sizeof (struct coff_symbol), coff_symbol_compare);
@@ -647,7 +650,8 @@ static int
 coff_add (struct backtrace_state *state, int descriptor,
 	  backtrace_error_callback error_callback, void *data,
 	  fileline *fileline_fn, int *found_sym, int *found_dwarf,
-	  uintptr_t module_handle ATTRIBUTE_UNUSED)
+	  uintptr_t module_handle ATTRIBUTE_UNUSED,
+	  uintptr_t module_size ATTRIBUTE_UNUSED)
 {
   struct backtrace_view fhdr_view;
   off_t fhdr_off;
@@ -678,6 +682,7 @@ coff_add (struct backtrace_state *state, int descriptor,
   int is_64;
   struct libbacktrace_base_address image_base;
   struct libbacktrace_base_address base_address;
+  uintptr_t module_end;
   struct dwarf_sections dwarf_sections;
 
   *found_sym = 0;
@@ -687,6 +692,7 @@ coff_add (struct backtrace_state *state, int descriptor,
   syms_view_valid = 0;
   str_view_valid = 0;
   debug_view_valid = 0;
+  module_end = 0;
 
   /* Map the MS-DOS stub (if any) and extract file header offset.  */
   if (!backtrace_get_view (state, descriptor, 0, 0x40, error_callback,
@@ -769,6 +775,11 @@ coff_add (struct backtrace_state *state, int descriptor,
 	  goto fail;
 	}
     }
+
+#ifdef HAVE_WINDOWS_H
+  if (module_size != 0)
+    module_end = module_handle + module_size;
+#endif
 
   /* Read the symbol table and the string table.  */
 
@@ -854,7 +865,7 @@ coff_add (struct backtrace_state *state, int descriptor,
       if (sdata == NULL)
 	goto fail;
 
-      if (!coff_initialize_syminfo (state, image_base, is_64,
+      if (!coff_initialize_syminfo (state, image_base, module_end, is_64,
 				    sects, sects_num,
 				    syms_view.data, syms_size,
 				    str_view.data, str_size,
@@ -997,7 +1008,8 @@ dll_notification (ULONG reason,
     return;
 
   coff_add (state, descriptor, error_callback, data, &fileline, &found_sym,
-	    &found_dwarf, (uintptr_t) module_handle);
+	    &found_dwarf, (uintptr_t) module_handle,
+	    (uintptr_t) notification_data->size_of_image);
 }
 #endif /* defined(HAVE_WINDOWS_H) */
 
@@ -1016,6 +1028,7 @@ backtrace_initialize (struct backtrace_state *state,
   int found_dwarf;
   fileline coff_fileline_fn;
   uintptr_t module_handle = 0;
+  uintptr_t module_size = 0;
 #ifdef HAVE_TLHELP32_H
   fileline module_fileline_fn;
   int module_found_sym;
@@ -1024,14 +1037,64 @@ backtrace_initialize (struct backtrace_state *state,
 
 #ifdef HAVE_WINDOWS_H
   HMODULE nt_dll_handle;
+  MODULEINFO mi;
 
-  module_handle = (uintptr_t) GetModuleHandle (NULL);
+  if (GetModuleInformation (GetCurrentProcess (), GetModuleHandle (NULL), &mi,
+			    sizeof (mi)))
+    {
+      module_handle = (uintptr_t) mi.lpBaseOfDll;
+      module_size = (uintptr_t) mi.SizeOfImage;
+    }
 #endif
 
-  ret = coff_add (state, descriptor, error_callback, data,
-		  &coff_fileline_fn, &found_sym, &found_dwarf, module_handle);
+  ret = coff_add (state, descriptor, error_callback, data, &coff_fileline_fn,
+		  &found_sym, &found_dwarf, module_handle, module_size);
   if (!ret)
     return 0;
+
+#ifdef HAVE_WINDOWS_H
+#if 0
+  HMODULE modarr[1000];
+  DWORD modcnt = 0;
+  if (EnumProcessModules (GetCurrentProcess (), modarr, sizeof (modarr),
+			  &modcnt))
+    {
+      DWORD i;
+      char modname[MAX_PATH];
+
+      modcnt /= sizeof (HMODULE);
+      if (modcnt > 1000)
+	modcnt = 1000;
+
+      for (i = 1; i < modcnt; i++)
+	{
+	  if (GetModuleFileNameA (modarr[i], modname, MAX_PATH))
+	    {
+	      int descriptor;
+	      int does_not_exist;
+	      fileline mod_fileline_fn;
+	      int mod_found_dwarf;
+
+	      descriptor = backtrace_open (modname, error_callback, data,
+					   &does_not_exist);
+	      if (descriptor < 0)
+		continue;
+
+	      if (coff_add (state, descriptor, error_callback, data,
+			    &mod_fileline_fn, &found_sym, &mod_found_dwarf,
+			    (uintptr_t) modarr[i], 0))
+		{
+		  if (mod_found_dwarf)
+		    {
+		      found_dwarf = 1;
+		      coff_fileline_fn = mod_fileline_fn;
+		    }
+		}
+	    }
+	}
+    }
+#endif
+#endif
 
 #ifdef HAVE_TLHELP32_H
   do
@@ -1063,7 +1126,7 @@ backtrace_initialize (struct backtrace_state *state,
 
 	  coff_add (state, descriptor, error_callback, data,
 		    &module_fileline_fn, &module_found_sym, &found_dwarf,
-		    module_handle);
+		    module_handle, (uintptr_t) entry.modBaseSize);
 	  if (module_found_sym)
 	    found_sym = 1;
 	}
