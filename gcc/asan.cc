@@ -1097,36 +1097,6 @@ get_mem_refs_of_builtin_call (gcall *call,
       len = gimple_call_arg (call, 2);
       break;
 
-    case BUILT_IN_STRLEN:
-      /* Special case strlen here since its length is taken from its return
-	 value.
-
-	 The approach taken by the sanitizers is to check a memory access
-	 before it's taken.  For ASAN strlen is intercepted by libasan, so no
-	 check is inserted by the compiler.
-
-	 This function still returns `true` and provides a length to the rest
-	 of the ASAN pass in order to record what areas have been checked,
-	 avoiding superfluous checks later on.
-
-	 HWASAN does not intercept any of these internal functions.
-	 This means that checks for memory accesses must be inserted by the
-	 compiler.
-	 strlen is a special case, because we can tell the length from the
-	 return of the function, but that is not known until after the function
-	 has returned.
-
-	 Hence we can't check the memory access before it happens.
-	 We could check the memory access after it has already happened, but
-	 for now we choose to just ignore `strlen` calls.
-	 This decision was simply made because that means the special case is
-	 limited to this one case of this one function.  */
-      if (hwassist_sanitize_p ())
-	return false;
-      source0 = gimple_call_arg (call, 0);
-      len = gimple_call_lhs (call);
-      break;
-
     case BUILT_IN_STACK_RESTORE:
       handle_builtin_stack_restore (call, iter);
       break;
