@@ -766,6 +766,16 @@ do_link (char **ld_argv, const char *atsuffix)
 
 /* Main program.  */
 
+static bool
+use_collect_ld_in_env_p (void)
+{
+#ifdef __MINGW32__
+  return getenv ("MSYSTEM") != NULL || getenv ("SHELL") != NULL;
+#else
+  return true;
+#endif
+}
+
 int
 main (int argc, char **argv)
 {
@@ -1100,7 +1110,7 @@ main (int argc, char **argv)
   /* Search the (target-specific) compiler dirs for ld'.  */
   ld_file_name = find_a_file (&cpath, real_ld_suffix, X_OK);
   /* Likewise for `collect-ld'.  */
-  if (ld_file_name == 0)
+  if (ld_file_name == 0 && use_collect_ld_in_env_p ())
     {
       ld_file_name = find_a_file (&cpath, collect_ld_suffix, X_OK);
       use_collect_ld = ld_file_name != 0;
