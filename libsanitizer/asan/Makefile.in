@@ -94,6 +94,7 @@ target_triplet = @target@
 @USING_MAC_INTERPOSE_TRUE@am__append_1 = -DMAC_INTERPOSE_FUNCTIONS -DMISSING_BLOCKS_SUPPORT
 @USING_MAC_INTERPOSE_FALSE@am__append_2 = $(top_builddir)/interception/libinterception.la
 @LIBBACKTRACE_SUPPORTED_TRUE@am__append_3 = $(top_builddir)/libbacktrace/libsanitizer_libbacktrace.la
+@SANITIZER_WINDOWS_TRUE@am__append_4 = -DINTERCEPTION_DYNAMIC_CRT
 subdir = asan
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/../config/acx.m4 \
@@ -311,7 +312,7 @@ DEFS = -D_GNU_SOURCE -D_DEBUG -D__STDC_CONSTANT_MACROS \
 	-D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS \
 	-DASAN_HAS_EXCEPTIONS=1 -DASAN_NEEDS_SEGV=1 \
 	-DCAN_SANITIZE_UB=0 -DASAN_HAS_CXA_RETHROW_PRIMARY_EXCEPTION=0 \
-	@AS_SYM_ASSIGN_DEFS@ $(am__append_1)
+	@AS_SYM_ASSIGN_DEFS@ $(am__append_1) $(am__append_4)
 DEPDIR = @DEPDIR@
 DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@

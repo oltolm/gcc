@@ -66,6 +66,7 @@ libasan_darwin_rpath += -Wl,-rpath,@loader_path
 endif
 
 if SANITIZER_WINDOWS
+DEFS += -DINTERCEPTION_DYNAMIC_CRT
 libasan_win_ldflags = -no-undefined
 endif
 
