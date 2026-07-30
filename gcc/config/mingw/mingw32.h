@@ -231,11 +231,8 @@ along with GCC; see the file COPYING3.  If not see
   crtend.o%s"
 
 /* Override startfile prefix defaults.  */
-#ifndef STANDARD_STARTFILE_PREFIX_1
-#define STANDARD_STARTFILE_PREFIX_1 "/mingw/lib/"
-#endif
-#ifndef STANDARD_STARTFILE_PREFIX_2
-#define STANDARD_STARTFILE_PREFIX_2 ""
+#if !defined(STANDARD_STARTFILE_PREFIX_2) && !defined(CROSS_DIRECTORY_STRUCTURE)
+#define STANDARD_STARTFILE_PREFIX_2 "" /* MSYS2 doesn't use /usr/lib for MINGW */
 #endif
 
 /* Output STRING, a string representing a filename, to FILE.
