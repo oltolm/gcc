@@ -20,6 +20,7 @@
 
 import difflib
 import os
+import posixpath
 import re
 import sys
 from collections import defaultdict
@@ -619,7 +620,7 @@ class GitCommit:
     def check_file_patterns(self):
         for entry in self.changelog_entries:
             for pattern in entry.file_patterns:
-                name = os.path.join(entry.folder, pattern)
+                name = posixpath.join(entry.folder, pattern)
                 if not [name.startswith(pr) for pr in wildcard_prefixes]:
                     msg = 'unsupported wildcard prefix'
                     self.errors.append(Error(msg, name))
@@ -706,14 +707,14 @@ class GitCommit:
             assert not entry.folder.endswith('/')
             for file in entry.files:
                 if not self.is_changelog_filename(file):
-                    item = os.path.join(entry.folder, file)
+                    item = posixpath.join(entry.folder, file)
                     if item in mentioned_files:
                         msg = 'same file specified multiple times'
                         self.errors.append(Error(msg, file))
                     else:
                         mentioned_files.add(item)
             for pattern in entry.file_patterns:
-                mentioned_patterns.append(os.path.join(entry.folder, pattern))
+                mentioned_patterns.append(posixpath.join(entry.folder, pattern))
 
         cand = [x[0] for x in self.info.modified_files
                 if not self.is_changelog_filename(x[0])]
@@ -786,7 +787,7 @@ class GitCommit:
     def check_for_correct_changelog(self):
         for entry in self.changelog_entries:
             for file in entry.files:
-                full_path = os.path.join(entry.folder, file)
+                full_path = posixpath.join(entry.folder, file)
                 changelog_location = self.get_changelog_by_path(full_path)
                 if changelog_location != entry.folder:
                     msg = 'wrong ChangeLog location "%s", should be "%s"'
