@@ -847,7 +847,7 @@ assign_stack_temp_for_type (machine_mode mode, poly_int64 size, tree type)
       goto finalize_slot;
     }
 
-  align = get_stack_local_alignment (type, mode);
+  align = MAX (get_stack_local_alignment (type, mode), required_align);
 
   /* Try to find an available, already-allocated temporary of the proper
      mode which meets the size and alignment requirements.  Choose the
@@ -929,7 +929,7 @@ assign_stack_temp_for_type (machine_mode mode, poly_int64 size, tree type)
 	 So for requests which depended on the rounding of SIZE, we go ahead
 	 and round it now.  We also make sure ALIGNMENT is at least
 	 BIGGEST_ALIGNMENT.  */
-      gcc_assert (mode != BLKmode || align == BIGGEST_ALIGNMENT);
+      gcc_assert (mode != BLKmode || align >= BIGGEST_ALIGNMENT);
       p->slot = assign_stack_local_1 (mode,
 				      (mode == BLKmode
 				       ? aligned_upper_bound (size,
