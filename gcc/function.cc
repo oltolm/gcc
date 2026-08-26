@@ -551,6 +551,36 @@ assign_stack_local (machine_mode mode, poly_int64 size, int align)
   return assign_stack_local_1 (mode, size, align, ASLK_RECORD_PAD);
 }
 
+/* Like assign_stack_local, but preserve requested over-alignment by
+   overallocating a BLKmode slot and aligning an address within it.  */
+
+static rtx
+assign_stack_local_aligned (machine_mode mode, poly_int64 size,
+			    unsigned int align)
+{
+  if (align > MAX_SUPPORTED_STACK_ALIGNMENT)
+    {
+      /* align_dynamic_address emits the alignment arithmetic into a pseudo.  */
+      gcc_assert (can_create_pseudo_p ());
+
+      /* The slot's base is aligned to MAX_SUPPORTED_STACK_ALIGNMENT, so moving
+	 it to the next ALIGN boundary needs at most the difference between the
+	 two alignments.  Keep the size polynomial for scalable modes.  */
+      poly_int64 allocsize
+	= size + ((align - MAX_SUPPORTED_STACK_ALIGNMENT) / BITS_PER_UNIT);
+      rtx slot = assign_stack_local (BLKmode, allocsize,
+				     MAX_SUPPORTED_STACK_ALIGNMENT);
+      rtx addr = align_dynamic_address (XEXP (slot, 0), align);
+      mark_reg_pointer (addr, align);
+      slot = gen_rtx_MEM (mode, addr);
+      set_mem_align (slot, align);
+      MEM_NOTRAP_P (slot) = 1;
+      return slot;
+    }
+
+  return assign_stack_local (mode, size, align);
+}
+
 /* In order to evaluate some expressions, such as function calls returning
    structures in memory, we need to temporarily allocate stack locations.
    We record each allocated temporary in the following structure.
@@ -801,6 +831,22 @@ assign_stack_temp_for_type (machine_mode mode, poly_int64 size, tree type)
 
   gcc_assert (known_size_p (size));
 
+  unsigned int required_align
+    = (mode == BLKmode ? BITS_PER_UNIT : GET_MODE_ALIGNMENT (mode));
+  if (type)
+    required_align = MAX (required_align, TYPE_ALIGN (type));
+
+  /* Alignment beyond what the frame can guarantee needs an address aligned
+     at run time inside an overallocated slot.  BASE_OFFSET and FULL_SIZE
+     cannot describe such a slot, so it gets no temp_slot entry: it is never
+     reused or freed.  */
+  if (required_align > MAX_SUPPORTED_STACK_ALIGNMENT)
+    {
+      slot = assign_stack_local_aligned (mode, size, required_align);
+      align = MEM_ALIGN (slot);
+      goto finalize_slot;
+    }
+
   align = get_stack_local_alignment (type, mode);
 
   /* Try to find an available, already-allocated temporary of the proper
@@ -892,7 +938,7 @@ assign_stack_temp_for_type (machine_mode mode, poly_int64 size, tree type)
 				       : size),
 				      align, 0);
 
-      p->align = align;
+      p->align = MEM_ALIGN (p->slot);
 
       /* The following slot size computation is necessary because we don't
 	 know the actual size of the temporary slot until assign_stack_local
@@ -931,8 +977,11 @@ assign_stack_temp_for_type (machine_mode mode, poly_int64 size, tree type)
   insert_slot_to_list (p, pp);
   insert_temp_slot_address (XEXP (p->slot, 0), p);
 
+  align = MEM_ALIGN (p->slot);
+
   /* Create a new MEM rtx to avoid clobbering MEM flags of old slots.  */
   slot = gen_rtx_MEM (mode, XEXP (p->slot, 0));
+finalize_slot:
   vec_safe_push (stack_slot_list, slot);
 
   /* If we know the alias set for the memory that will be used, use
@@ -2948,24 +2997,13 @@ assign_parm_setup_block (struct assign_parm_data_all *all,
 	   ? MAX (DECL_ALIGN (parm), BITS_PER_WORD) : DECL_ALIGN (parm));
 
       SET_DECL_ALIGN (parm, parm_align);
-      if (DECL_ALIGN (parm) > MAX_SUPPORTED_STACK_ALIGNMENT)
-	{
-	  rtx allocsize = gen_int_mode (size_stored, Pmode);
-	  get_dynamic_stack_size (&allocsize, 0, DECL_ALIGN (parm), NULL);
-	  stack_parm = assign_stack_local (BLKmode, UINTVAL (allocsize),
-					   MAX_SUPPORTED_STACK_ALIGNMENT);
-	  rtx addr = align_dynamic_address (XEXP (stack_parm, 0),
-					    DECL_ALIGN (parm));
-	  mark_reg_pointer (addr, DECL_ALIGN (parm));
-	  stack_parm = gen_rtx_MEM (GET_MODE (stack_parm), addr);
-	  MEM_NOTRAP_P (stack_parm) = 1;
-	}
-      else
-	stack_parm = assign_stack_local (BLKmode, size_stored,
-					 DECL_ALIGN (parm));
+      stack_parm
+	= assign_stack_local_aligned (BLKmode, size_stored, DECL_ALIGN (parm));
+      int align = MEM_ALIGN (stack_parm);
       if (known_eq (GET_MODE_SIZE (GET_MODE (entry_parm)), size))
 	PUT_MODE (stack_parm, GET_MODE (entry_parm));
       set_mem_attributes (stack_parm, parm, 1);
+      set_mem_align (stack_parm, align);
     }
 
   /* If a BLKmode arrives in registers, copy it to a stack slot.  Handle
@@ -3366,11 +3404,13 @@ assign_parm_setup_reg (struct assign_parm_data_all *all, tree parm,
 	  int align = STACK_SLOT_ALIGNMENT (TREE_TYPE (parm),
 					    TYPE_MODE (TREE_TYPE (parm)),
 					    TYPE_ALIGN (TREE_TYPE (parm)));
-	  parmreg
-	    = assign_stack_local (TYPE_MODE (TREE_TYPE (parm)),
-				  GET_MODE_SIZE (TYPE_MODE (TREE_TYPE (parm))),
-				  align);
+	  parmreg = assign_stack_local_aligned (TYPE_MODE (TREE_TYPE (parm)),
+						GET_MODE_SIZE (
+						  TYPE_MODE (TREE_TYPE (parm))),
+						align);
+	  align = MEM_ALIGN (parmreg);
 	  set_mem_attributes (parmreg, parm, 1);
+	  set_mem_align (parmreg, align);
 	}
 
       /* We need to preserve an address based on VIRTUAL_STACK_VARS_REGNUM for
@@ -3523,10 +3563,9 @@ assign_parm_setup_stack (struct assign_parm_data_all *all, tree parm,
 		  || targetm.slow_unaligned_access (GET_MODE (data->entry_parm),
 						    align)))
 	    align = GET_MODE_ALIGNMENT (GET_MODE (data->entry_parm));
-	  data->stack_parm
-	    = assign_stack_local (GET_MODE (data->entry_parm),
-				  GET_MODE_SIZE (GET_MODE (data->entry_parm)),
-				  align);
+	  data->stack_parm = assign_stack_local_aligned (
+	    GET_MODE (data->entry_parm),
+	    GET_MODE_SIZE (GET_MODE (data->entry_parm)), align);
 	  align = MEM_ALIGN (data->stack_parm);
 	  set_mem_attributes (data->stack_parm, parm, 1);
 	  set_mem_align (data->stack_parm, align);
