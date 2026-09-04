@@ -223,6 +223,7 @@ struct StructWithBitField {
   int bf4:29;
 };
 
+#if !defined(_WIN32)
 TEST(AddressSanitizer, BitFieldPositiveTest) {
   StructWithBitField *x = new StructWithBitField;
   delete Ident(x);
@@ -231,6 +232,7 @@ TEST(AddressSanitizer, BitFieldPositiveTest) {
   EXPECT_DEATH(x->bf3 = 0, "use-after-free");
   EXPECT_DEATH(x->bf4 = 0, "use-after-free");
 }
+#endif
 
 struct StructWithBitFields_8_24 {
   int a:8;
@@ -961,16 +963,20 @@ TEST(AddressSanitizer, StrDupTest) {
 }
 
 // Currently we create and poison redzone at right of global variables.
+#if !defined(_WIN32)
 static char static110[110];
 const char ConstGlob[7] = {1, 2, 3, 4, 5, 6, 7};
 static const char StaticConstGlob[3] = {9, 8, 7};
+#endif
 
 TEST(AddressSanitizer, GlobalTest) {
+#if !defined(_WIN32)
   static char func_static15[15];
 
   static char fs1[10];
   static char fs2[10];
   static char fs3[10];
+#endif
 
   glob5[Ident(0)] = 0;
   glob5[Ident(1)] = 0;
@@ -982,6 +988,7 @@ TEST(AddressSanitizer, GlobalTest) {
                "0 bytes after global variable.*glob5.* size 5");
   EXPECT_DEATH(glob5[Ident(5+6)] = 0,
                "6 bytes after global variable.*glob5.* size 5");
+#if !defined(_WIN32)
   Ident(static110);  // avoid optimizations
   static110[Ident(0)] = 0;
   static110[Ident(109)] = 0;
@@ -1009,11 +1016,13 @@ TEST(AddressSanitizer, GlobalTest) {
                "is located 1 bytes after .*ConstGlob");
   EXPECT_DEATH(Ident(Ident(StaticConstGlob)[5]),
                "is located 2 bytes after .*StaticConstGlob");
+#endif
 
   // call stuff from another file.
   GlobalsTest(0);
 }
 
+#if !defined(_WIN32)
 TEST(AddressSanitizer, GlobalStringConstTest) {
   static const char *zoo = "FOOBAR123";
   const char *p = Ident(zoo);
@@ -1026,6 +1035,7 @@ TEST(AddressSanitizer, FileNameInGlobalReportTest) {
   // The file name should be present in the report.
   EXPECT_DEATH(Ident(p[15]), "zoo.*asan_test.");
 }
+#endif
 
 int *ReturnsPointerToALocalObject() {
   int a = 0;
@@ -1250,6 +1260,7 @@ TEST(AddressSanitizer, DISABLED_DemoTooMuchMemoryTest) {
 }
 
 // http://code.google.com/p/address-sanitizer/issues/detail?id=66
+#if !defined(_WIN32)
 TEST(AddressSanitizer, BufferOverflowAfterManyFrees) {
   for (int i = 0; i < 1000000; i++) {
     delete [] (Ident(new char [8644]));
@@ -1258,6 +1269,7 @@ TEST(AddressSanitizer, BufferOverflowAfterManyFrees) {
   EXPECT_DEATH(x[Ident(8192)] = 0, "AddressSanitizer: heap-buffer-overflow");
   delete [] Ident(x);
 }
+#endif
 
 
 // Test that instrumentation of stack allocations takes into account
