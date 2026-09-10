@@ -54,8 +54,8 @@ void initialize_thunks(const sanitizer_thunk *begin,
         sanitizer_export,                                              \
         reinterpret_cast<__sanitizer::uptr>(local_function));          \
   }                                                                    \
-  __pragma(section(".INTR$M", long, read)) IN_SECTION(                 \
-      ".INTR$M") int (*__sanitizer_static_thunk_##local_function)() =  \
+  __pragma(section(".INTR$M", long, read)) IN_SECTION(".INTR$M") int ( \
+      *__sanitizer_static_thunk_##local_function)() =                  \
       intercept_##local_function;
 
 // ------------------ Weak symbol registration macros ---------------------- //

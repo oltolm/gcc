@@ -49,7 +49,7 @@
 #    define IN_SECTION(n) __attribute__((section(n)))
 #  endif
 
-#  if !SANITIZER_GO && (!defined(__GNUC__) || defined(__clang__))
+#  if !SANITIZER_GO
 
 // ----------------- A workaround for the absence of weak symbols --------------
 // We don't have a direct equivalent of weak symbols when using MSVC, but we can
@@ -75,8 +75,15 @@
   __pragma(comment(linker, "/alternatename:" WIN_SYM_PREFIX STRINGIFY(Name) "="\
                                              WIN_SYM_PREFIX STRINGIFY(Default)))
 
-#define WIN_FORCE_LINK(Name)                                                   \
-  __pragma(comment(linker, "/include:" WIN_SYM_PREFIX STRINGIFY(Name)))
+#if !defined(__GNUC__) || defined(__clang__)
+#  define WIN_FORCE_LINK(Name)                                                 \
+    __pragma(comment(linker, "/include:" WIN_SYM_PREFIX STRINGIFY(Name)))
+#else
+#  define WIN_FORCE_LINK(Name)                                             \
+    extern "C" __typeof__(Name) Name;                                    \
+    static __attribute__((used)) __typeof__(&Name) __force_link_##Name = \
+        &Name;
+#endif
 
 #define WIN_EXPORT(ExportedName, Name)                                         \
   __pragma(comment(linker, "/export:" WIN_EXPORT_PREFIX STRINGIFY(ExportedName)\
@@ -166,16 +173,6 @@
 //     return a >= b;
 //   }
 //
-
-#  elif !SANITIZER_GO
-
-#    define WIN_FORCE_LINK(Name)                                           \
-      extern "C" __typeof__(Name) Name;                                    \
-      static __attribute__((used)) __typeof__(&Name) __force_link_##Name = \
-          &Name;
-
-#    define WIN_WEAK_EXPORT_DEF(ReturnType, Name, ...) \
-      extern "C" __attribute__((dllexport)) ReturnType Name(__VA_ARGS__)
 
 #  else  // SANITIZER_GO
 

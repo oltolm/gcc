@@ -209,6 +209,120 @@ bool SymbolizerProcess::StartSymbolizerSubprocess() {
   return true;
 }
 
+class Addr2LineProcess final : public SymbolizerProcess {
+ public:
+  Addr2LineProcess(const char *path, const char *module_name)
+      : SymbolizerProcess(path), module_name_(internal_strdup(module_name)) {}
+
+  const char *module_name() const { return module_name_; }
+
+ private:
+  void GetArgV(const char *path_to_binary,
+               const char *(&argv)[kArgVMax]) const override {
+    int i = 0;
+    argv[i++] = path_to_binary;
+    if (common_flags()->demangle)
+      argv[i++] = "-C";
+    if (common_flags()->symbolize_inline_frames)
+      argv[i++] = "-i";
+    argv[i++] = "-fe";
+    argv[i++] = module_name_;
+    argv[i++] = nullptr;
+    CHECK_LE(i, kArgVMax);
+  }
+
+  bool ReachedEndOfOutput(const char *buffer, uptr length) const override;
+
+  bool ReadFromSymbolizer() override {
+    if (!SymbolizerProcess::ReadFromSymbolizer())
+      return false;
+    auto &buff = GetBuff();
+    // We should cut out output_terminator_ at the end of given buffer,
+    // appended by addr2line to mark the end of its meaningful output.
+    // We cannot scan buffer from it's beginning, because it is legal for it
+    // to start with output_terminator_ in case given offset is invalid. So,
+    // scanning from second character.
+    char *garbage = internal_strstr(buff.data() + 1, output_terminator_);
+    // This should never be NULL since buffer must end up with
+    // output_terminator_.
+    CHECK(garbage);
+
+    // Trim the buffer.
+    uintptr_t new_size = garbage - buff.data();
+    GetBuff().resize(new_size);
+    GetBuff().push_back('\0');
+    return true;
+  }
+
+  const char *module_name_;  // Owned, leaked.
+  static const char output_terminator_[];
+};
+
+const char Addr2LineProcess::output_terminator_[] = "??\n??:0\n";
+
+bool Addr2LineProcess::ReachedEndOfOutput(const char *buffer,
+                                          uptr length) const {
+  const size_t kTerminatorLen = sizeof(output_terminator_) - 1;
+  // Skip, if we read just kTerminatorLen bytes, because Addr2Line output
+  // should consist at least of two pairs of lines:
+  // 1. First one, corresponding to given offset to be symbolized
+  // (may be equal to output_terminator_, if offset is not valid).
+  // 2. Second one for output_terminator_, itself to mark the end of output.
+  if (length <= kTerminatorLen)
+    return false;
+  // Addr2Line output should end up with output_terminator_.
+  return !internal_memcmp(buffer + length - kTerminatorLen, output_terminator_,
+                          kTerminatorLen);
+}
+
+class Addr2LinePool final : public SymbolizerTool {
+ public:
+  explicit Addr2LinePool(const char *addr2line_path,
+                         LowLevelAllocator *allocator)
+      : addr2line_path_(addr2line_path), allocator_(allocator) {
+    addr2line_pool_.reserve(16);
+  }
+
+  bool SymbolizePC(uptr addr, SymbolizedStack *stack) override {
+    if (const char *buf =
+            SendCommand(stack->info.module, stack->info.module_offset)) {
+      ParseSymbolizePCOutput(buf, stack);
+      return true;
+    }
+    return false;
+  }
+
+  bool SymbolizeData(uptr addr, DataInfo *info) override { return false; }
+
+ private:
+  const char *SendCommand(const char *module_name, uptr module_offset) {
+    Addr2LineProcess *addr2line = 0;
+    for (uptr i = 0; i < addr2line_pool_.size(); ++i) {
+      if (0 ==
+          internal_strcmp(module_name, addr2line_pool_[i]->module_name())) {
+        addr2line = addr2line_pool_[i];
+        break;
+      }
+    }
+    if (!addr2line) {
+      addr2line =
+          new (*allocator_) Addr2LineProcess(addr2line_path_, module_name);
+      addr2line_pool_.push_back(addr2line);
+    }
+    CHECK_EQ(0, internal_strcmp(module_name, addr2line->module_name()));
+    char buffer[kBufferSize];
+    internal_snprintf(buffer, kBufferSize, "0x%zx\n0x%zx\n", module_offset,
+                      dummy_address_);
+    return addr2line->SendCommand(buffer);
+  }
+
+  static const uptr kBufferSize = 64;
+  const char *addr2line_path_;
+  LowLevelAllocator *allocator_;
+  InternalMmapVector<Addr2LineProcess *> addr2line_pool_;
+  static const uptr dummy_address_ = FIRST_32_SECOND_64(UINT32_MAX, UINT64_MAX);
+};
+
 #  if SANITIZER_SUPPORTS_WEAK_HOOKS
 extern "C" {
 SANITIZER_INTERFACE_ATTRIBUTE SANITIZER_WEAK_ATTRIBUTE bool

@@ -15,9 +15,6 @@
 #include "sanitizer_common/sanitizer_platform.h"
 #if SANITIZER_WINDOWS
 #  define WIN32_LEAN_AND_MEAN
-#  if defined(__GNUC__) && !defined(__clang__)
-#    include <malloc.h>
-#  endif
 #  include <stdlib.h>
 #  include <windows.h>
 
@@ -335,7 +332,7 @@ ShadowExceptionHandler(PEXCEPTION_POINTERS exception_pointers) {
 #endif
 
 void InitializePlatformExceptionHandlers() {
-#  if SANITIZER_WINDOWS64
+#if SANITIZER_WINDOWS64
   // On Win64, we map memory on demand with access violation handler.
   // Install our exception handler.
   CHECK(AddVectoredExceptionHandler(TRUE, &ShadowExceptionHandler));
@@ -343,19 +340,7 @@ void InitializePlatformExceptionHandlers() {
 }
 
 bool IsSystemHeapAddress(uptr addr) {
-  HANDLE process_heap = GetProcessHeap();
-  if (::HeapValidate(process_heap, 0, (void*)addr))
-    return true;
-
-#if defined(__GNUC__) && !defined(__clang__)
-  HANDLE crt_heap = (HANDLE)_get_heap_handle();
-  if (crt_heap == process_heap)
-    return false;
-
-  return ::HeapValidate(crt_heap, 0, (void*)addr) != FALSE;
-#else
-  return false;
-#endif
+  return ::HeapValidate(GetProcessHeap(), 0, (void *)addr) != FALSE;
 }
 
 // We want to install our own exception handler (EH) to print helpful reports
@@ -399,7 +384,7 @@ bool HandleDlopenInit() {
 // beginning of C++ initialization. We set our priority to XCAB to run
 // immediately after the CRT runs. This way, our exception filter is called
 // first and we can delegate to their filter if appropriate.
-#    ifndef __GNUC__
+#    if !defined(__GNUC__) || defined(__clang__)
 #      pragma section(".CRT$XCAB", long, read)
 #    endif
 IN_SECTION(".CRT$XCAB") int (*__intercept_seh)() = __asan_set_seh_filter;
@@ -413,7 +398,7 @@ static void NTAPI asan_thread_init(void *module, DWORD reason, void *reserved) {
     __asan_init();
 }
 
-#    ifndef __GNUC__
+#    if !defined(__GNUC__) || defined(__clang__)
 #      pragma section(".CRT$XLAB", long, read)
 #    endif
 IN_SECTION(".CRT$XLAB")
@@ -429,7 +414,7 @@ static void NTAPI asan_thread_exit(void *module, DWORD reason, void *reserved) {
   }
 }
 
-#  ifndef __GNUC__
+#  if !defined(__GNUC__) || defined(__clang__)
 #    pragma section(".CRT$XLY", long, read)
 #  endif
 IN_SECTION(".CRT$XLY")

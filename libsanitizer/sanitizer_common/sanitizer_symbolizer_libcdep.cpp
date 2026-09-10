@@ -555,23 +555,13 @@ bool SymbolizerProcess::ReadFromSymbolizer() {
     uptr size_before = buffer_.size();
     buffer_.resize(size_before + max_length);
     buffer_.resize(buffer_.capacity());
-    bool ret = ReadFromFile(input_fd_, &buffer_[size_before],
-                            buffer_.size() - size_before, &just_read);
+    ret = ReadFromFile(input_fd_, &buffer_[size_before],
+                       buffer_.size() - size_before, &just_read);
 
     if (!ret)
       just_read = 0;
 
     buffer_.resize(size_before + just_read);
-
-    // GNU addr2line outputs \r\n line endings on Windows.
-    // Strip \r so that the rest of the code works with \n only.
-    for (uptr i = size_before; i < buffer_.size(); i++)
-      if (buffer_[i] == '\r') {
-        internal_memmove(&buffer_[i], &buffer_[i + 1],
-                         buffer_.size() - i - 1);
-        buffer_.pop_back();
-        i--;
-      }
 
     // We can't read 0 bytes, as we don't expect external symbolizer to close
     // its stdout.
@@ -595,94 +585,6 @@ bool SymbolizerProcess::WriteToSymbolizer(const char *buffer, uptr length) {
     return false;
   }
   return true;
-}
-
-//===----------------------------------------------------------------------===//
-// Addr2LinePool / Addr2LineProcess
-//===----------------------------------------------------------------------===//
-
-void Addr2LinePool::Addr2LineProcess::GetArgV(const char *path_to_binary,
-               const char *(&argv)[kArgVMax]) const {
-  int i = 0;
-  argv[i++] = path_to_binary;
-  if (common_flags()->demangle)
-    argv[i++] = "-C";
-  if (common_flags()->symbolize_inline_frames)
-    argv[i++] = "-i";
-  argv[i++] = "-fe";
-  argv[i++] = module_name_;
-  argv[i++] = nullptr;
-  CHECK_LE(i, kArgVMax);
-}
-
-const char Addr2LinePool::Addr2LineProcess::output_terminator_[] = "??\n??:0\n";
-
-bool Addr2LinePool::Addr2LineProcess::ReachedEndOfOutput(const char *buffer,
-                                          uptr length) const {
-  const uptr kTerminatorLen = sizeof(output_terminator_) - 1;
-  // Skip, if we read just kTerminatorLen bytes, because Addr2Line output
-  // should consist at least of two pairs of lines:
-  // 1. First one, corresponding to given offset to be symbolized
-  // (may be equal to output_terminator_, if offset is not valid).
-  // 2. Second one for output_terminator_, itself to mark the end of output.
-  if (length <= kTerminatorLen)
-    return false;
-  // Addr2Line output should end up with output_terminator_.
-  return !internal_memcmp(buffer + length - kTerminatorLen, output_terminator_,
-                          kTerminatorLen);
-}
-
-bool Addr2LinePool::Addr2LineProcess::ReadFromSymbolizer() {
-  if (!SymbolizerProcess::ReadFromSymbolizer())
-    return false;
-  auto &buff = GetBuff();
-  char *garbage = internal_strstr(buff.data() + 1, output_terminator_);
-  CHECK(garbage);
-  uptr new_size = garbage - buff.data();
-  GetBuff().resize(new_size);
-  GetBuff().push_back('\0');
-  return true;
-}
-
-const uptr Addr2LinePool::dummy_address_ = FIRST_32_SECOND_64(UINT32_MAX, UINT64_MAX);
-
-Addr2LinePool::Addr2LinePool(const char *addr2line_path,
-                             LowLevelAllocator *allocator)
-    : addr2line_path_(addr2line_path), allocator_(allocator) {
-  addr2line_pool_.reserve(16);
-}
-
-bool Addr2LinePool::SymbolizePC(uptr addr, SymbolizedStack *stack) {
-  if (const char *buf =
-          SendCommand(stack->info.module, stack->info.module_offset)) {
-    ParseSymbolizePCOutput(buf, stack);
-    return true;
-  }
-  return false;
-}
-
-bool Addr2LinePool::SymbolizeData(uptr addr, DataInfo *info) { return false; }
-
-const char *Addr2LinePool::SendCommand(const char *module_name,
-                                       uptr module_offset) {
-  Addr2LineProcess *addr2line = 0;
-  for (uptr i = 0; i < addr2line_pool_.size(); ++i) {
-    if (0 ==
-        internal_strcmp(module_name, addr2line_pool_[i]->module_name())) {
-      addr2line = addr2line_pool_[i];
-      break;
-    }
-  }
-  if (!addr2line) {
-    addr2line =
-        new (*allocator_) Addr2LineProcess(addr2line_path_, module_name);
-    addr2line_pool_.push_back(addr2line);
-  }
-  CHECK_EQ(0, internal_strcmp(module_name, addr2line->module_name()));
-  char buffer[kBufferSize];
-  internal_snprintf(buffer, kBufferSize, "0x%zx\n0x%zx\n",
-                    module_offset, dummy_address_);
-  return addr2line->SendCommand(buffer);
 }
 
 #endif  // !SANITIZER_SYMBOLIZER_MARKUP

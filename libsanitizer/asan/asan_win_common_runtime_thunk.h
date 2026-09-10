@@ -18,7 +18,7 @@
     defined(SANITIZER_DYNAMIC_RUNTIME_THUNK)
 #  include "sanitizer_common/sanitizer_win_defs.h"
 
-#  ifndef __GNUC__
+#  if !defined(__GNUC__) || defined(__clang__)
 #    pragma section(".CRT$XIB", long, \
                     read)  // C initializer (during C init before dyninit)
 #    pragma section(".CRT$XID", long, \

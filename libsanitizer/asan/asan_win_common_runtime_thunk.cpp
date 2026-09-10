@@ -83,12 +83,11 @@ static void WINAPI asan_thread_init(void *mod, unsigned long reason,
 // Our cloned variables must be initialized before C/C++ constructors.  If TLS
 // is used, our .CRT$XLAB initializer will run first. If not, our .CRT$XIB
 // initializer is needed as a backup.
-extern "C" IN_SECTION(".CRT$XIB") int (*__asan_thunk_init)() =
-    asan_thunk_init;
+extern "C" IN_SECTION(".CRT$XIB") int (*__asan_thunk_init)() = asan_thunk_init;
 WIN_FORCE_LINK(__asan_thunk_init)
 
-extern "C" IN_SECTION(".CRT$XLAB") void(WINAPI *__asan_tls_init)(
-    void *, unsigned long, void *) = asan_thread_init;
+extern "C" IN_SECTION(".CRT$XLAB") void(WINAPI* __asan_tls_init)(
+    void*, unsigned long, void*) = asan_thread_init;
 WIN_FORCE_LINK(__asan_tls_init)
 
 ////////////////////////////////////////////////////////////////////////////////

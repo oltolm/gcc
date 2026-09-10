@@ -101,7 +101,7 @@ static void WINAPI sanitizer_thunk_thread_init(void *mod, unsigned long reason,
 
 #  pragma section(".CRT$XLAB", long, read)
 extern "C" IN_SECTION(".CRT$XLAB") void(
-    WINAPI *__sanitizer_thunk_thread_init_ptr)(void *, unsigned long, void *) =
+    WINAPI* __sanitizer_thunk_thread_init_ptr)(void*, unsigned long, void*) =
     sanitizer_thunk_thread_init;
 WIN_FORCE_LINK(__sanitizer_thunk_thread_init_ptr)
 #endif  // defined(SANITIZER_STATIC_RUNTIME_THUNK) ||
