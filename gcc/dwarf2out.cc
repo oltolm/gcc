@@ -32948,13 +32948,12 @@ dwarf2out_finish (const char *filename)
        || btf_debuginfo_p ()) && lang_GNU_C ())
     ctf_debug_finish ();
 
+  /* Skip finalizing the DIE tree if neither DWARF nor CodeView needs it.  */
+  if (!dwarf_debuginfo_p ()
 #ifdef CODEVIEW_DEBUGGING_INFO
-  if (codeview_debuginfo_p ())
-    codeview_debug_finish ();
+      && !codeview_debuginfo_p ()
 #endif
-
-  /* Skip emitting DWARF if not required.  */
-  if (!dwarf_debuginfo_p ())
+     )
     return;
 
   /* Flush out any latecomers to the limbo party.  */
@@ -33030,6 +33029,15 @@ dwarf2out_finish (const char *filename)
     resolve_addr (ctnode->root_die);
   resolve_addr (comp_unit_die ());
   move_marked_base_types ();
+
+#ifdef CODEVIEW_DEBUGGING_INFO
+  if (codeview_debuginfo_p ())
+    {
+      codeview_debug_finish ();
+      if (!dwarf_debuginfo_p ())
+	return;
+    }
+#endif
 
   if (dump_file)
     {
