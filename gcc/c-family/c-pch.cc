@@ -370,6 +370,21 @@ c_common_read_pch (cpp_reader *pfile, const char *name,
   if (cpp_result != 0)
     goto end;
 
+  if (codeview_debuginfo_p ())
+    for (unsigned int i = 0; i < LINEMAPS_ORDINARY_USED (line_table); i++)
+      {
+	const line_map_ordinary *map
+	  = LINEMAPS_ORDINARY_MAP_AT (line_table, i);
+	const char *filename = ORDINARY_MAP_FILE_NAME (map);
+
+	/* PCH restoration does not replay the source-file callbacks for
+	   headers whose locations were saved in the PCH.  */
+	if (map->reason == LC_ENTER
+	    && ORDINARY_MAP_STARTING_LINE_NUMBER (map) != 0
+	    && filename && filename[0] != '<')
+	  (*debug_hooks->start_source_file) (0, filename);
+      }
+
   /* Give the front end a chance to take action after a PCH file has
      been loaded.  */
   if (lang_post_pch_load)

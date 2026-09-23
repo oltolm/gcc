@@ -18,6 +18,7 @@
 
 # Load support procs.
 load_lib g++-dg.exp
+load_lib copy-file.exp
 
 if {![istarget i*86-*-mingw*]
   && ![istarget x86_64-*-mingw*]} {
@@ -42,6 +43,38 @@ if { ! [string match "*: target system does not support the * debug format*" \
     remove-build-file "trivial.S"
     g++-dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.\[CH\]]] \
 	    "" $DEFAULT_CXXFLAGS
+
+    set pch_test "$srcdir/$subdir/pch-load-1.cc"
+    global runtests
+    if [runtest_file_p $runtests $pch_test] {
+	gcc_copy_files [list "$srcdir/$subdir/pch-load-1.h" \
+			     "$srcdir/$subdir/pch-load-1-child.h"] "."
+	set pch_output [g++_target_compile "./pch-load-1.h" \
+		"pch-load-1.h.gch" precompiled_header \
+		"additional_flags=-gcodeview -O0 -c -x c++-header"]
+	if { $pch_output ne "" || ![file_on_host exists "pch-load-1.h.gch"] } {
+	    fail "codeview/pch-load-1.cc PCH creation"
+	} else {
+	    file_on_host delete "pch-load-1.h"
+	    set pch_output [g++_target_compile $pch_test "pch-load-1.s" \
+		assembly "additional_flags=-gcodeview -O0 -I."]
+	    if { $pch_output ne "" || ![file_on_host exists "pch-load-1.s"] } {
+		fail "codeview/pch-load-1.cc PCH use"
+	    } else {
+		set f [open "pch-load-1.s" r]
+		set asm [read $f]
+		close $f
+		if { [string first "pch-load-1-child.h" $asm] >= 0 } {
+		    pass "codeview/pch-load-1.cc PCH source file"
+		} else {
+		    fail "codeview/pch-load-1.cc PCH source file"
+		}
+	    }
+	}
+	file_on_host delete "pch-load-1-child.h"
+	file_on_host delete "pch-load-1.h.gch"
+	file_on_host delete "pch-load-1.s"
+    }
 }
 
 # All done.
