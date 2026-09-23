@@ -18,6 +18,7 @@
 
 # Load support procs.
 load_lib g++-dg.exp
+load_lib copy-file.exp
 
 if {![istarget i*86-*-mingw*]
   && ![istarget x86_64-*-mingw*]} {
@@ -42,6 +43,59 @@ if { ! [string match "*: target system does not support the * debug format*" \
     remove-build-file "trivial.S"
     g++-dg-runtest [lsort [glob -nocomplain $srcdir/$subdir/*.\[CH\]]] \
 	    "" $DEFAULT_CXXFLAGS
+
+    set pch_test "$srcdir/$subdir/pch-load-1.cc"
+    global runtests
+    if [runtest_file_p $runtests $pch_test] {
+	foreach opt { -O0 -O2 } {
+	    gcc_copy_files [list "$srcdir/$subdir/pch-load-1.hh" \
+				 "$srcdir/$subdir/pch-load-1-child.hh"] "."
+	    set pch_output [g++_target_compile "./pch-load-1.hh" \
+		    "pch-load-1.hh.gch" precompiled_header \
+		    [list "additional_flags=-gcodeview $opt -c"]]
+	    if { $pch_output ne "" || ![file_on_host exists "pch-load-1.hh.gch"] } {
+		fail "codeview/pch-load-1.cc $opt PCH creation"
+	    } else {
+		file_on_host delete "pch-load-1.hh"
+		file_on_host delete "pch-load-1-child.hh"
+		foreach headers { missing changed } {
+		    if { $headers eq "changed" } {
+			gcc_copy_files $pch_test "pch-load-1-child.hh"
+		    }
+		    set testname "codeview/pch-load-1.cc $opt $headers headers"
+		    set pch_output [g++_target_compile $pch_test "pch-load-1.s" \
+			    assembly [list "additional_flags=-gcodeview $opt -I."]]
+		    if { $pch_output ne "" || ![file_on_host exists "pch-load-1.s"] } {
+			fail "$testname PCH use"
+		    } else {
+			set f [open "pch-load-1.s" r]
+			set asm [read $f]
+			close $f
+			foreach name { pch-load-1.hh pch-load-1-child.hh } {
+			    if { [string first $name $asm] >= 0 } {
+				pass "$testname source file $name"
+			    } else {
+				fail "$testname source file $name"
+			    }
+			}
+			# get_file_id must not hash the current contents of PCH headers.
+			if { [regexp {(?s)cv_filechksms_start:\n(.*?)\.Lcv_filechksms_end:} \
+				  $asm dummy checksums]
+			     && [regexp -all {\t\.long\t0x[[:xdigit:]]+\n\t\.byte\t0\n\t\.byte\t0\n} \
+				     $checksums] == 2 } {
+			    pass "$testname omitted checksums"
+			} else {
+			    fail "$testname omitted checksums"
+			}
+		    }
+		    file_on_host delete "pch-load-1.s"
+		}
+	    }
+	    file_on_host delete "pch-load-1.hh"
+	    file_on_host delete "pch-load-1-child.hh"
+	    file_on_host delete "pch-load-1.hh.gch"
+	}
+    }
 }
 
 # All done.

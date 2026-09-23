@@ -46,6 +46,7 @@ along with GCC; see the file COPYING3.  If not see
 #define DEBUG_S_FILECHKSMS      0xf4
 #define DEBUG_S_INLINEELINES	0xf6
 
+#define CHKSUM_TYPE_NONE	0
 #define CHKSUM_TYPE_MD5		1
 
 #define CV_CFL_80386		0x03
@@ -1144,9 +1145,10 @@ struct string_hasher : free_ptr_hash <struct codeview_string>
 struct codeview_source_file
 {
   codeview_source_file *next;
-  unsigned int file_num;
+  uint32_t file_id;
   uint32_t string_offset;
   char *filename;
+  bool has_checksum;
   uint8_t hash[HASH_SIZE];
 };
 
@@ -1486,7 +1488,7 @@ static unsigned int line_label_num;
 static unsigned int func_label_num;
 static unsigned int sym_label_num;
 static codeview_source_file *files, *last_file;
-static unsigned int num_files;
+static uint32_t file_checksum_offset;
 static uint32_t string_offset = 1;
 static hash_table<string_hasher> *strings_htab;
 static codeview_string *strings, *last_string;
@@ -1510,6 +1512,7 @@ static void write_cv_padding (size_t padding);
 static void flush_deferred_types (void);
 static uint32_t get_func_id (dw_die_ref die);
 static void write_inlinesite_records (dw_die_ref func, dw_die_ref die);
+static codeview_source_file *add_source_file (const char *, bool);
 
 /* Return the file ID corresponding to a given source filename.  */
 
@@ -1518,30 +1521,25 @@ get_file_id (const char *filename)
 {
   codeview_source_file *sf = files;
 
+  /* codeview_end_block uses an empty filename to mark the end of an inlined
+     function.  This must not register a source file.  */
+  if (!filename[0])
+    return 0;
+
   if (filename == last_filename)
     return last_file_id;
 
-  while (sf)
-    {
-      if (!strcmp (sf->filename, filename))
-	{
-	  uint32_t file_id;
+  while (sf && strcmp (sf->filename, filename))
+    sf = sf->next;
 
-	  /* 0x18 is the size of the checksum entry for each file.
-	     0x6 bytes for the header, plus 0x10 bytes for the hash,
-	     then padded to a multiple of 4.  */
+  /* PCH locations can refer to files that were not read in this compilation.
+     Their current contents need not match those used to create the PCH.  */
+  if (!sf)
+    sf = add_source_file (filename, false);
 
-	  file_id = sf->file_num * 0x18;
-	  last_filename = filename;
-	  last_file_id = file_id;
-
-	  return file_id;
-	}
-
-      sf = sf->next;
-    }
-
-  return 0;
+  last_filename = filename;
+  last_file_id = sf->file_id;
+  return sf->file_id;
 }
 
 /* Allocate and initialize a codeview_function struct.  */
@@ -1720,11 +1718,11 @@ add_string (const char *string)
   return s->offset;
 }
 
-/* A new source file has been encountered - record the details and calculate
-   its hash.  */
+/* Register a source file.  Only compute a checksum when its contents are
+   available from the current compilation.  */
 
-void
-codeview_start_source_file (const char *filename)
+static codeview_source_file *
+add_source_file (const char *filename, bool checksum)
 {
   codeview_source_file *sf;
   char *path;
@@ -1739,28 +1737,32 @@ codeview_start_source_file (const char *filename)
   while (sf)
     {
       if (sf->string_offset == string_offset)
-	return;
+	return sf;
 
       sf = sf->next;
     }
 
   sf = (codeview_source_file *) xmalloc (sizeof (codeview_source_file));
   sf->next = NULL;
-  sf->file_num = num_files;
+  sf->file_id = file_checksum_offset;
   sf->string_offset = string_offset;
   sf->filename = xstrdup (filename);
+  sf->has_checksum = checksum;
 
-  f = fopen (filename, "rb");
-  if (!f)
-    internal_error ("could not open %s for reading", filename);
-
-  if (md5_stream (f, sf->hash))
+  if (checksum)
     {
-      fclose (f);
-      internal_error ("md5_stream failed");
-    }
+      f = fopen (filename, "rb");
+      if (!f)
+	internal_error ("could not open %s for reading", filename);
 
-  fclose (f);
+      if (md5_stream (f, sf->hash))
+	{
+	  fclose (f);
+	  internal_error ("md5_stream failed");
+	}
+
+      fclose (f);
+    }
 
   if (last_file)
     last_file->next = sf;
@@ -1768,7 +1770,17 @@ codeview_start_source_file (const char *filename)
     files = sf;
 
   last_file = sf;
-  num_files++;
+  /* Six bytes for the header, an optional MD5, and four-byte alignment.  */
+  file_checksum_offset += checksum ? 24 : 8;
+  return sf;
+}
+
+/* Record a source file read during this compilation.  */
+
+void
+codeview_start_source_file (const char *filename)
+{
+  add_source_file (filename, true);
 }
 
 /* Write out the strings table into the .debug$S section.  The linker will
@@ -1847,14 +1859,15 @@ write_source_files (void)
       putc ('\n', asm_out_file);
 
       fputs (integer_asm_op (1, false), asm_out_file);
-      fprint_whex (asm_out_file, HASH_SIZE);
+      fprint_whex (asm_out_file, files->has_checksum ? HASH_SIZE : 0);
       putc ('\n', asm_out_file);
 
       fputs (integer_asm_op (1, false), asm_out_file);
-      fprint_whex (asm_out_file, CHKSUM_TYPE_MD5);
+      fprint_whex (asm_out_file, files->has_checksum
+			       ? CHKSUM_TYPE_MD5 : CHKSUM_TYPE_NONE);
       putc ('\n', asm_out_file);
 
-      for (unsigned int i = 0; i < HASH_SIZE; i++)
+      for (unsigned int i = 0; files->has_checksum && i < HASH_SIZE; i++)
 	{
 	  fputs (integer_asm_op (1, false), asm_out_file);
 	  fprint_whex (asm_out_file, files->hash[i]);
