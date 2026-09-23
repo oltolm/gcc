@@ -6353,8 +6353,7 @@ get_type_num_struct (dw_die_ref type, bool in_struct, bool *is_fwd_ref)
       || dw_get_die_tag (parent) == DW_TAG_union_type))
     get_type_num (parent, true, false);
 
-  if ((in_struct && get_AT_string (type, DW_AT_name))
-      || get_AT_flag (type, DW_AT_declaration))
+  if (in_struct || get_AT_flag (type, DW_AT_declaration))
     {
       *is_fwd_ref = true;
       return add_struct_forward_def (type);
