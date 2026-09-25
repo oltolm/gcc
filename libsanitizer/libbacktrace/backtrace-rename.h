@@ -5,7 +5,9 @@
 #define backtrace_dwarf_add __asan_backtrace_dwarf_add
 #define backtrace_free __asan_backtrace_free
 #define backtrace_get_view __asan_backtrace_get_view
+#define backtrace_getpagesize __asan_backtrace_getpagesize
 #define backtrace_initialize __asan_backtrace_initialize
+#define backtrace_mmap __asan_backtrace_mmap
 #define backtrace_open __asan_backtrace_open
 #define backtrace_pcinfo __asan_backtrace_pcinfo
 #define backtrace_qsort __asan_backtrace_qsort
