@@ -1,6 +1,7 @@
 // ASan interceptor can be accessed with __interceptor_ prefix.
 
-// { dg-do run }
+// __interceptor_strtol is not supported on MinGW/Windows.
+// { dg-do run { target { ! *-*-mingw* } } }
 // { dg-options "-fno-builtin-malloc -fno-builtin-free" }
 // { dg-additional-options "-D__NO_INLINE__" { target { *-*-linux-gnu *-*-freebsd* } } }
 // { dg-shouldfail "asan" }
