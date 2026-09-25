@@ -770,6 +770,11 @@ coff_add (struct backtrace_state *state, int descriptor,
 	}
     }
 
+  memset (&base_address, 0, sizeof base_address);
+#ifdef HAVE_WINDOWS_H
+  base_address.m = module_handle - image_base.m;
+#endif
+
   /* Read the symbol table and the string table.  */
 
   if (fhdr.pointer_to_symbol_table == 0)
@@ -848,13 +853,17 @@ coff_add (struct backtrace_state *state, int descriptor,
   if (syms_num != 0)
     {
       struct coff_syminfo_data *sdata;
+      struct libbacktrace_base_address sym_base;
 
       sdata = ((struct coff_syminfo_data *)
 	       backtrace_alloc (state, sizeof *sdata, error_callback, data));
       if (sdata == NULL)
 	goto fail;
 
-      if (!coff_initialize_syminfo (state, image_base, is_64,
+      /* The symbol addresses assume the preferred image base; relocate
+	 them to the load address, as for the DWARF data.  */
+      sym_base.m = image_base.m + base_address.m;
+      if (!coff_initialize_syminfo (state, sym_base, is_64,
 				    sects, sects_num,
 				    syms_view.data, syms_size,
 				    str_view.data, str_size,
@@ -923,11 +932,6 @@ coff_add (struct backtrace_state *state, int descriptor,
 	dwarf_sections.data[i] = ((const unsigned char *) debug_view.data
 				  + (sections[i].offset - min_offset));
     }
-
-  memset (&base_address, 0, sizeof base_address);
-#ifdef HAVE_WINDOWS_H
-  base_address.m = module_handle - image_base.m;
-#endif
 
   if (!backtrace_dwarf_add (state, base_address, &dwarf_sections,
 			    0, /* FIXME: is_bigendian */
