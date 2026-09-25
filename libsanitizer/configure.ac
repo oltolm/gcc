@@ -74,8 +74,7 @@ AC_PROG_CXX
 AM_PROG_AS
 AC_PROG_RANLIB
 
-AC_LIBTOOL_DLOPEN
-LT_INIT
+LT_INIT([win32-dll dlopen])
 
 AC_PROG_AWK
 case "$AWK" in
@@ -109,6 +108,12 @@ AC_CHECK_FUNCS(clock_getres clock_gettime clock_settime lstat readlink)
 
 # Common libraries that we need to link against for all sanitizer libs.
 link_sanitizer_common='-lpthread -lm'
+
+case "$target" in
+  *-*-mingw*) link_sanitizer_common='-lsynchronization' ;;
+esac
+
+AM_CONDITIONAL(SANITIZER_WINDOWS, [case "$target" in x86_64-*-mingw*) true ;; *) false ;; esac])
 
 # At least for glibc, shm_open is in librt.  But don't pull that
 # in if it still doesn't give us the function we want.  This
@@ -243,6 +248,7 @@ libsanitizer_cv_sys_filetype=$filetype])
 FORMAT_FILE=
 case "$libsanitizer_cv_sys_filetype" in
 elf*) FORMAT_FILE="elf.lo" ;;
+pecoff) FORMAT_FILE="pecoff.lo" ;;
 *) AC_MSG_WARN([could not determine output file type])
    FORMAT_FILE="unknown.lo"
    backtrace_supported=no
@@ -266,6 +272,12 @@ AC_SUBST(BACKTRACE_SUPPORTED)
 
 GCC_HEADER_STDINT(gstdint.h)
 
+case "$target" in
+  *-*-mingw*)
+    VIEW_FILE=mmapio.lo
+    ALLOC_FILE=mmap.lo
+    ;;
+  *)
 AC_CHECK_HEADERS(sys/mman.h alloca.h)
 if test "$ac_cv_header_sys_mman_h" = "no"; then
   have_mmap=no
@@ -290,6 +302,8 @@ else
 #endif
 ])], [ALLOC_FILE=mmap.lo], [ALLOC_FILE=alloc.lo])
 fi
+;;
+esac
 AC_SUBST(VIEW_FILE)
 AC_SUBST(ALLOC_FILE)
 
@@ -315,6 +329,12 @@ fi
 if test "$have_dl_iterate_phdr" = "yes"; then
   AC_DEFINE(HAVE_DL_ITERATE_PHDR, 1, [Define if dl_iterate_phdr is available.])
 fi
+
+AC_CHECK_HEADERS(windows.h)
+AC_CHECK_HEADERS(tlhelp32.h, [], [],
+[#ifdef HAVE_WINDOWS_H
+#  include <windows.h>
+#endif])
 
 # Check for the fcntl function.
 if test -n "${with_target_subdir}"; then

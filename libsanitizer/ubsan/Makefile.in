@@ -144,22 +144,26 @@ am__uninstall_files_from_dir = { \
          $(am__cd) "$$dir" && rm -f $$files; }; \
   }
 am__installdirs = "$(DESTDIR)$(toolexeclibdir)"
-LTLIBRARIES = $(toolexeclib_LTLIBRARIES)
-am__DEPENDENCIES_1 =
-libubsan_la_DEPENDENCIES =  \
-	$(top_builddir)/sanitizer_common/libsanitizer_common.la \
-	$(am__append_1) $(am__append_2) $(am__DEPENDENCIES_1)
+LTLIBRARIES = $(noinst_LTLIBRARIES) $(toolexeclib_LTLIBRARIES)
+libsanitizer_ubsan_la_LIBADD =
 am__objects_1 = ubsan_diag.lo ubsan_flags.lo ubsan_handlers.lo \
 	ubsan_handlers_cxx.lo ubsan_init.lo ubsan_monitor.lo \
 	ubsan_type_hash.lo ubsan_type_hash_itanium.lo \
 	ubsan_type_hash_win.lo ubsan_value.lo
 am__objects_2 = $(am__objects_1)
-am_libubsan_la_OBJECTS = $(am__objects_2)
-libubsan_la_OBJECTS = $(am_libubsan_la_OBJECTS)
+am_libsanitizer_ubsan_la_OBJECTS = $(am__objects_2)
+libsanitizer_ubsan_la_OBJECTS = $(am_libsanitizer_ubsan_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
+@SANITIZER_WINDOWS_TRUE@am_libsanitizer_ubsan_la_rpath =
+am__DEPENDENCIES_1 =
+libubsan_la_DEPENDENCIES =  \
+	$(top_builddir)/sanitizer_common/libsanitizer_common.la \
+	$(am__append_1) $(am__append_2) $(am__DEPENDENCIES_1)
+am_libubsan_la_OBJECTS = $(am__objects_2)
+libubsan_la_OBJECTS = $(am_libubsan_la_OBJECTS)
 libubsan_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(libubsan_la_LDFLAGS) $(LDFLAGS) -o $@
@@ -197,7 +201,7 @@ AM_V_CXXLD = $(am__v_CXXLD_@AM_V@)
 am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
-SOURCES = $(libubsan_la_SOURCES)
+SOURCES = $(libsanitizer_ubsan_la_SOURCES) $(libubsan_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -227,6 +231,7 @@ ALLOC_FILE = @ALLOC_FILE@
 AMTAR = @AMTAR@
 AM_DEFAULT_VERBOSITY = @AM_DEFAULT_VERBOSITY@
 AR = @AR@
+AS = @AS@
 AS_SYM_ASSIGN_DEFS = @AS_SYM_ASSIGN_DEFS@
 AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
@@ -250,6 +255,7 @@ CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = -D_GNU_SOURCE -D_DEBUG -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -DPIC -DCAN_SANITIZE_UB=1 -DUBSAN_CAN_USE_CXXABI=1
 DEPDIR = @DEPDIR@
+DLLTOOL = @DLLTOOL@
 DSYMUTIL = @DSYMUTIL@
 DUMPBIN = @DUMPBIN@
 ECHO_C = @ECHO_C@
@@ -387,6 +393,8 @@ AM_CXXFLAGS = -Wall -W -Wno-unused-parameter -Wwrite-strings \
 AM_CCASFLAGS = $(EXTRA_ASFLAGS)
 ACLOCAL_AMFLAGS = -I m4
 toolexeclib_LTLIBRARIES = libubsan.la
+# On Windows, libasan contains UBSan, as with Clang.
+@SANITIZER_WINDOWS_TRUE@noinst_LTLIBRARIES = libsanitizer_ubsan.la
 ubsan_plugin_files = \
 	ubsan_diag.cpp \
 	ubsan_flags.cpp \
@@ -400,6 +408,7 @@ ubsan_plugin_files = \
 	ubsan_value.cpp
 
 ubsan_files = $(ubsan_plugin_files)
+libsanitizer_ubsan_la_SOURCES = $(ubsan_files)
 libubsan_la_SOURCES = $(ubsan_files) 
 libubsan_la_LIBADD =  \
 	$(top_builddir)/sanitizer_common/libsanitizer_common.la \
@@ -407,8 +416,9 @@ libubsan_la_LIBADD =  \
 @ENABLE_DARWIN_AT_RPATH_TRUE@libubsan_darwin_rpath =  \
 @ENABLE_DARWIN_AT_RPATH_TRUE@	-Wc,-nodefaultrpaths \
 @ENABLE_DARWIN_AT_RPATH_TRUE@	-Wl,-rpath,@loader_path
+@SANITIZER_WINDOWS_TRUE@libubsan_win_ldflags = -no-undefined
 libubsan_la_LDFLAGS = -version-info `grep -v '^\#' $(srcdir)/libtool-version` \
-	$(link_libubsan) $(libubsan_darwin_rpath)
+	$(link_libubsan) $(libubsan_darwin_rpath) $(libubsan_win_ldflags)
 
 
 # Work around what appears to be a GNU make bug handling MAKEFLAGS
@@ -484,6 +494,17 @@ $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 
+clean-noinstLTLIBRARIES:
+	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
+	@list='$(noinst_LTLIBRARIES)'; \
+	locs=`for p in $$list; do echo $$p; done | \
+	      sed 's|^[^/]*$$|.|; s|/[^/]*$$||; s|$$|/so_locations|' | \
+	      sort -u`; \
+	test -z "$$locs" || { \
+	  echo rm -f $${locs}; \
+	  rm -f $${locs}; \
+	}
+
 install-toolexeclibLTLIBRARIES: $(toolexeclib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
 	@list='$(toolexeclib_LTLIBRARIES)'; test -n "$(toolexeclibdir)" || list=; \
@@ -518,6 +539,9 @@ clean-toolexeclibLTLIBRARIES:
 	  echo rm -f $${locs}; \
 	  rm -f $${locs}; \
 	}
+
+libsanitizer_ubsan.la: $(libsanitizer_ubsan_la_OBJECTS) $(libsanitizer_ubsan_la_DEPENDENCIES) $(EXTRA_libsanitizer_ubsan_la_DEPENDENCIES) 
+	$(AM_V_CXXLD)$(CXXLINK) $(am_libsanitizer_ubsan_la_rpath) $(libsanitizer_ubsan_la_OBJECTS) $(libsanitizer_ubsan_la_LIBADD) $(LIBS)
 
 libubsan.la: $(libubsan_la_OBJECTS) $(libubsan_la_DEPENDENCIES) $(EXTRA_libubsan_la_DEPENDENCIES) 
 	$(AM_V_CXXLD)$(libubsan_la_LINK) -rpath $(toolexeclibdir) $(libubsan_la_OBJECTS) $(libubsan_la_LIBADD) $(LIBS)
@@ -656,8 +680,8 @@ maintainer-clean-generic:
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-toolexeclibLTLIBRARIES \
-	mostlyclean-am
+clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
+	clean-toolexeclibLTLIBRARIES mostlyclean-am
 
 distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
@@ -728,8 +752,9 @@ uninstall-am: uninstall-toolexeclibLTLIBRARIES
 .MAKE: install-am install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-toolexeclibLTLIBRARIES cscopelist-am ctags \
-	ctags-am distclean distclean-compile distclean-generic \
+	clean-libtool clean-noinstLTLIBRARIES \
+	clean-toolexeclibLTLIBRARIES cscopelist-am ctags ctags-am \
+	distclean distclean-compile distclean-generic \
 	distclean-libtool distclean-tags dvi dvi-am html html-am info \
 	info-am install install-am install-data install-data-am \
 	install-dvi install-dvi-am install-exec install-exec-am \
