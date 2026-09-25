@@ -973,7 +973,7 @@ dll_notification (ULONG reason,
     (struct dll_notification_context*) context;
   struct backtrace_state *state = dll_context->state;
   void *data = dll_context->data;
-  backtrace_error_callback error_callback = dll_context->data;
+  backtrace_error_callback error_callback = dll_context->error_callback;
   fileline fileline;
   int found_sym;
   int found_dwarf;
