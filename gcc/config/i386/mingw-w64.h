@@ -135,3 +135,19 @@ along with GCC; see the file COPYING3.  If not see
    original mingw32.  */
 #undef TARGET_LIBC_HAS_FUNCTION
 #define TARGET_LIBC_HAS_FUNCTION gnu_libc_has_function
+
+/* The sanitizer runtimes are only built for x86_64-w64-mingw32.  */
+#if TARGET_64BIT_DEFAULT
+#define TARGET_ASAN_DYNAMIC_SHADOW_OFFSET_P hook_bool_void_true
+
+/* Link the whole ASan dynamic runtime thunk into every instrumented
+   image: most of its members only place initializers in the CRT and TLS
+   callback sections, so nothing references them.  The thunk references
+   __imp_ symbols from the ASan DLL, so it must come before -lasan.  There
+   is no static ASan runtime.  */
+#undef LIBASAN_SPEC
+#define LIBASAN_SPEC \
+  "%{static-libasan:%e-static-libasan is not supported on this target}" \
+  " --whole-archive -lasan_dynamic_runtime_thunk --no-whole-archive" \
+  " -lasan -lsynchronization"
+#endif
