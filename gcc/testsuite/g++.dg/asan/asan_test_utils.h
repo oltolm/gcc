@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <signal.h>
+#include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -32,7 +33,6 @@
 #if !defined(_WIN32)
 # include <strings.h>
 # include <sys/mman.h>
-# include <setjmp.h>
 #endif
 
 #ifdef __linux__

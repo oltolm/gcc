@@ -5,7 +5,7 @@
 
 __attribute__((noinline)) void foo(int index, int len) {
   volatile char str[len] __attribute__((aligned(32)));
-  assert(!((long) str & 31L));
+  assert(!(((__UINTPTR_TYPE__) str) & 31));
   char *q = (char *)__asan_region_is_poisoned((char *)str, 64);
   assert(q && ((q - str) == index));
 }

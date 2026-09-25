@@ -24,6 +24,8 @@
 # define PTHREAD_CREATE(a, b, c, d) ASSERT_EQ(0, pthread_create(a, b, c, d))
 # define PTHREAD_JOIN(a, b) ASSERT_EQ(0, pthread_join(a, b))
 #else
+#include <assert.h>
+
 typedef HANDLE pthread_t;
 
 struct PthreadHelperCreateThreadInfo {
@@ -34,30 +36,30 @@ struct PthreadHelperCreateThreadInfo {
 inline DWORD WINAPI PthreadHelperThreadProc(void *arg) {
   PthreadHelperCreateThreadInfo *start_data =
       reinterpret_cast<PthreadHelperCreateThreadInfo*>(arg);
-  void *ret = (start_data->start_routine)(start_data->arg);
+  (start_data->start_routine)(start_data->arg);
   delete start_data;
-  return (DWORD)ret;
+  return 0;
 }
 
 inline void PTHREAD_CREATE(pthread_t *thread, void *attr,
                            void *(*start_routine)(void *), void *arg) {
-  ASSERT_EQ(0, attr) << "Thread attributes are not supported yet.";
+  assert(attr == 0);
   PthreadHelperCreateThreadInfo *data = new PthreadHelperCreateThreadInfo;
   data->start_routine = start_routine;
   data->arg = arg;
   *thread = CreateThread(0, 0, PthreadHelperThreadProc, data, 0, 0);
-  ASSERT_NE(nullptr, *thread) << "Failed to create a thread.";
+  assert(*thread != NULL);
 }
 
 inline void PTHREAD_JOIN(pthread_t thread, void **value_ptr) {
-  ASSERT_EQ(0, value_ptr) << "Nonzero value_ptr is not supported yet.";
-  ASSERT_EQ(WAIT_OBJECT_0, WaitForSingleObject(thread, INFINITE));
-  ASSERT_NE(0, CloseHandle(thread));
+  assert(value_ptr == 0);
+  assert(WaitForSingleObject(thread, INFINITE) == WAIT_OBJECT_0);
+  assert(CloseHandle(thread) != 0);
 }
 
 inline void pthread_exit(void *retval) {
-  ASSERT_EQ(0, retval) << "Nonzero retval is not supported yet.";
-  ExitThread((DWORD)retval);
+  assert(retval == 0);
+  ExitThread(0);
 }
 #endif  // _WIN32
 

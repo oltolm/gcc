@@ -1,5 +1,6 @@
 /* PR sanitizer/80166 */
 /* { dg-do run } */
+/* { dg-skip-if "getgroups is not available" { *-*-mingw* } } */
 /* { dg-additional-options "-Wno-stringop-overflow" } */
 
 #include <sys/types.h>
