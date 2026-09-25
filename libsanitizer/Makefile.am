@@ -14,7 +14,7 @@ endif
 if LIBBACKTRACE_SUPPORTED
 SUBDIRS += libbacktrace
 endif
-SUBDIRS += lsan asan ubsan
+SUBDIRS += lsan ubsan asan
 nodist_saninclude_HEADERS += \
   include/sanitizer/lsan_interface.h \
   include/sanitizer/asan_interface.h \
@@ -46,6 +46,11 @@ all-lsan all-ubsan all-tsan: $(SANITIZER_BASE_DEPS)
 
 all-asan all-hwasan: $(SANITIZER_BASE_DEPS) all-lsan
 	+cd $(@:all-%=%) && $(MAKE) $(AM_MAKEFLAGS) all
+
+if SANITIZER_WINDOWS
+# libasan links in libsanitizer_ubsan.la.
+all-asan: all-ubsan
+endif
 
 all-recursive: $(SUBDIRS:%=all-%)
 
