@@ -435,10 +435,11 @@ TEST(AddressSanitizer, StrArgsOverlapTest) {
   size_t size = Ident(100);
   char *str = Ident((char*)malloc(size));
 
-// Do not check memcpy() on OS X 10.7 and later, where it actually aliases
-// memmove().
-#if !defined(__APPLE__) || !defined(MAC_OS_X_VERSION_10_7) || \
-    (MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_7)
+// Do not check memcpy() where it aliases memmove() or its interceptor does not
+// diagnose overlapping arguments.
+#if !defined(_WIN32) && \
+    (!defined(__APPLE__) || !defined(MAC_OS_X_VERSION_10_7) || \
+     (MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_7))
   // Check "memcpy". Use Ident() to avoid inlining.
   memset(str, 'z', size);
   Ident(memcpy)(str + 1, str + 11, 10);
@@ -595,5 +596,4 @@ TEST(AddressSanitizer, StrtolOOBTest) {
   RunStrtolOOBTest(&CallStrtol);
 }
 #endif
-
 

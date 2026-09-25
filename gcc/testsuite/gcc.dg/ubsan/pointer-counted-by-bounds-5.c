@@ -2,7 +2,7 @@
    bounds sanitizer.  */
 /* { dg-do run } */
 /* { dg-options "-fsanitize=bounds" } */
-
+/* { dg-skip-if "the test overflows its heap buffer, which free detects on Windows" { *-*-mingw* } } */
 #include <stdlib.h>
 
 struct annotated {

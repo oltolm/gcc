@@ -99,10 +99,10 @@ main ()
 }
 
 /* float */
-/* { dg-output " -129 is outside the range of representable values of type 'signed char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
-/* { dg-output "\[^\n\r]* (-129|-1) is outside the range of representable values of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
+/* { dg-output " -129 is outside the range of representable values of type 'signed char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
+/* { dg-output "\[^\n\r]* (-129|-1) is outside the range of representable values of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'unsigned char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* -32769 is outside the range of representable values of type 'short int'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
+/* { dg-output "\[^\n\r]* -32769 is outside the range of representable values of type 'short int'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'short unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]* \[0-9.e+-]* is outside the range of representable values of type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
@@ -114,10 +114,10 @@ main ()
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type '__int128 unsigned'\[^\n\r]*(\n|\r\n|\r)" { target { int128 } } } */
 /* No error for float and __int128 unsigned max value, as ui128_MAX is +Inf in float.  */
 /* double */
-/* { dg-output "\[^\n\r]* -129 is outside the range of representable values of type 'signed char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
-/* { dg-output "\[^\n\r]* (-129|-1) is outside the range of representable values of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
+/* { dg-output "\[^\n\r]* -129 is outside the range of representable values of type 'signed char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
+/* { dg-output "\[^\n\r]* (-129|-1) is outside the range of representable values of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'unsigned char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* -32769 is outside the range of representable values of type 'short int'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
+/* { dg-output "\[^\n\r]* -32769 is outside the range of representable values of type 'short int'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'short unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]* \[0-9.e+-]* is outside the range of representable values of type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
@@ -128,10 +128,10 @@ main ()
 /* { dg-output "\[^\n\r]* \[0-9.e+-]* is outside the range of representable values of type '__int128'\[^\n\r]*(\n|\r\n|\r)" { target { int128 } } } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type '__int128 unsigned'\[^\n\r]*(\n|\r\n|\r)" { target { int128 } } } */
 /* long double */
-/* { dg-output "\[^\n\r]* -129 is outside the range of representable values of type 'signed char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
-/* { dg-output "\[^\n\r]* (-129|-1) is outside the range of representable values of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
+/* { dg-output "\[^\n\r]* -129 is outside the range of representable values of type 'signed char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
+/* { dg-output "\[^\n\r]* (-129|-1) is outside the range of representable values of type 'char'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'unsigned char'\[^\n\r]*(\n|\r\n|\r)" } */
-/* { dg-output "\[^\n\r]* -32769 is outside the range of representable values of type 'short int'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || lp64 } } } */
+/* { dg-output "\[^\n\r]* -32769 is outside the range of representable values of type 'short int'\[^\n\r]*(\n|\r\n|\r)" { target { ilp32 || { lp64 || llp64 } } } } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'short unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]* \[0-9.e+-]* is outside the range of representable values of type 'int'\[^\n\r]*(\n|\r\n|\r)" } */
 /* { dg-output "\[^\n\r]* -1 is outside the range of representable values of type 'unsigned int'\[^\n\r]*(\n|\r\n|\r)" } */

@@ -64,7 +64,7 @@
 
 // Make the compiler thinks that something is going on there.
 inline void break_optimization(void *arg) {
-#if !defined(_WIN32) || defined(__clang__)
+#if !defined(_MSC_VER) || defined(__clang__)
   __asm__ __volatile__("" : : "r" (arg) : "memory");
 #endif
 }
