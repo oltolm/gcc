@@ -71,15 +71,7 @@ extern char ***_NSGetArgv(void);
 #  include <mach/mach_time.h>
 #  include <mach/vm_statistics.h>
 #  include <malloc/malloc.h>
-#  if defined(__has_builtin) && __has_builtin(__builtin_os_log_format)
-#    include <os/log.h>
-#  else
-     /* Without support for __builtin_os_log_format, fall back to the older
-        method.  */
-#    define OS_LOG_DEFAULT 0
-#    define os_log_error(A,B,C) \
-       asl_log(nullptr, nullptr, ASL_LEVEL_ERR, "%s", (C))
-#  endif
+#  include <os/log.h>
 #  include <pthread.h>
 #  include <pthread/introspection.h>
 #  include <sched.h>
@@ -176,6 +168,10 @@ int internal_madvise(uptr addr, uptr length, int advice) {
 
 uptr internal_close(fd_t fd) {
   return close(fd);
+}
+
+uptr internal_close_range(fd_t lowfd, fd_t highfd, int flags) {
+  return -1;  // Not supported.
 }
 
 uptr internal_open(const char *filename, int flags) {
@@ -289,53 +285,43 @@ int internal_sysctlbyname(const char *sname, void *oldp, uptr *oldlenp,
                       (size_t)newlen);
 }
 
-static fd_t internal_spawn_impl(const char *argv[], const char *envp[],
-                                pid_t *pid) {
-  fd_t primary_fd = kInvalidFd;
-  fd_t secondary_fd = kInvalidFd;
+bool internal_spawn(const char* argv[], const char* envp[], pid_t* pid,
+                    fd_t fd_stdin, fd_t fd_stdout) {
+  // NOTE: Caller ensures that fd_stdin and fd_stdout are not 0, 1, or 2, since
+  // this can break communication.
+  //
+  // NOTE: Caller is responsible for closing fd_stdin after the process has
+  // died.
 
+  int res;
   auto fd_closer = at_scope_exit([&] {
-    internal_close(primary_fd);
-    internal_close(secondary_fd);
+    // NOTE: We intentionally do not close fd_stdin since this can
+    // cause us to receive a fatal SIGPIPE if the process dies.
+    internal_close(fd_stdout);
   });
-
-  // We need a new pseudoterminal to avoid buffering problems. The 'atos' tool
-  // in particular detects when it's talking to a pipe and forgets to flush the
-  // output stream after sending a response.
-  primary_fd = posix_openpt(O_RDWR);
-  if (primary_fd == kInvalidFd)
-    return kInvalidFd;
-
-  int res = grantpt(primary_fd) || unlockpt(primary_fd);
-  if (res != 0) return kInvalidFd;
-
-  // Use TIOCPTYGNAME instead of ptsname() to avoid threading problems.
-  char secondary_pty_name[128];
-  res = ioctl(primary_fd, TIOCPTYGNAME, secondary_pty_name);
-  if (res == -1) return kInvalidFd;
-
-  secondary_fd = internal_open(secondary_pty_name, O_RDWR);
-  if (secondary_fd == kInvalidFd)
-    return kInvalidFd;
 
   // File descriptor actions
   posix_spawn_file_actions_t acts;
   res = posix_spawn_file_actions_init(&acts);
-  if (res != 0) return kInvalidFd;
+  if (res != 0)
+    return false;
 
   auto acts_cleanup = at_scope_exit([&] {
     posix_spawn_file_actions_destroy(&acts);
   });
 
-  res = posix_spawn_file_actions_adddup2(&acts, secondary_fd, STDIN_FILENO) ||
-        posix_spawn_file_actions_adddup2(&acts, secondary_fd, STDOUT_FILENO) ||
-        posix_spawn_file_actions_addclose(&acts, secondary_fd);
-  if (res != 0) return kInvalidFd;
+  res = posix_spawn_file_actions_adddup2(&acts, fd_stdin, STDIN_FILENO) ||
+        posix_spawn_file_actions_adddup2(&acts, fd_stdout, STDOUT_FILENO) ||
+        posix_spawn_file_actions_addclose(&acts, fd_stdin) ||
+        posix_spawn_file_actions_addclose(&acts, fd_stdout);
+  if (res != 0)
+    return false;
 
   // Spawn attributes
   posix_spawnattr_t attrs;
   res = posix_spawnattr_init(&attrs);
-  if (res != 0) return kInvalidFd;
+  if (res != 0)
+    return false;
 
   auto attrs_cleanup  = at_scope_exit([&] {
     posix_spawnattr_destroy(&attrs);
@@ -344,50 +330,17 @@ static fd_t internal_spawn_impl(const char *argv[], const char *envp[],
   // In the spawned process, close all file descriptors that are not explicitly
   // described by the file actions object. This is Darwin-specific extension.
   res = posix_spawnattr_setflags(&attrs, POSIX_SPAWN_CLOEXEC_DEFAULT);
-  if (res != 0) return kInvalidFd;
+  if (res != 0)
+    return false;
 
   // posix_spawn
   char **argv_casted = const_cast<char **>(argv);
   char **envp_casted = const_cast<char **>(envp);
   res = posix_spawn(pid, argv[0], &acts, &attrs, argv_casted, envp_casted);
-  if (res != 0) return kInvalidFd;
+  if (res != 0)
+    return false;
 
-  // Disable echo in the new terminal, disable CR.
-  struct termios termflags;
-  tcgetattr(primary_fd, &termflags);
-  termflags.c_oflag &= ~ONLCR;
-  termflags.c_lflag &= ~ECHO;
-  tcsetattr(primary_fd, TCSANOW, &termflags);
-
-  // On success, do not close primary_fd on scope exit.
-  fd_t fd = primary_fd;
-  primary_fd = kInvalidFd;
-
-  return fd;
-}
-
-fd_t internal_spawn(const char *argv[], const char *envp[], pid_t *pid) {
-  // The client program may close its stdin and/or stdout and/or stderr thus
-  // allowing open/posix_openpt to reuse file descriptors 0, 1 or 2. In this
-  // case the communication is broken if either the parent or the child tries to
-  // close or duplicate these descriptors. We temporarily reserve these
-  // descriptors here to prevent this.
-  fd_t low_fds[3];
-  size_t count = 0;
-
-  for (; count < 3; count++) {
-    low_fds[count] = posix_openpt(O_RDWR);
-    if (low_fds[count] >= STDERR_FILENO)
-      break;
-  }
-
-  fd_t fd = internal_spawn_impl(argv, envp, pid);
-
-  for (; count > 0; count--) {
-    internal_close(low_fds[count]);
-  }
-
-  return fd;
+  return true;
 }
 
 uptr internal_rename(const char *oldpath, const char *newpath) {
@@ -660,7 +613,13 @@ static uptr ApproximateOSVersionViaKernelVersion(VersStr vers) {
   u16 os_major = kernel_major - offset;
 
   const char *format = "%d.0";
-  if (TARGET_OS_OSX) {
+  if (kernel_major >= 27) {
+    // with kernel major 27 <=> OSes 27.0, OS versions are aligned with kernel
+    os_major = kernel_major;
+  } else if (kernel_major >= 25) {
+    // with kernel_major 25 <=> OSes 26.0, OS versions are aligned
+    os_major = kernel_major + 1;
+  } else if (TARGET_OS_OSX) {
     if (os_major >= 16) {  // macOS 11+
       os_major -= 5;
     } else {  // macOS 10.15 and below
@@ -717,6 +676,24 @@ static void MapToMacos(u16 *major, u16 *minor) {
   if (TARGET_OS_OSX)
     return;
 
+  // All supported platforms (including DriverKit) have
+  // aligned version numbers in macOS 27+
+  if (*major >= 27)
+    return;
+
+#  if TARGET_OS_DRIVERKIT
+  // Driverkit 25.0+ aligns with macOS 26+
+  if (*major >= 25) {
+    *major += 1;
+    return;
+  }
+#  else
+  // macOS 26 and later have aligned version strings.
+  if (*major >= 26)
+    return;
+#  endif
+
+  // Below are mappings for pre-macOS-25-aligned releases
   if (TARGET_OS_IOS || TARGET_OS_TV)
     *major += 2;
   else if (TARGET_OS_WATCH)
@@ -877,23 +854,19 @@ void LogFullErrorReport(const char *buffer) {
   // When logging with os_log_error this will make it into the crash log.
   if (internal_strncmp(SanitizerToolName, "AddressSanitizer",
                        sizeof("AddressSanitizer") - 1) == 0)
-    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "%{public}s",
-                     "Address Sanitizer reported a failure.");
+    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "Address Sanitizer reported a failure.");
   else if (internal_strncmp(SanitizerToolName, "UndefinedBehaviorSanitizer",
                             sizeof("UndefinedBehaviorSanitizer") - 1) == 0)
-    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "%{public}s",
+    SANITIZER_OS_LOG(OS_LOG_DEFAULT,
                      "Undefined Behavior Sanitizer reported a failure.");
   else if (internal_strncmp(SanitizerToolName, "ThreadSanitizer",
                             sizeof("ThreadSanitizer") - 1) == 0)
-    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "%{public}s",
-                     "Thread Sanitizer reported a failure.");
+    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "Thread Sanitizer reported a failure.");
   else
-    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "%{public}s",
-                     "Sanitizer tool reported a failure.");
+    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "Sanitizer tool reported a failure.");
 
   if (common_flags()->log_to_syslog)
-    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "%{public}s",
-                     "Consult syslog for more information.");
+    SANITIZER_OS_LOG(OS_LOG_DEFAULT, "Consult syslog for more information.");
 
   // Log to syslog.
   // The logging on OS X may call pthread_create so we need the threading
@@ -963,10 +936,6 @@ void SignalContext::InitPcSpBp() {
   addr = (uptr)ptrauth_strip((void *)addr, 0);
   GetPcSpBp(context, &pc, &sp, &bp);
 }
-
-#ifndef KERN_DENIED
-#define KERN_DENIED 53
-#endif
 
 // ASan/TSan use mmap in a way that creates “deallocation gaps” which triggers
 // EXC_GUARD exceptions on macOS 10.15+ (XNU 19.0+).
@@ -1347,6 +1316,25 @@ uptr MapDynamicShadow(uptr shadow_size_bytes, uptr shadow_scale,
   return shadow_start;
 }
 
+// Returns a list of ranges which must be covered by shadow memory,
+// and cannot overlap with any fixed mappings made by a sanitizer.
+// This can ensure that the sanitizer runtime does not map over
+// platform-reserved regions.
+void GetAppReservedRanges(InternalMmapVector<ReservedRange>& ranges) {
+  ranges.clear();
+
+#  if SANITIZER_OSX
+  // On macOS, the first 512GB are platform-reserved (some of which
+  // may also be available to applications).
+  ranges.push_back({0x1000UL, 0x8000000000UL});
+#  endif
+
+  VReport(2, "App ranges:\n");
+  for (auto& [range_start, range_end] : ranges) {
+    VReport(2, "  [%p, %p]\n", range_start, range_end);
+  }
+}
+
 uptr MapDynamicShadowAndAliases(uptr shadow_size, uptr alias_size,
                                 uptr num_aliases, uptr ring_buffer_size) {
   CHECK(false && "HWASan aliasing is unimplemented on Mac");
@@ -1359,6 +1347,16 @@ uptr FindAvailableMemoryRange(uptr size, uptr alignment, uptr left_padding,
   const mach_vm_address_t max_vm_address = GetMaxVirtualAddress() + 1;
   mach_vm_address_t address = GAP_SEARCH_START_ADDRESS;
   mach_vm_address_t free_begin = GAP_SEARCH_START_ADDRESS;
+
+  // Restrict the search to be after any reserved ranges
+  InternalMmapVector<ReservedRange> app_ranges;
+  GetAppReservedRanges(app_ranges);
+
+  for (auto& [range_start, range_end] : app_ranges) {
+    address = Max(address, (mach_vm_address_t)range_end);
+    free_begin = Max(free_begin, (mach_vm_address_t)range_end);
+  }
+
   kern_return_t kr = KERN_SUCCESS;
   if (largest_gap_found) *largest_gap_found = 0;
   if (max_occupied_addr) *max_occupied_addr = 0;
@@ -1559,7 +1557,7 @@ void DumpProcessMap() {
   Printf("End of module map.\n");
 }
 
-void CheckNoDeepBind(const char *filename, int flag) {
+void OnDlOpen(const char* filename, int flag) {
   // Do nothing.
 }
 
