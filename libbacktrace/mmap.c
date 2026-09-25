@@ -37,10 +37,14 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/mman.h>
+#endif
 
 #include "backtrace.h"
 #include "internal.h"
+
+#ifndef _WIN32
 
 #ifndef HAVE_DECL_GETPAGESIZE
 extern int getpagesize (void);
@@ -56,6 +60,19 @@ extern int getpagesize (void);
 
 #ifndef MAP_FAILED
 #define MAP_FAILED ((void *)-1)
+#endif
+
+#else
+
+#define PROT_READ     1
+#define PROT_WRITE    2
+#define MAP_PRIVATE   1
+#define MAP_ANONYMOUS 2
+#define MAP_FAILED    NULL
+
+int getpagesize(void);
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+
 #endif
 
 /* A list of free memory blocks.  */
@@ -202,7 +219,10 @@ backtrace_free (struct backtrace_state *state, void *addr, size_t size,
      the system.  This case arises when growing a vector for a large
      binary with lots of debug info.  Calling munmap here may cause us
      to call mmap again if there is also a large shared library; we
-     just live with that.  */
+     just live with that.  On Windows, munmap is emulated with
+     UnmapViewOfFile, which cannot unmap part of a view, so keep the
+     block on the free list instead.  */
+#ifndef _WIN32
   if (size >= 16 * 4096)
     {
       size_t pagesize;
@@ -217,6 +237,7 @@ backtrace_free (struct backtrace_state *state, void *addr, size_t size,
 	    return;
 	}
     }
+#endif
 
   /* If we can acquire the lock, add the new space to the free list.
      If we can't acquire the lock, just leak the memory.
