@@ -382,6 +382,7 @@ coff_is_function_symbol (const b_coff_internal_symbol *isym)
 
 static int
 coff_initialize_syminfo (struct backtrace_state *state,
+			 uintptr_t image_base,
 			 struct libbacktrace_base_address base_address,
 			 int is_64, const b_coff_section_header *sects,
 			 size_t sects_num, const b_coff_external_symbol *syms,
@@ -493,7 +494,8 @@ coff_initialize_syminfo (struct backtrace_state *state,
 	  coff_sym->name = name;
 	  coff_sym->address =
 	    libbacktrace_add_base ((coff_read4 (asym->value)
-				    + sects[secnum - 1].virtual_address),
+				    + sects[secnum - 1].virtual_address
+				    + image_base),
 				   base_address);
 	  coff_sym++;
 	}
@@ -770,6 +772,11 @@ coff_add (struct backtrace_state *state, int descriptor,
 	}
     }
 
+  memset (&base_address, 0, sizeof base_address);
+#ifdef HAVE_WINDOWS_H
+  base_address.m = module_handle - image_base.m;
+#endif
+
   /* Read the symbol table and the string table.  */
 
   if (fhdr.pointer_to_symbol_table == 0)
@@ -854,7 +861,7 @@ coff_add (struct backtrace_state *state, int descriptor,
       if (sdata == NULL)
 	goto fail;
 
-      if (!coff_initialize_syminfo (state, image_base, is_64,
+      if (!coff_initialize_syminfo (state, image_base.m, base_address, is_64,
 				    sects, sects_num,
 				    syms_view.data, syms_size,
 				    str_view.data, str_size,
@@ -923,11 +930,6 @@ coff_add (struct backtrace_state *state, int descriptor,
 	dwarf_sections.data[i] = ((const unsigned char *) debug_view.data
 				  + (sections[i].offset - min_offset));
     }
-
-  memset (&base_address, 0, sizeof base_address);
-#ifdef HAVE_WINDOWS_H
-  base_address.m = module_handle - image_base.m;
-#endif
 
   if (!backtrace_dwarf_add (state, base_address, &dwarf_sections,
 			    0, /* FIXME: is_bigendian */
