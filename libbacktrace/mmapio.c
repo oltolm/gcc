@@ -34,11 +34,18 @@ POSSIBILITY OF SUCH DAMAGE.  */
 
 #include <errno.h>
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/mman.h>
+#else
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include <unistd.h>
 
 #include "backtrace.h"
 #include "internal.h"
+
+#ifndef _WIN32
 
 #ifndef HAVE_DECL_GETPAGESIZE
 extern int getpagesize (void);
@@ -46,6 +53,85 @@ extern int getpagesize (void);
 
 #ifndef MAP_FAILED
 #define MAP_FAILED ((void *)-1)
+#endif
+
+#else
+
+#define PROT_READ     1
+#define PROT_WRITE    2
+#define MAP_PRIVATE   1
+#define MAP_ANONYMOUS 2
+#define MAP_FAILED    NULL
+
+int getpagesize(void);
+void *mmap(void *addr ATTRIBUTE_UNUSED, size_t length, int prot,
+	   int flags ATTRIBUTE_UNUSED, int fd, off_t offset);
+int munmap(void *addr, size_t length ATTRIBUTE_UNUSED);
+
+int getpagesize(void)
+{
+  SYSTEM_INFO si;
+  GetSystemInfo(&si);
+  return si.dwAllocationGranularity;
+}
+
+void *mmap(void *addr ATTRIBUTE_UNUSED, size_t length, int prot,
+	   int flags ATTRIBUTE_UNUSED, int fd, off_t offset)
+{
+  HANDLE fh = fd < 0 ? INVALID_HANDLE_VALUE : (HANDLE) _get_osfhandle(fd);
+  uint64_t mapping_size = fd < 0 ? length : 0;
+  HANDLE mapping = CreateFileMapping(fh, NULL,
+				     (prot & PROT_WRITE) ? PAGE_READWRITE : PAGE_READONLY,
+				     (DWORD) (mapping_size >> 32), (DWORD) mapping_size,
+				     NULL);
+  if (mapping == NULL)
+    {
+      errno = ENOMEM;
+      return MAP_FAILED;
+    }
+
+  if (fh != INVALID_HANDLE_VALUE)
+    {
+      BY_HANDLE_FILE_INFORMATION bhfi;
+      uint64_t file_size;
+
+      if (offset < 0 || !GetFileInformationByHandle(fh, &bhfi))
+	{
+	  CloseHandle(mapping);
+	  errno = EINVAL;
+	  return MAP_FAILED;
+	}
+      file_size = bhfi.nFileSizeLow | ((uint64_t) bhfi.nFileSizeHigh << 32);
+      if ((uint64_t) offset >= file_size)
+	{
+	  CloseHandle(mapping);
+	  errno = EINVAL;
+	  return MAP_FAILED;
+	}
+      /* A file view cannot extend past the end of the file.  */
+      if (length > file_size - (uint64_t) offset)
+	length = file_size - (uint64_t) offset;
+    }
+
+  void *view = MapViewOfFile(mapping,
+			     ((prot & PROT_WRITE) ? FILE_MAP_WRITE : 0) | FILE_MAP_READ,
+			     (DWORD) ((uint64_t) offset >> 32), (DWORD) offset,
+			     length);
+  CloseHandle(mapping);
+  if (view == NULL)
+    {
+      errno = ENOMEM;
+      return MAP_FAILED;
+    }
+
+  return view;
+}
+
+int munmap(void *addr, size_t length ATTRIBUTE_UNUSED)
+{
+  return UnmapViewOfFile(addr) ? 0 : -1;
+}
+
 #endif
 
 /* This file implements file views and memory allocation when mmap is
