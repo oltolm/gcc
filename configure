@@ -4699,7 +4699,7 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -4839,7 +4839,7 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdio.h>
 int
-main ()
+main (void)
 {
 FILE *f = fopen ("conftest.out", "w");
  return ferror (f) || fclose (f) != 0;
@@ -4903,7 +4903,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -4954,7 +4954,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 #ifndef __GNUC__
        choke me
@@ -4995,7 +4995,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -5010,7 +5010,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -5026,7 +5026,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -5075,9 +5075,7 @@ struct stat;
 /* Most of the following tests are stolen from RCS 5.7's src/conf.sh.  */
 struct buf { int x; };
 FILE * (*rcsopen) (struct buf *, struct stat *, int);
-static char *e (p, i)
-     char **p;
-     int i;
+static char *e (char **p, int i)
 {
   return p[i];
 }
@@ -5112,7 +5110,7 @@ int pairnames (int, char **, FILE *(*)(struct buf *, struct stat *, int), int, i
 int argc;
 char **argv;
 int
-main ()
+main (void)
 {
 return f (e, argv, 0) != argv[0]  ||  f (e, argv, 1) != argv[1];
   ;
@@ -5260,7 +5258,7 @@ test_varargs (const char *format, ...)
 }
 
 int
-main ()
+main (void)
 {
 
   // Check bool.
@@ -5478,7 +5476,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 #ifndef __GNUC__
        choke me
@@ -5519,7 +5517,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -5534,7 +5532,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -5550,7 +5548,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -9220,7 +9218,7 @@ $as_echo_n "checking for the correct version of gmp.h... " >&6; }
 /* end confdefs.h.  */
 #include "gmp.h"
 int
-main ()
+main (void)
 {
 
   #define GCC_GMP_VERSION_NUM(a,b,c) (((a) << 16L) | ((b) << 8) | (c))
@@ -9238,7 +9236,7 @@ if ac_fn_c_try_compile "$LINENO"; then :
 /* end confdefs.h.  */
 #include <gmp.h>
 int
-main ()
+main (void)
 {
 
   #define GCC_GMP_VERSION_NUM(a,b,c) (((a) << 16L) | ((b) << 8) | (c))
@@ -9275,7 +9273,7 @@ $as_echo_n "checking for the correct version of mpfr.h... " >&6; }
 #include <gmp.h>
     #include <mpfr.h>
 int
-main ()
+main (void)
 {
 
     #if MPFR_VERSION < MPFR_VERSION_NUM(3,1,0)
@@ -9292,7 +9290,7 @@ if ac_fn_c_try_compile "$LINENO"; then :
 #include <gmp.h>
     #include <mpfr.h>
 int
-main ()
+main (void)
 {
 
     #if MPFR_VERSION < MPFR_VERSION_NUM(3,1,6)
@@ -9327,7 +9325,7 @@ $as_echo_n "checking for the correct version of mpc.h... " >&6; }
 /* end confdefs.h.  */
 #include <mpc.h>
 int
-main ()
+main (void)
 {
 
     #if MPC_VERSION < MPC_VERSION_NUM(0,8,0)
@@ -9343,7 +9341,7 @@ if ac_fn_c_try_compile "$LINENO"; then :
 /* end confdefs.h.  */
 #include <mpc.h>
 int
-main ()
+main (void)
 {
 
     #if MPC_VERSION < MPC_VERSION_NUM(0,8,1)
@@ -9379,7 +9377,7 @@ $as_echo_n "checking for the correct version of the gmp/mpfr libraries... " >&6;
 /* end confdefs.h.  */
 #include <mpfr.h>
 int
-main ()
+main (void)
 {
 
     mpfr_t n;
@@ -9419,7 +9417,7 @@ $as_echo_n "checking for the correct version of the mpc libraries... " >&6; }
 /* end confdefs.h.  */
 #include <mpc.h>
 int
-main ()
+main (void)
 {
 
     mpc_t c;
@@ -9666,7 +9664,7 @@ $as_echo_n "checking for isl 0.15 or later... " >&6; }
 /* end confdefs.h.  */
 #include <isl/schedule.h>
 int
-main ()
+main (void)
 {
 isl_options_set_schedule_serialize_sccs (NULL, 0);
   ;
@@ -9962,9 +9960,9 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char dlopen ();
+char dlopen (void);
 int
-main ()
+main (void)
 {
 return dlopen ();
   ;
@@ -10018,9 +10016,9 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 #ifdef __cplusplus
 extern "C"
 #endif
-char pthread_create ();
+char pthread_create (void);
 int
-main ()
+main (void)
 {
 return pthread_create ();
   ;
@@ -11883,9 +11881,7 @@ esac
 
 case "$target" in
   x86_64-*mingw* | *-w64-mingw*)
-  # MinGW-w64 does not use newlib, nor does it use winsup. It may,
-  # however, use a symlink named 'mingw' in ${prefix} .
-    FLAGS_FOR_TARGET=$FLAGS_FOR_TARGET' -L${prefix}/${target}/lib -L${prefix}/mingw/lib -isystem ${prefix}/${target}/include -isystem ${prefix}/mingw/include'
+  # MinGW-w64 does not use newlib, nor does it use winsup. No special flags needed.
     ;;
   *-mingw*)
   # MinGW can't be handled as Cygwin above since it does not use newlib.
@@ -21154,7 +21150,7 @@ else
 #endif
 
 int
-main ()
+main (void)
 {
 
   ;
@@ -21249,7 +21245,7 @@ else
 /* end confdefs.h.  */
 
 int
-main ()
+main (void)
 {
 
   ;
