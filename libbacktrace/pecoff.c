@@ -123,6 +123,9 @@ typedef struct {
       uint64_t image_base;
     } pep;
   } u;
+  /* SectionAlignment through Win32VersionValue.  */
+  uint8_t unused[24];
+  uint32_t size_of_image;
 } b_coff_optional_header;
 
 /* Values of magic in optional header.  */
@@ -384,6 +387,7 @@ static int
 coff_initialize_syminfo (struct backtrace_state *state,
 			 uintptr_t image_base,
 			 struct libbacktrace_base_address base_address,
+			 uintptr_t module_end,
 			 int is_64, const b_coff_section_header *sects,
 			 size_t sects_num, const b_coff_external_symbol *syms,
 			 size_t syms_size, const unsigned char *strtab,
@@ -505,7 +509,7 @@ coff_initialize_syminfo (struct backtrace_state *state,
 
   /* End of symbols marker.  */
   coff_sym->name = NULL;
-  coff_sym->address = -1;
+  coff_sym->address = module_end != 0 ? module_end : (uintptr_t) -1;
 
   backtrace_qsort (coff_symbols, coff_symbol_count,
 		   sizeof (struct coff_symbol), coff_symbol_compare);
@@ -680,6 +684,8 @@ coff_add (struct backtrace_state *state, int descriptor,
   int is_64;
   struct libbacktrace_base_address image_base;
   struct libbacktrace_base_address base_address;
+  uint32_t image_size;
+  uintptr_t module_end;
   struct dwarf_sections dwarf_sections;
 
   *found_sym = 0;
@@ -756,8 +762,10 @@ coff_add (struct backtrace_state *state, int descriptor,
 
   is_64 = 0;
   memset (&image_base, 0, sizeof image_base);
+  image_size = 0;
   if (fhdr.size_of_optional_header > sizeof (*opt_hdr))
     {
+      image_size = opt_hdr->size_of_image;
       if (opt_hdr->magic == PE_MAGIC)
 	image_base.m = opt_hdr->u.pe.image_base;
       else if (opt_hdr->magic == PEP_MAGIC)
@@ -773,8 +781,11 @@ coff_add (struct backtrace_state *state, int descriptor,
     }
 
   memset (&base_address, 0, sizeof base_address);
+  module_end = 0;
 #ifdef HAVE_WINDOWS_H
   base_address.m = module_handle - image_base.m;
+  /* The image occupies SizeOfImage bytes from the load address.  */
+  module_end = module_handle + image_size;
 #endif
 
   /* Read the symbol table and the string table.  */
@@ -861,7 +872,8 @@ coff_add (struct backtrace_state *state, int descriptor,
       if (sdata == NULL)
 	goto fail;
 
-      if (!coff_initialize_syminfo (state, image_base.m, base_address, is_64,
+      if (!coff_initialize_syminfo (state, image_base.m, base_address,
+				    module_end, is_64,
 				    sects, sects_num,
 				    syms_view.data, syms_size,
 				    str_view.data, str_size,

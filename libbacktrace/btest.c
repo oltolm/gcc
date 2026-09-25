@@ -39,6 +39,10 @@ POSSIBILITY OF SUCH DAMAGE.  */
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 #include "filenames.h"
 
@@ -459,6 +463,61 @@ test5 (void)
   return failures;
 }
 
+#ifdef _WIN32
+
+/* Test that backtrace_syminfo finds no symbol for the first address
+   past the image of the executable.  */
+
+static int test6 (void) __attribute__ ((unused));
+
+static int
+test6 (void)
+{
+  const unsigned char *base;
+  const IMAGE_DOS_HEADER *dos;
+  const IMAGE_NT_HEADERS *nt;
+  struct symdata symdata;
+  uintptr_t addr;
+  int i;
+
+  base = (const unsigned char *) GetModuleHandle (NULL);
+  dos = (const IMAGE_DOS_HEADER *) base;
+  nt = (const IMAGE_NT_HEADERS *) (base + dos->e_lfanew);
+  addr = (uintptr_t) base + nt->OptionalHeader.SizeOfImage;
+
+  symdata.name = NULL;
+  symdata.val = 0;
+  symdata.size = 0;
+  symdata.failed = 0;
+
+  i = backtrace_syminfo (state, addr, callback_three,
+			 error_callback_three, &symdata);
+  if (i == 0)
+    {
+      fprintf (stderr,
+	       "test6: unexpected return value from backtrace_syminfo %d\n",
+	       i);
+      symdata.failed = 1;
+    }
+
+  if (!symdata.failed && symdata.name != NULL)
+    {
+      fprintf (stderr, "test6: unexpected syminfo name got %s expected NULL\n",
+	       symdata.name);
+      symdata.failed = 1;
+    }
+
+  printf ("%s: backtrace_syminfo past the image\n",
+	  symdata.failed ? "FAIL" : "PASS");
+
+  if (symdata.failed)
+    ++failures;
+
+  return failures;
+}
+
+#endif /* _WIN32 */
+
 #define MIN_DESCRIPTOR 3
 #define MAX_DESCRIPTOR 10
 
@@ -508,6 +567,9 @@ main (int argc ATTRIBUTE_UNUSED, char **argv)
   test4 ();
 #if BACKTRACE_SUPPORTS_DATA
   test5 ();
+#endif
+#ifdef _WIN32
+  test6 ();
 #endif
 #endif
 
