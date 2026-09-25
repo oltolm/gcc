@@ -38,3 +38,4 @@ int main(int argc, char *argv[])
 
 
 /* { dg-output "34:25: runtime error: index 10 out of bounds for type" } */
+/* { dg-skip-if "the test overflows its heap buffer, which free detects on Windows" { *-*-mingw* } } */

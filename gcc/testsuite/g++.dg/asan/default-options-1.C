@@ -1,4 +1,6 @@
-// { dg-do run }
+// GNU ld on MinGW does not forward user overrides of weak sanitizer functions
+// to the ASan DLL runtime.
+// { dg-do run { target { ! *-*-mingw* } } }
 
 const char *kAsanDefaultOptions="verbosity=1 foo=bar";
 

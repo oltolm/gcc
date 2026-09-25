@@ -1,4 +1,5 @@
 /* { dg-do run } */
+/* { dg-skip-if "VLA negative bound crashes on Windows stack probing" { *-*-mingw* } } */
 /* { dg-options "-fsanitize=vla-bound -Wall -Wno-unused-variable -fno-stack-clash-protection -ftrivial-auto-var-init=uninitialized" } */
 
 typedef long int V;
