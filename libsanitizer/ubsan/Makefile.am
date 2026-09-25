@@ -12,6 +12,10 @@ AM_CCASFLAGS = $(EXTRA_ASFLAGS)
 ACLOCAL_AMFLAGS = -I m4
 
 toolexeclib_LTLIBRARIES = libubsan.la
+# On Windows, libasan contains UBSan, as with Clang.
+if SANITIZER_WINDOWS
+noinst_LTLIBRARIES = libsanitizer_ubsan.la
+endif
 
 ubsan_plugin_files = \
 	ubsan_diag.cpp \
@@ -27,6 +31,7 @@ ubsan_plugin_files = \
 
 ubsan_files = $(ubsan_plugin_files)
 
+libsanitizer_ubsan_la_SOURCES = $(ubsan_files)
 libubsan_la_SOURCES = $(ubsan_files) 
 libubsan_la_LIBADD = $(top_builddir)/sanitizer_common/libsanitizer_common.la 
 if !USING_MAC_INTERPOSE
@@ -40,8 +45,13 @@ if ENABLE_DARWIN_AT_RPATH
 libubsan_darwin_rpath = -Wc,-nodefaultrpaths
 libubsan_darwin_rpath += -Wl,-rpath,@loader_path
 endif
+
+if SANITIZER_WINDOWS
+libubsan_win_ldflags = -no-undefined
+endif
+
 libubsan_la_LDFLAGS = -version-info `grep -v '^\#' $(srcdir)/libtool-version` \
-	$(link_libubsan) $(libubsan_darwin_rpath)
+	$(link_libubsan) $(libubsan_darwin_rpath) $(libubsan_win_ldflags)
 
 # Use special rules for files that require RTTI support.
 ubsan_handlers_cxx.% ubsan_type_hash.% ubsan_type_hash_itanium.% : AM_CXXFLAGS += -frtti
