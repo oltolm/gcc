@@ -384,6 +384,7 @@ static int
 coff_initialize_syminfo (struct backtrace_state *state,
 			 uintptr_t image_base,
 			 struct libbacktrace_base_address base_address,
+			 uintptr_t module_end,
 			 int is_64, const b_coff_section_header *sects,
 			 size_t sects_num, const b_coff_external_symbol *syms,
 			 size_t syms_size, const unsigned char *strtab,
@@ -505,7 +506,7 @@ coff_initialize_syminfo (struct backtrace_state *state,
 
   /* End of symbols marker.  */
   coff_sym->name = NULL;
-  coff_sym->address = -1;
+  coff_sym->address = module_end != 0 ? module_end : (uintptr_t) -1;
 
   backtrace_qsort (coff_symbols, coff_symbol_count,
 		   sizeof (struct coff_symbol), coff_symbol_compare);
@@ -680,6 +681,7 @@ coff_add (struct backtrace_state *state, int descriptor,
   int is_64;
   struct libbacktrace_base_address image_base;
   struct libbacktrace_base_address base_address;
+  uintptr_t module_end;
   struct dwarf_sections dwarf_sections;
 
   *found_sym = 0;
@@ -773,8 +775,25 @@ coff_add (struct backtrace_state *state, int descriptor,
     }
 
   memset (&base_address, 0, sizeof base_address);
+  module_end = 0;
 #ifdef HAVE_WINDOWS_H
   base_address.m = module_handle - image_base.m;
+  /* All symbols lie in sections, so the end of the highest section
+     bounds the symbols of this module.  */
+  if (module_handle != 0)
+    {
+      uintptr_t image_end = 0;
+
+      for (i = 0; i < sects_num; ++i)
+	{
+	  uintptr_t end = ((uintptr_t) sects[i].virtual_address
+			   + sects[i].virtual_size);
+
+	  if (end > image_end)
+	    image_end = end;
+	}
+      module_end = module_handle + image_end;
+    }
 #endif
 
   /* Read the symbol table and the string table.  */
@@ -861,7 +880,8 @@ coff_add (struct backtrace_state *state, int descriptor,
       if (sdata == NULL)
 	goto fail;
 
-      if (!coff_initialize_syminfo (state, image_base.m, base_address, is_64,
+      if (!coff_initialize_syminfo (state, image_base.m, base_address,
+				    module_end, is_64,
 				    sects, sects_num,
 				    syms_view.data, syms_size,
 				    str_view.data, str_size,
