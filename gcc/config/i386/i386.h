@@ -1703,8 +1703,8 @@ typedef struct ix86_args {
   int words;			/* # words passed so far */
   int nregs;			/* # registers available for passing */
   int regno;			/* next available register number */
-  int fastcall;			/* fastcall or thiscall calling convention
-				   is used */
+  int fastcall;			/* 0 = default, 1 = fastcall/thiscall, 2 = vectorcall
+				   (64-bit target only) */
   int sse_words;		/* # sse words passed so far */
   int sse_nregs;		/* # sse registers available for passing */
   int warn_avx512f;		/* True when we want to warn
@@ -1729,6 +1729,7 @@ typedef struct ix86_args {
   bool preserve_none_abi;	/* Set to true if the preserve_none ABI is
 				   used.  */
   tree decl;			/* Callee decl.  */
+  unsigned int used_xmm_mask;	/* Bitmap of used XMM registers.  */
 } CUMULATIVE_ARGS;
 
 /* Initialize a variable CUM of type CUMULATIVE_ARGS
@@ -1901,6 +1902,7 @@ typedef struct ix86_args {
 
 #define X86_64_SSE_REGPARM_MAX 8
 #define X86_64_MS_SSE_REGPARM_MAX 4
+#define X86_64_VECTORCALL_SSE_REGPARM_MAX 6
 
 #define X86_32_SSE_REGPARM_MAX (TARGET_SSE ? (TARGET_MACHO ? 4 : 3) : 0)
 
@@ -3072,6 +3074,7 @@ extern void debug_dispatch_window (int);
 #define IX86_CALLCVT_THISCALL	0x8
 #define IX86_CALLCVT_REGPARM	0x10
 #define IX86_CALLCVT_SSEREGPARM	0x20
+#define IX86_CALLCVT_VECTORCALL 0x40
 
 #define IX86_BASE_CALLCVT(FLAGS) \
 	((FLAGS) & (IX86_CALLCVT_CDECL | IX86_CALLCVT_STDCALL \
