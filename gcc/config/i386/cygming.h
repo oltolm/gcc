@@ -148,6 +148,12 @@ along with GCC; see the file COPYING3.  If not see
 	    builtin_define ("_thiscall=__attribute__((__thiscall__))");	\
 	    builtin_define ("_cdecl=__attribute__((__cdecl__))");	\
 	  }								\
+	if (TARGET_64BIT)						\
+	  {								\
+	    builtin_define ("__vectorcall=__attribute__((__vectorcall__))");\
+	    if (!flag_iso)						\
+	      builtin_define ("_vectorcall=__attribute__((__vectorcall__))");\
+	  }								\
 	/* Even though linkonce works with static libs, this is needed 	\
 	    to compare typeinfo symbols across dll boundaries.  */	\
 	builtin_define ("__GXX_MERGED_TYPEINFO_NAMES=0");		\
