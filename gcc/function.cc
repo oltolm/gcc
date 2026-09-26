@@ -2686,7 +2686,8 @@ assign_parm_find_entry_rtl (struct assign_parm_data_all *all,
 
   locate_and_pad_parm (data->arg.mode, data->arg.type, in_regs,
 		       all->reg_parm_stack_space,
-		       entry_parm ? data->partial : 0, current_function_decl,
+		       entry_parm ? data->partial : 0,
+		       TREE_TYPE (current_function_decl),
 		       &all->stack_args_size, &data->locate);
 
   /* Update parm_stack_boundary if this parameter is passed in the
@@ -4081,7 +4082,8 @@ gimplify_parameters (gimple_seq *cleanup)
    REG_PARM_STACK_SPACE is the number of bytes of stack space reserved
    for arguments which are passed in registers.
 
-   FNDECL is the function in which the argument was defined.
+   FNTYPE is the type of the function being called or defined, or null
+   for a library call.
 
    There are two types of rounding that are done.  The first, controlled by
    TARGET_FUNCTION_ARG_BOUNDARY, forces the offset from the start of the
@@ -4102,7 +4104,7 @@ gimplify_parameters (gimple_seq *cleanup)
 void
 locate_and_pad_parm (machine_mode passed_mode, tree type, int in_regs,
 		     int reg_parm_stack_space, int partial,
-		     tree fndecl ATTRIBUTE_UNUSED,
+		     tree fntype,
 		     struct args_size *initial_offset_ptr,
 		     struct locate_and_pad_arg_data *locate)
 {
@@ -4135,11 +4137,20 @@ locate_and_pad_parm (machine_mode passed_mode, tree type, int in_regs,
 
   part_size_in_regs = (reg_parm_stack_space == 0 ? partial : 0);
 
-  sizetree = (type
-	      ? arg_size_in_bytes (type)
-	      : size_int (GET_MODE_SIZE (passed_mode)));
+  bool word_slot = (in_regs && reg_parm_stack_space > 0
+		    && targetm.calls.reg_parm_word_slots_p (fntype));
+
+  if (word_slot)
+    sizetree = size_int (PARM_BOUNDARY / BITS_PER_UNIT);
+  else
+    sizetree = (type
+		? arg_size_in_bytes (type)
+		: size_int (GET_MODE_SIZE (passed_mode)));
   where_pad = targetm.calls.function_arg_padding (passed_mode, type);
-  boundary = targetm.calls.function_arg_boundary (passed_mode, type);
+  if (word_slot)
+    boundary = PARM_BOUNDARY;
+  else
+    boundary = targetm.calls.function_arg_boundary (passed_mode, type);
   round_boundary = targetm.calls.function_arg_round_boundary (passed_mode,
 							      type);
   locate->where_pad = where_pad;
