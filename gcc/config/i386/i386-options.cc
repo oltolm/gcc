@@ -3645,7 +3645,7 @@ ix86_offload_options (void)
 }
 
 /* Handle "cdecl", "stdcall", "fastcall", "regparm", "thiscall",
-   and "sseregparm" calling convention attributes;
+   "vectorcall", and "sseregparm" calling convention attributes;
    arguments as in struct attribute_spec.handler.  */
 
 static tree
@@ -3666,11 +3666,22 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
   if (TARGET_64BIT)
     {
       /* Do not warn when emulating the MS ABI.  */
-      if ((TREE_CODE (*node) != FUNCTION_TYPE
-	   && TREE_CODE (*node) != METHOD_TYPE)
-	  || ix86_function_type_abi (*node) != MS_ABI)
+      bool ms_abi = ((TREE_CODE (*node) == FUNCTION_TYPE
+		      || TREE_CODE (*node) == METHOD_TYPE)
+		     && ix86_function_type_abi (*node) == MS_ABI);
+      if (!ms_abi)
 	warning (OPT_Wattributes, "%qE attribute ignored",
 		 name);
+      /* Only vectorcall has a 64-bit meaning, and only in the MS ABI.  */
+      if (!ms_abi || !is_attribute_p ("vectorcall", name))
+	{
+	  *no_add_attrs = true;
+	  return NULL_TREE;
+	}
+    }
+  else if (is_attribute_p ("vectorcall", name))
+    {
+      sorry ("%qE attribute is not supported for 32-bit code", name);
       *no_add_attrs = true;
       return NULL_TREE;
     }
@@ -3782,6 +3793,15 @@ ix86_handle_cconv_attribute (tree *node, tree name, tree args, int,
       if (lookup_attribute ("regparm", TYPE_ATTRIBUTES (*node)))
 	{
 	  error ("regparm and thiscall attributes are not compatible");
+	}
+    }
+  else if (is_attribute_p ("vectorcall", name))
+    {
+      /* Vectorcall does not support variadic functions.  */
+      if (TREE_CODE (*node) == FUNCTION_TYPE && stdarg_p (*node))
+	{
+	  error ("vectorcall attribute cannot be used with variadic functions");
+	  *no_add_attrs = true;
 	}
     }
 
@@ -4190,6 +4210,9 @@ static const attribute_spec ix86_gnu_attributes[] =
      if they are not variable.  */
   { "thiscall",  0, 0, false, true,  true,  true, ix86_handle_cconv_attribute,
     NULL },
+  /* Vectorcall attribute passes vector arguments in registers.  */
+  {"vectorcall", 0, 0, false, true, true, true, ix86_handle_cconv_attribute,
+   NULL},
   /* Cdecl attribute says the callee is a normal C declaration */
   { "cdecl",     0, 0, false, true,  true,  true, ix86_handle_cconv_attribute,
     NULL },
