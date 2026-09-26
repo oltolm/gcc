@@ -2709,6 +2709,9 @@ enum avx_u128_state
 
 
 #define FASTCALL_PREFIX '@'
+#define FASTCALL_SUFFIX "@"
+#define STDCALL_SUFFIX "@"
+#define VECTORCALL_SUFFIX "@@"
 
 #ifndef USED_FOR_TARGET
 /* Structure describing stack frame layout.
