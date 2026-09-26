@@ -4491,6 +4491,15 @@ arguments in the preferred slot that is in the middle of the quad word
 instead of starting at the top.  The default implementation returns 0.
 @end deftypefn
 
+@deftypefn {Target Hook} bool TARGET_REG_PARM_WORD_SLOTS_P (const_tree @var{fntype})
+This hook returns true if every argument of a call to a function of type
+@var{fntype} that is passed in registers gets a @code{PARM_BOUNDARY}-sized
+and aligned slot in the @code{REG_PARM_STACK_SPACE} area, whatever the
+argument's size and alignment.  @var{fntype} is null for a library call.
+
+The default implementation returns false.
+@end deftypefn
+
 @deftypefn {Target Hook} pad_direction TARGET_FUNCTION_ARG_PADDING (machine_mode @var{mode}, const_tree @var{type})
 This hook determines whether, and in which direction, to pad out
 an argument of mode @var{mode} and type @var{type}.  It returns

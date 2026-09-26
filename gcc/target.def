@@ -5295,6 +5295,17 @@ instead of starting at the top.  The default implementation returns 0.",
  default_function_arg_offset)
 
 DEFHOOK
+(reg_parm_word_slots_p,
+ "This hook returns true if every argument of a call to a function of type\n\
+@var{fntype} that is passed in registers gets a @code{PARM_BOUNDARY}-sized\n\
+and aligned slot in the @code{REG_PARM_STACK_SPACE} area, whatever the\n\
+argument's size and alignment.  @var{fntype} is null for a library call.\n\
+\n\
+The default implementation returns false.",
+ bool, (const_tree fntype),
+ hook_bool_const_tree_false)
+
+DEFHOOK
 (function_arg_padding,
  "This hook determines whether, and in which direction, to pad out\n\
 an argument of mode @var{mode} and type @var{type}.  It returns\n\
