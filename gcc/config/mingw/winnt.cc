@@ -172,17 +172,16 @@ mingw_pe_valid_dllimport_attribute_p (const_tree decl)
 #if !defined (TARGET_AARCH64_MS_ABI)
 
 /* Return string which is the function name, identified by ID, modified
-   with a suffix consisting of an atsign (@) followed by the number of
-   bytes of arguments.  If ID is NULL use the DECL_NAME as base. If
-   FASTCALL is true, also add the FASTCALL_PREFIX.
+   with a PREFIX and a SUFFIX followed by the number of
+   bytes of arguments.  If ID is NULL use the DECL_NAME as base.
    Return NULL if no change required.  */
 
 static tree
-gen_stdcall_or_fastcall_suffix (tree decl, tree id, bool fastcall)
+gen_decorated_name (tree decl, tree id, const char* prefix, const char* suffix)
 {
   HOST_WIDE_INT total = 0;
   const char *old_str = IDENTIFIER_POINTER (id != NULL_TREE ? id : DECL_NAME (decl));
-  char *new_str, *p;
+  char *new_str;
   tree type = TREE_TYPE (DECL_ORIGIN (decl));
   tree arg;
   function_args_iterator args_iter;
@@ -218,16 +217,14 @@ gen_stdcall_or_fastcall_suffix (tree decl, tree id, bool fastcall)
     }
 
   /* Assume max of 8 base 10 digits in the suffix.  */
-  p = new_str = XALLOCAVEC (char, 1 + strlen (old_str) + 1 + 8 + 1);
-  if (fastcall)
-    *p++ = FASTCALL_PREFIX;
-  sprintf (p, "%s@" HOST_WIDE_INT_PRINT_DEC, old_str, total);
+  new_str = XALLOCAVEC (char, 1 + strlen (old_str) + 1 + 8 + 1);
+  sprintf (new_str, "%s%s%s" HOST_WIDE_INT_PRINT_DEC, prefix, old_str, suffix, total);
 
   return get_identifier (new_str);
 }
 
-/* Maybe decorate and get a new identifier for the DECL of a stdcall or
-   fastcall function. The original identifier is supplied in ID. */
+/* Maybe decorate and get a new identifier for the DECL of a stdcall,
+   fastcall, or vectorcall function. The original identifier is supplied in ID. */
 
 static tree
 i386_pe_maybe_mangle_decl_assembler_name (tree decl, tree id)
@@ -243,10 +240,15 @@ i386_pe_maybe_mangle_decl_assembler_name (tree decl, tree id)
 	    /* If we are using -mrtd emit undecorated symbol and let linker
 	       do the proper resolving.  */
 	    return NULL_TREE;
-	  new_id = gen_stdcall_or_fastcall_suffix (decl, id, false);
+	  new_id = gen_decorated_name (decl, id, "", STDCALL_SUFFIX);
 	}
       else if ((ccvt & IX86_CALLCVT_FASTCALL) != 0)
-	new_id = gen_stdcall_or_fastcall_suffix (decl, id, true);
+	{
+	  const char prefix[2] = {FASTCALL_PREFIX, '\0'};
+	  new_id = gen_decorated_name (decl, id, prefix, FASTCALL_SUFFIX);
+	}
+      else if ((ccvt & IX86_CALLCVT_VECTORCALL) != 0)
+	new_id = gen_decorated_name (decl, id, "", VECTORCALL_SUFFIX);
     }
 
   return new_id;
@@ -415,7 +417,7 @@ i386_pe_binds_local_p (const_tree exp)
   return default_binds_local_p_1 (exp, 0);
 }
 
-/* Also strip the fastcall prefix and stdcall suffix.  */
+/* Also strip the fastcall prefix, stdcall suffix and vectorcall suffix.  */
 
 const char *
 i386_pe_strip_name_encoding_full (const char *str)
@@ -427,7 +429,7 @@ i386_pe_strip_name_encoding_full (const char *str)
   if (*name == '@')
     name++;
 
-  /* Strip trailing "@n".  */
+  /* Strip trailing "@n" or "@@n".  */
   p = strchr (name, '@');
   if (p)
     return ggc_alloc_string (name, p - name);
