@@ -1598,7 +1598,7 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
 #endif
 			     reg_parm_stack_space,
 			     args[i].pass_on_stack ? 0 : args[i].partial,
-			     fndecl, args_size, &args[i].locate);
+			     fntype, args_size, &args[i].locate);
 #ifdef BLOCK_REG_PADDING
       else
 	/* The argument is passed entirely in registers.  See at which
