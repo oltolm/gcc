@@ -1056,7 +1056,9 @@ paste_tokens (cpp_reader *pfile, location_t location,
 
   /* Set pfile->cur_token as required by _cpp_lex_direct.  */
   pfile->cur_token = _cpp_temp_token (pfile);
+  pfile->state.in_paste = true;
   lhs = _cpp_lex_direct (pfile);
+  pfile->state.in_paste = false;
   if (pfile->buffer->cur != pfile->buffer->rlimit)
     {
       location_t saved_loc = lhs->src_loc;
