@@ -296,6 +296,10 @@ struct lexer_state
 
   /* Nonzero if _Pragma should not be interpreted.  */
   unsigned char ignore__Pragma;
+
+  /* Nonzero while in paste_tokens.  Newlines in the pasted token were
+     already counted when its operands were lexed.  */
+  bool in_paste;
 };
 
 /* Special nodes - identifiers with predefined significance.  */
