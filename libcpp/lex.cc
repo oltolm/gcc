@@ -2817,7 +2817,8 @@ lex_raw_string (cpp_reader *pfile, cpp_token *token, const uchar *base)
 	  accum.append (pfile, base, pos - base + 1);
 	  _cpp_process_line_notes (pfile, false);
 
-	  if (pfile->buffer->next_line < pfile->buffer->rlimit)
+	  if (pfile->buffer->next_line < pfile->buffer->rlimit
+	      && !pfile->state.in_paste)
 	    CPP_INCREMENT_LINE (pfile, 0);
 	  pfile->buffer->need_line = true;
 
