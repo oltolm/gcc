@@ -15,6 +15,7 @@ toolexeclib_LTLIBRARIES = libtsan.la
 nodist_toolexeclib_HEADERS = libtsan_preinit.o
 
 tsan_files = \
+	tsan_adaptive_delay.cpp \
 	tsan_debugging.cpp \
 	tsan_external.cpp \
 	tsan_fd.cpp \
