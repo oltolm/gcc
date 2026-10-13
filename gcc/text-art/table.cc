@@ -974,10 +974,7 @@ test_spans_3 ()
 
   table.set_cell_span (table::rect_t (table::coord_t (0, 2),
 				      table::size_t (buf_size, 1)),
-		       styled_string::from_fmt (sm,
-						     nullptr,
-						     "'buf' (char[%i])",
-						     (int)buf_size));
+		       styled_string (sm, "'buf' (char[10])"));
   table.set_cell_span (table::rect_t (table::coord_t (buf_size + 1, 2),
 				      table::size_t (str_size - buf_size, 1)),
 		       styled_string (sm, "overflow"));
