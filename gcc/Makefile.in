@@ -253,9 +253,10 @@ INSNATTRTAB_SEQ_O = $(patsubst %, insn-attrtab-%.o, $(INSNATTRTAB_SPLITS_SEQ))
 
 # These files are to have specific diagnostics suppressed, or are not to
 # be subject to -Werror:
-# flex output may yield harmless "no previous prototype" warnings
-build/gengtype-lex.o-warn = -Wno-error
-gengtype-lex.o-warn = -Wno-error
+# flex output may yield harmless "no previous prototype" warnings, and
+# falls through between case labels of rules that share an action
+build/gengtype-lex.o-warn = -Wno-error -Wno-implicit-fallthrough
+gengtype-lex.o-warn = -Wno-error -Wno-implicit-fallthrough
 libgcov-util.o-warn = -Wno-error
 libgcov-driver-tool.o-warn = -Wno-error
 libgcov-merge-tool.o-warn = -Wno-error
