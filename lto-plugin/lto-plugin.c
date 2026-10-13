@@ -41,6 +41,13 @@ along with this program; see the file COPYING3.  If not see
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#ifdef __MINGW32__
+/* Use the C99-conforming printf/scanf, which support "ll" on all runtimes.  */
+#undef __USE_MINGW_ANSI_STDIO
+#define __USE_MINGW_ANSI_STDIO 1
+#endif
+
 #if HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -72,14 +79,6 @@ along with this program; see the file COPYING3.  If not see
 #include "../gcc/lto/common.h"
 #include "simple-object.h"
 #include "plugin-api.h"
-
-/* We need to use I64 instead of ll width-specifier on native Windows.
-   The reason for this is that older MS-runtimes don't support the ll.  */
-#ifdef __MINGW32__
-#define PRI_LL "I64"
-#else
-#define PRI_LL "ll"
-#endif
 
 /* Handle opening elf files on hosts, such as Windows, that may use
    text file handling that will break binary access.  */
@@ -500,7 +499,7 @@ dump_symtab (FILE *f, struct plugin_symtab *symtab)
 
       assert (resolution != LDPR_UNKNOWN);
 
-      fprintf (f, "%u %" PRI_LL "x %s %s\n",
+      fprintf (f, "%u %llx %s %s\n",
                (unsigned int) slot, symtab->aux[j].id,
 	       lto_resolution_str[resolution],
 	       symtab->syms[j].name);
@@ -1099,7 +1098,7 @@ process_symtab (void *data, const char *name, off_t offset, off_t length)
 
   s = strrchr (name, '.');
   if (s)
-    sscanf (s, ".%" PRI_LL "x", &obj->out->id);
+    sscanf (s, ".%llx", &obj->out->id);
   secdata = secdatastart = xmalloc (length);
   offset += obj->file->offset;
   if (offset != lseek (obj->file->fd, offset, SEEK_SET))
@@ -1151,7 +1150,7 @@ process_symtab_extension (void *data, const char *name, off_t offset,
 
   s = strrchr (name, '.');
   if (s)
-    sscanf (s, ".%" PRI_LL "x", &obj->out->id);
+    sscanf (s, ".%llx", &obj->out->id);
   secdata = secdatastart = xmalloc (length);
   offset += obj->file->offset;
   if (offset != lseek (obj->file->fd, offset, SEEK_SET))
