@@ -1078,6 +1078,17 @@ extern void c_init_preprocess (void);
    underlying type.  */
 #define ENUM_FIXED_UNDERLYING_TYPE_P(NODE) (TYPE_LANG_FLAG_5 (NODE))
 
+/* In a C RECORD_TYPE, nonzero if the type is a slice type T[:] built by
+   c_build_slice_type.  C++ uses the flag for
+   TYPE_HAS_NONTRIVIAL_DESTRUCTOR, hence the dialect check in
+   c_slice_type_p, which the C/C++ pretty-printer shares.  */
+#define C_TYPE_SLICE_P(TYPE) TYPE_LANG_FLAG_4 (RECORD_TYPE_CHECK (TYPE))
+
+#define c_slice_type_p(TYPE)				\
+  (!c_dialect_cxx ()					\
+   && TREE_CODE (TYPE) == RECORD_TYPE			\
+   && C_TYPE_SLICE_P (TYPE))
+
 extern tree do_case (location_t, tree, tree, tree);
 extern tree build_stmt (location_t, enum tree_code, ...);
 extern tree build_real_imag_expr (location_t, enum tree_code, tree);

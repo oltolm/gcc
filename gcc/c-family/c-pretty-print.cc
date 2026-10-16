@@ -477,7 +477,8 @@ pp_c_specifier_qualifier_list (c_pretty_printer *pp, tree t)
 	tree pointee = strip_pointer_operator (TREE_TYPE (t));
 	pp_c_specifier_qualifier_list (pp, pointee);
 	if (TREE_CODE (pointee) == ARRAY_TYPE
-	    || TREE_CODE (pointee) == FUNCTION_TYPE)
+	    || TREE_CODE (pointee) == FUNCTION_TYPE
+	    || c_slice_type_p (pointee))
 	  {
 	    pp_c_whitespace (pp);
 	    pp_c_left_paren (pp);
@@ -526,7 +527,11 @@ pp_c_specifier_qualifier_list (c_pretty_printer *pp, tree t)
       break;
 
     default:
-      pp->simple_type_specifier (t);
+      if (c_slice_type_p (t))
+	pp_c_specifier_qualifier_list (pp,
+				       TREE_TYPE (TREE_TYPE (TYPE_FIELDS (t))));
+      else
+	pp->simple_type_specifier (t);
       break;
     }
   if ((pp->flags & pp_c_flag_gnu_v3) && code != POINTER_TYPE)
@@ -587,7 +592,8 @@ c_pretty_printer::abstract_declarator (tree t)
   if (TREE_CODE (t) == POINTER_TYPE)
     {
       if (TREE_CODE (TREE_TYPE (t)) == ARRAY_TYPE
-	  || TREE_CODE (TREE_TYPE (t)) == FUNCTION_TYPE)
+	  || TREE_CODE (TREE_TYPE (t)) == FUNCTION_TYPE
+	  || c_slice_type_p (TREE_TYPE (t)))
 	pp_c_right_paren (this);
       t = TREE_TYPE (t);
     }
@@ -699,6 +705,16 @@ c_pretty_printer::direct_abstract_declarator (tree t)
       direct_abstract_declarator (TREE_TYPE (t));
       break;
 
+    case RECORD_TYPE:
+      if (c_slice_type_p (t))
+	{
+	  pp_c_left_bracket (this);
+	  pp_colon (this);
+	  pp_c_right_bracket (this);
+	  direct_abstract_declarator (TREE_TYPE (TREE_TYPE (TYPE_FIELDS (t))));
+	}
+      break;
+
     case IDENTIFIER_NODE:
     case VOID_TYPE:
     case OPAQUE_TYPE:
@@ -708,7 +724,6 @@ c_pretty_printer::direct_abstract_declarator (tree t)
     case FIXED_POINT_TYPE:
     case ENUMERAL_TYPE:
     case BITINT_TYPE:
-    case RECORD_TYPE:
     case UNION_TYPE:
     case VECTOR_TYPE:
     case COMPLEX_TYPE:

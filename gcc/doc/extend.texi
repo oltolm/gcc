@@ -616,6 +616,7 @@ including extensions for aggregate initializers for objects of these types.
 * Unnamed Fields::      Unnamed struct/union fields within structs/unions.
 * Cast to Union::       Casting to union type from any member of the union.
 * Subscripting::        Any array can be subscripted, even if not an lvalue.
+* Slices::              Array views that carry their length.
 * Initializers::        Non-constant initializers.
 * Compound Literals::   Compound literals give structures, unions
                         or arrays as values.
@@ -1094,6 +1095,62 @@ bar (int index)
 @}
 @end group
 @end smallexample
+
+@node Slices
+@subsection Slices
+@cindex slices
+@cindex array views
+@cindex fat pointers
+
+With @option{-fslices}, GNU C accepts slice types, which describe a run
+of array elements together with its length.  A slice is declared with
+@samp{[:]} in place of an array dimension:
+
+@smallexample
+int s[:];
+@end smallexample
+
+The type @code{@var{T}[:]} is a structure type with two members,
+@code{@var{T} *data} and @code{size_t count}, which may be read and
+assigned like any other members.  All slices with the same element type
+have the same type.  Slices are passed to and returned from functions by
+value, and a parameter declared as a slice is not adjusted to a pointer.
+
+An array of known size converts implicitly to a slice of its element
+type in initialization, assignment, argument passing and return, setting
+@code{data} to the first element and @code{count} to the number of
+elements.  A slice converts implicitly to a slice whose element type
+adds qualifiers, as in @code{int[:]} to @code{const int[:]}.  A slice
+never converts to a pointer.  To build a slice from a pointer and a
+length, assign its members.
+
+For a slice @var{s}, @code{@var{s}[@var{i}]} is
+@code{@var{s}.data[@var{i}]} and @code{_Countof (@var{s})} is
+@code{@var{s}.count}, which is not a constant expression.
+
+If @var{e} is an array of known size or a slice,
+@code{@var{e}[@var{lo}:@var{hi}]} is the slice of the elements
+@code{@var{e}[@var{lo}]} up to but not including
+@code{@var{e}[@var{hi}]}.  The bounds are integers; @var{lo} defaults to
+0 and @var{hi} to the number of elements of @var{e}.  @var{e} and
+@var{lo} are evaluated once.  Pointers cannot be sliced.  Within OpenMP
+and OpenACC clauses, @samp{[@var{lo}:@var{length}]} keeps its meaning as
+an array section.
+
+@smallexample
+int a[5];
+int s[:] = a[1:4];      /* @r{s.data == &a[1], s.count == 3} */
+s = s[1:];              /* @r{s.data == &a[2], s.count == 2} */
+@end smallexample
+
+With @option{-fsanitize=bounds}, @code{@var{s}[@var{i}]} checks that
+@var{i} is less than @code{@var{s}.count}, and
+@code{@var{e}[@var{lo}:@var{hi}]} checks that
+@var{lo} @code{<=} @var{hi} @code{<=} the number of elements of
+@var{e}.  A failed check is reported as an out-of-bounds array index.
+
+Slices of functions, of @code{void} and of variably modified types are
+not allowed.
 
 @node Initializers
 @subsection Non-Constant Initializers

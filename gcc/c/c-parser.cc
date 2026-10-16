@@ -3095,6 +3095,7 @@ c_parser_declaration_or_fndef (c_parser *parser, bool fndef_ok,
 		      case cdk_array:
 		      case cdk_function:
 		      case cdk_pointer:
+		      case cdk_slice:
 			last_non_id_attrs = decl;
 			decl = decl->declarator;
 			break;
@@ -5188,6 +5189,15 @@ c_parser_direct_declarator_inner (c_parser *parser, bool id_present,
       dimen.original_code = ERROR_MARK;
       dimen.original_type = NULL_TREE;
       c_parser_consume_token (parser);
+      if (flag_slices
+	  && c_parser_next_token_is (parser, CPP_COLON)
+	  && c_parser_peek_2nd_token (parser)->type == CPP_CLOSE_SQUARE)
+	{
+	  c_parser_consume_token (parser);
+	  c_parser_consume_token (parser);
+	  inner = build_slice_declarator (brace_loc, inner);
+	  return c_parser_direct_declarator_inner (parser, id_present, inner);
+	}
       c_parser_declspecs (parser, quals_attrs, false, false, true,
 			  false, false, false, false, cla_prefer_id);
 
@@ -14095,7 +14105,7 @@ c_parser_postfix_expression_after_primary (c_parser *parser,
 	  /* Array reference.  */
 	  c_parser_consume_token (parser);
 	  idx = len = NULL_TREE;
-	  if (!c_omp_array_section_p
+	  if (!(c_omp_array_section_p || flag_slices)
 	      || c_parser_next_token_is_not (parser, CPP_COLON))
 	    idx = c_parser_expression (parser).value;
 
@@ -14108,6 +14118,15 @@ c_parser_postfix_expression_after_primary (c_parser *parser,
 
 	      expr.value = build_omp_array_section (op_loc, expr.value, idx,
 						    len);
+	    }
+	  else if (flag_slices
+		   && c_parser_next_token_is (parser, CPP_COLON))
+	    {
+	      c_parser_consume_token (parser);
+	      tree hi = NULL_TREE;
+	      if (c_parser_next_token_is_not (parser, CPP_CLOSE_SQUARE))
+		hi = c_parser_expression (parser).value;
+	      expr.value = build_slice_ref (op_loc, expr.value, idx, hi);
 	    }
 	  else
 	    expr.value = build_array_ref (op_loc, expr.value, idx);

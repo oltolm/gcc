@@ -209,7 +209,7 @@ in the following sections.
 -flax-vector-conversions  -fms-extensions
 -fpermitted-flt-eval-methods=@var{standard}
 -fplan9-extensions  -fsigned-bitfields  -funsigned-bitfields
--fsigned-char  -funsigned-char  -fsso-struct=@var{endianness}
+-fsigned-char  -funsigned-char  -fslices  -fsso-struct=@var{endianness}
 -fstrict-flex-arrays[=@var{n}]}
 
 @item C++ Language Options
@@ -2964,6 +2964,13 @@ make such a program work with the opposite default.
 The type @code{char} is always a distinct type from each of
 @code{signed char} or @code{unsigned char}, even though its behavior
 is always just like one of those two.
+
+@opindex fslices
+@opindex fno-slices
+@item -fslices
+Accept slice types @code{@var{type} @var{name}[:]} and slice expressions
+@code{@var{expr}[@var{lo}:@var{hi}]}.  @xref{Slices}, for details.
+This is only supported for C, not C++.
 
 @opindex fsso-struct
 @item -fsso-struct=@var{endianness}

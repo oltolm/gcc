@@ -2525,6 +2525,8 @@ default_function_array_conversion (location_t loc, struct c_expr exp)
 	  }
 
 	exp.value = array_to_pointer_conversion (loc, exp.value);
+	/* Conversion to a slice type needs the element count.  */
+	exp.original_type = type;
       }
       break;
     case FUNCTION_TYPE:
@@ -3563,6 +3565,23 @@ build_indirect_ref (location_t loc, tree ptr, ref_operator errstring)
   return error_mark_node;
 }
 
+/* Return an IFN_UBSAN_BOUNDS call that reports INDEX as out of bounds
+   for an array of element type ELT unless INDEX < BOUND.  The reported
+   type is ARRAY_TYPE when that is non-null and of constant size, so that
+   the runtime prints its length, and ELT[] otherwise.  */
+
+static tree
+c_slice_bounds_check (location_t loc, tree array_type, tree elt, tree index,
+		      tree bound)
+{
+  tree desc = array_type;
+  if (!desc || TREE_CODE (TYPE_SIZE (desc)) != INTEGER_CST)
+    desc = build_array_type (elt, NULL_TREE);
+  tree zero = build_int_cst (build_pointer_type (desc), 0);
+  return build_call_expr_internal_loc (loc, IFN_UBSAN_BOUNDS, void_type_node,
+				       3, zero, index, bound);
+}
+
 /* This handles expressions of the form "a[i]", which denotes
    an array reference.
 
@@ -3585,6 +3604,26 @@ build_array_ref (location_t loc, tree array, tree index)
   if (TREE_TYPE (array) == error_mark_node
       || TREE_TYPE (index) == error_mark_node)
     return error_mark_node;
+
+  if (c_slice_type_p (TREE_TYPE (array)))
+    {
+      tree data = TYPE_FIELDS (TREE_TYPE (array));
+      if (sanitize_flags_p (SANITIZE_BOUNDS) && current_function_decl)
+	{
+	  tree count = DECL_CHAIN (data);
+	  array = save_expr (c_fully_fold (array, false, NULL));
+	  index = save_expr (c_fully_fold (index, false, NULL));
+	  tree check
+	    = c_slice_bounds_check (loc, NULL_TREE,
+				    TREE_TYPE (TREE_TYPE (data)), index,
+				    build3_loc (loc, COMPONENT_REF,
+						TREE_TYPE (count), array,
+						count, NULL_TREE));
+	  index = build2 (COMPOUND_EXPR, TREE_TYPE (index), check, index);
+	}
+      array = build3_loc (loc, COMPONENT_REF, TREE_TYPE (data), array, data,
+			  NULL_TREE);
+    }
 
   if (TREE_CODE (TREE_TYPE (array)) != ARRAY_TYPE
       && TREE_CODE (TREE_TYPE (array)) != POINTER_TYPE
@@ -3731,6 +3770,128 @@ build_array_ref (location_t loc, tree array, tree index)
 	ret = non_lvalue_loc (loc, ret);
       return ret;
     }
+}
+
+/* Return the slice bound BOUND after the integer promotions, or
+   error_mark_node if it is not an integer.  */
+
+static tree
+c_slice_bound (location_t loc, tree bound)
+{
+  if (!INTEGRAL_TYPE_P (TREE_TYPE (bound)))
+    {
+      error_at (loc, "slice bound is not an integer");
+      return error_mark_node;
+    }
+  return save_expr (c_fully_fold (default_conversion (bound), false, NULL));
+}
+
+/* Build the slice expression BASE[LO:HI] at LOC, where LO and HI are
+   NULL_TREE if omitted.  */
+
+tree
+build_slice_ref (location_t loc, tree base, tree lo, tree hi)
+{
+  tree type = TREE_TYPE (base);
+  if (type == error_mark_node
+      || (lo && TREE_TYPE (lo) == error_mark_node)
+      || (hi && TREE_TYPE (hi) == error_mark_node))
+    return error_mark_node;
+
+  /* The result is a CONSTRUCTOR, which c_fully_fold does not look
+     into, so fold the operands now.  */
+  tree data, count, elt;
+  if (TREE_CODE (type) == ARRAY_TYPE && COMPLETE_TYPE_P (type))
+    {
+      elt = TREE_TYPE (type);
+      base = c_fully_fold (base, false, NULL, true);
+      data = array_to_pointer_conversion (loc, base);
+      count = fold_convert_loc (loc, size_type_node,
+				array_type_nelts_top (type));
+    }
+  else if (c_slice_type_p (type))
+    {
+      tree data_field = TYPE_FIELDS (type);
+      tree count_field = DECL_CHAIN (data_field);
+      elt = TREE_TYPE (TREE_TYPE (data_field));
+      mark_exp_read (base);
+      base = save_expr (c_fully_fold (base, false, NULL));
+      data = build3_loc (loc, COMPONENT_REF, TREE_TYPE (data_field), base,
+			 data_field, NULL_TREE);
+      count = build3_loc (loc, COMPONENT_REF, TREE_TYPE (count_field), base,
+			  count_field, NULL_TREE);
+    }
+  else
+    {
+      error_at (loc, "cannot slice a value of type %qT", type);
+      return error_mark_node;
+    }
+
+  if (c_type_variably_modified_p (elt))
+    {
+      error_at (loc, "slice of variably modified type");
+      return error_mark_node;
+    }
+
+  if (lo)
+    {
+      lo = c_slice_bound (loc, lo);
+      if (lo == error_mark_node)
+	return error_mark_node;
+    }
+  if (hi)
+    {
+      hi = c_slice_bound (loc, hi);
+      if (hi == error_mark_node)
+	return error_mark_node;
+    }
+
+  tree size_hi = hi ? fold_convert_loc (loc, size_type_node, hi) : count;
+  tree checks = NULL_TREE;
+  if (sanitize_flags_p (SANITIZE_BOUNDS) && current_function_decl)
+    {
+      /* Check hi <= count, then lo <= hi.  */
+      tree array_type = TREE_CODE (type) == ARRAY_TYPE ? type : NULL_TREE;
+      tree one = build_int_cst (size_type_node, 1);
+      count = save_expr (count);
+      if (hi)
+	checks = c_slice_bounds_check (loc, array_type, elt, hi,
+				       fold_build2_loc (loc, PLUS_EXPR,
+							size_type_node,
+							count, one));
+      else
+	size_hi = count;
+      if (lo)
+	{
+	  tree check
+	    = c_slice_bounds_check (loc, array_type, elt, lo,
+				    fold_build2_loc (loc, PLUS_EXPR,
+						     size_type_node,
+						     size_hi, one));
+	  checks = checks ? build2 (COMPOUND_EXPR, void_type_node, checks,
+				    check)
+			  : check;
+	}
+    }
+
+  count = size_hi;
+  if (lo)
+    {
+      tree size_lo = fold_convert_loc (loc, size_type_node, lo);
+      data = build_binary_op (loc, PLUS_EXPR, data, size_lo, false);
+      count = fold_build2_loc (loc, MINUS_EXPR, size_type_node, count,
+			       size_lo);
+    }
+  if (checks)
+    data = build2 (COMPOUND_EXPR, TREE_TYPE (data), checks, data);
+
+  tree slice = c_build_slice_type (elt);
+  tree data_field = TYPE_FIELDS (slice);
+  vec<constructor_elt, va_gc> *v = NULL;
+  CONSTRUCTOR_APPEND_ELT (v, data_field,
+			  convert (TREE_TYPE (data_field), data));
+  CONSTRUCTOR_APPEND_ELT (v, DECL_CHAIN (data_field), count);
+  return build_constructor (slice, v);
 }
 
 /* Build an OpenMP array section reference, creating an exact type for the
@@ -4162,6 +4323,17 @@ c_expr_countof_expr (location_t loc, struct c_expr expr)
 
       tree folded_expr = c_fully_fold (expr.value, require_constant_value,
 				       &expr_const_operands);
+      if (c_slice_type_p (TREE_TYPE (folded_expr)))
+	{
+	  tree count = DECL_CHAIN (TYPE_FIELDS (TREE_TYPE (folded_expr)));
+	  ret.value = build3_loc (loc, COMPONENT_REF, TREE_TYPE (count),
+				  expr.value, count, NULL_TREE);
+	  ret.original_code = COUNTOF_EXPR;
+	  ret.original_type = NULL;
+	  ret.m_decimal = 0;
+	  pop_maybe_used (true);
+	  return ret;
+	}
       ret.value = c_countof_type (loc, TREE_TYPE (folded_expr));
       c_last_sizeof_arg = expr.value;
       c_last_sizeof_loc = loc;
@@ -8386,6 +8558,83 @@ maybe_inform_typedef_location (tree type, const char *highlight_color)
   inform (&richloc, "%e declared here", &e_typedef_decl);
 }
 
+/* Return true if a slice of element type TO can point to elements of
+   type FROM: the types are compatible and TO has at least FROM's
+   qualifiers.  As for pointers, only the outermost element type may gain
+   qualifiers.  */
+
+static bool
+slice_element_convertible_p (tree to, tree from)
+{
+  return (comptypes (TYPE_MAIN_VARIANT (to), TYPE_MAIN_VARIANT (from))
+	  && !(TYPE_QUALS (from) & ~TYPE_QUALS (to)));
+}
+
+/* Return the slice of type TYPE covering the array RHS, or NULL_TREE if
+   RHS is not an array whose elements TYPE can point to.  RHS may already
+   have been converted to a pointer, in which case ORIGTYPE is the array
+   type.  */
+
+static tree
+convert_array_to_slice (location_t loc, tree type, tree rhs, tree origtype)
+{
+  tree arrtype;
+  if (TREE_CODE (TREE_TYPE (rhs)) == ARRAY_TYPE)
+    {
+      arrtype = TREE_TYPE (rhs);
+      rhs = array_to_pointer_conversion (loc, rhs);
+    }
+  else if (origtype
+	   && TREE_CODE (origtype) == ARRAY_TYPE
+	   && TREE_CODE (TREE_TYPE (rhs)) == POINTER_TYPE)
+    arrtype = origtype;
+  else
+    return NULL_TREE;
+
+  if (!COMPLETE_TYPE_P (arrtype))
+    return NULL_TREE;
+
+  tree data = TYPE_FIELDS (type);
+  tree count = DECL_CHAIN (data);
+  if (!slice_element_convertible_p (TREE_TYPE (TREE_TYPE (data)),
+				    TREE_TYPE (arrtype)))
+    return NULL_TREE;
+
+  tree nelts = fold_convert_loc (loc, TREE_TYPE (count),
+				 array_type_nelts_top (arrtype));
+  vec<constructor_elt, va_gc> *v = NULL;
+  CONSTRUCTOR_APPEND_ELT (v, data, convert (TREE_TYPE (data), rhs));
+  CONSTRUCTOR_APPEND_ELT (v, count, nelts);
+  return build_constructor (TYPE_MAIN_VARIANT (type), v);
+}
+
+/* Return the slice of type TYPE with the data and count of the slice RHS,
+   or NULL_TREE unless TYPE's element type adds qualifiers to RHS's.  */
+
+static tree
+convert_slice_to_slice (tree type, tree rhs)
+{
+  tree rhstype = TREE_TYPE (rhs);
+  if (TYPE_MAIN_VARIANT (type) == TYPE_MAIN_VARIANT (rhstype))
+    return NULL_TREE;
+
+  tree data = TYPE_FIELDS (type);
+  tree rdata = TYPE_FIELDS (rhstype);
+  if (!slice_element_convertible_p (TREE_TYPE (TREE_TYPE (data)),
+				    TREE_TYPE (TREE_TYPE (rdata))))
+    return NULL_TREE;
+
+  rhs = save_expr (rhs);
+  tree rcount = DECL_CHAIN (rdata);
+  tree ptr = build3 (COMPONENT_REF, TREE_TYPE (rdata), rhs, rdata, NULL_TREE);
+  vec<constructor_elt, va_gc> *v = NULL;
+  CONSTRUCTOR_APPEND_ELT (v, data, convert (TREE_TYPE (data), ptr));
+  CONSTRUCTOR_APPEND_ELT (v, DECL_CHAIN (data),
+			  build3 (COMPONENT_REF, TREE_TYPE (rcount), rhs,
+				  rcount, NULL_TREE));
+  return build_constructor (TYPE_MAIN_VARIANT (type), v);
+}
+
 /* Convert value RHS to type TYPE as preparation for an assignment to
    an lvalue of type TYPE.  If ORIGTYPE is not NULL_TREE, it is the
    original type of RHS; this differs from TREE_TYPE (RHS) for enum
@@ -8539,6 +8788,15 @@ convert_for_assignment (location_t location, location_t expr_loc, tree type,
 
   if (coder == ERROR_MARK)
     return error_mark_node;
+
+  if (c_slice_type_p (type))
+    {
+      tree slice = convert_array_to_slice (expr_loc, type, rhs, origtype);
+      if (!slice && c_slice_type_p (rhstype))
+	slice = convert_slice_to_slice (type, rhs);
+      if (slice)
+	return slice;
+    }
 
   if (c_dialect_objc ())
     {
@@ -10241,6 +10499,24 @@ digest_init (location_t init_loc, tree decl, tree type, tree init,
 			integer_type_node, type,
 			RAW_DATA_UCHAR_ELT (inside_init, i),
 			RAW_DATA_SCHAR_ELT (inside_init, i));
+      return inside_init;
+    }
+
+  if (c_slice_type_p (type))
+    {
+      inside_init
+	= convert_for_assignment (init_loc, UNKNOWN_LOCATION, type,
+				  inside_init, origtype,
+				  require_constant ? ic_init_const : ic_init,
+				  null_pointer_constant, NULL_TREE, NULL_TREE,
+				  0);
+      if (inside_init != error_mark_node
+	  && require_constant
+	  && !initializer_constant_valid_p (inside_init, type))
+	{
+	  error_init (init_loc, "initializer element is not constant");
+	  inside_init = error_mark_node;
+	}
       return inside_init;
     }
 

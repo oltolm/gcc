@@ -5527,6 +5527,57 @@ set_array_declarator_inner (struct c_declarator *decl,
   return decl;
 }
 
+/* Construct a slice declarator T[:] at LOC containing INNER.  */
+
+struct c_declarator *
+build_slice_declarator (location_t loc, struct c_declarator *inner)
+{
+  struct c_declarator *declarator = XOBNEW (&parser_obstack,
+					    struct c_declarator);
+  declarator->kind = cdk_slice;
+  declarator->id_loc = loc;
+  declarator->declarator = inner;
+  return declarator;
+}
+
+/* Slice types indexed by element type, so that each T[:] is a single
+   type.  */
+static GTY(()) hash_map<tree, tree> *c_slice_types;
+
+/* Return the slice type ELT[:], a structure with members "data" of type
+   ELT * and "count" of type size_t.  */
+
+tree
+c_build_slice_type (tree elt)
+{
+  /* Typedef names are type variants; key on the main variant with ELT's
+     qualifiers.  */
+  elt = c_build_qualified_type (TYPE_MAIN_VARIANT (elt), TYPE_QUALS (elt));
+
+  if (!c_slice_types)
+    c_slice_types = hash_map<tree, tree>::create_ggc (16);
+  if (tree *slot = c_slice_types->get (elt))
+    return *slot;
+
+  tree type = make_node (RECORD_TYPE);
+  tree data = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+			  get_identifier ("data"), c_build_pointer_type (elt));
+  tree count = build_decl (UNKNOWN_LOCATION, FIELD_DECL,
+			   get_identifier ("count"), size_type_node);
+  DECL_CONTEXT (data) = type;
+  DECL_CONTEXT (count) = type;
+  DECL_CHAIN (data) = count;
+  TYPE_FIELDS (type) = data;
+  tree stub = build_decl (UNKNOWN_LOCATION, TYPE_DECL, NULL_TREE, type);
+  DECL_ARTIFICIAL (stub) = 1;
+  TYPE_STUB_DECL (type) = stub;
+  C_TYPE_SLICE_P (type) = 1;
+  layout_type (type);
+
+  c_slice_types->put (elt, type);
+  return type;
+}
+
 /* Determine whether TYPE is a one-element array type "[1]".  */
 static bool
 one_element_array_type_p (const_tree type)
@@ -6952,6 +7003,7 @@ grokdeclarator (const struct c_declarator *declarator,
 
 	case cdk_function:
 	case cdk_pointer:
+	case cdk_slice:
 	  funcdef_syntax = (decl->kind == cdk_function);
 	  if (first_non_attr_kind == cdk_attrs)
 	    first_non_attr_kind = decl->kind;
@@ -7798,6 +7850,47 @@ grokdeclarator (const struct c_declarator *declarator,
 	       that were given inside the `*'.  */
 	    type_quals = declarator->u.pointer_quals;
 
+	    declarator = declarator->declarator;
+	    break;
+	  }
+	case cdk_slice:
+	  {
+	    if (TREE_CODE (type) == FUNCTION_TYPE)
+	      {
+		if (name)
+		  error_at (loc, "declaration of %qE as slice of functions",
+			    name);
+		else
+		  error_at (loc,
+			    "declaration of type name as slice of functions");
+		type = error_mark_node;
+	      }
+	    else if (VOID_TYPE_P (type))
+	      {
+		if (name)
+		  error_at (loc, "declaration of %qE as slice of voids", name);
+		else
+		  error_at (loc, "declaration of type name as slice of voids");
+		type = error_mark_node;
+	      }
+	    /* The slice's data member would be a variably modified
+	       structure member.  */
+	    else if (c_type_variably_modified_p (type))
+	      {
+		error_at (loc, "slice of variably modified type");
+		type = error_mark_node;
+	      }
+	    else
+	      {
+		if (type_quals)
+		  type = c_build_qualified_type (type, type_quals,
+						 orig_qual_type,
+						 orig_qual_indirect);
+		type = c_build_slice_type (type);
+	      }
+	    orig_qual_type = NULL_TREE;
+	    size_varies = false;
+	    type_quals = TYPE_UNQUALIFIED;
 	    declarator = declarator->declarator;
 	    break;
 	  }

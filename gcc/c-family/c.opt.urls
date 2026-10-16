@@ -1556,6 +1556,9 @@ UrlSuffix(gcc/Code-Gen-Options.html#index-fno-short-wchar)
 fsized-deallocation
 UrlSuffix(gcc/C_002b_002b-Dialect-Options.html#index-fno-sized-deallocation)
 
+fslices
+UrlSuffix(gcc/C-Dialect-Options.html#index-fslices)
+
 fstrict-flex-arrays
 UrlSuffix(gcc/C-Dialect-Options.html#index-fno-strict-flex-arrays)
 
