@@ -2412,6 +2412,10 @@ fsized-deallocation
 C++ ObjC++ Var(flag_sized_deallocation) Init(-1)
 Enable C++14 sized deallocation support.
 
+fslices
+C ObjC Var(flag_slices)
+Enable slice types T[:] that carry a pointer and an element count.
+
 fstrict-flex-arrays
 C ObjC C++ ObjC++ Common Alias(fstrict-flex-arrays=,3,0)
 
