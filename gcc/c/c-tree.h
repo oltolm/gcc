@@ -66,7 +66,6 @@ along with GCC; see the file COPYING3.  If not see
 /* Record whether a type is variably modified. */
 #define C_TYPE_VARIABLY_MODIFIED(TYPE) TYPE_LANG_FLAG_6 (TYPE)
 
-
 /* Record whether a type is defined inside a struct or union type.
    This is used for -Wc++-compat. */
 #define C_TYPE_DEFINED_IN_STRUCT(TYPE) TYPE_LANG_FLAG_2 (TYPE)
@@ -504,6 +503,8 @@ enum c_declarator_kind {
   cdk_array,
   /* A pointer.  */
   cdk_pointer,
+  /* A slice, T[:].  */
+  cdk_slice,
   /* Parenthesized declarator with nested attributes.  */
   cdk_attrs
 };
@@ -727,6 +728,9 @@ extern void c_pop_function_context (void);
 extern void push_parm_decl (const struct c_parm *, tree *);
 extern struct c_declarator *set_array_declarator_inner (struct c_declarator *,
 							struct c_declarator *);
+extern struct c_declarator *build_slice_declarator (location_t,
+						    struct c_declarator *);
+extern tree c_build_slice_type (tree);
 extern tree c_builtin_function (tree);
 extern tree c_builtin_function_ext_scope (tree);
 extern tree c_simulate_builtin_function_decl (tree);
@@ -874,6 +878,7 @@ extern tree build_component_ref (location_t, tree, tree, location_t,
 				 location_t);
 extern tree handle_counted_by_for_component_ref (location_t, tree);
 extern tree build_array_ref (location_t, tree, tree);
+extern tree build_slice_ref (location_t, tree, tree, tree);
 extern tree build_omp_array_section (location_t, tree, tree, tree);
 extern tree build_external_ref (location_t, tree, bool, tree *);
 extern void pop_maybe_used (bool);
