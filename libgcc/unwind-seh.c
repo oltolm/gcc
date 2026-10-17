@@ -354,7 +354,8 @@ _Unwind_Resume (struct _Unwind_Exception *gcc_exc)
 
   /* ??? Not 100% perfect, since we aren't passing on the *original*
      exception context, but should be good enough.  */
-  ms_exc.ExceptionCode = STATUS_GCC_THROW;
+  ms_exc.ExceptionCode
+    = gcc_exc->private_[0] ? STATUS_GCC_FORCED : STATUS_GCC_THROW;
   ms_exc.ExceptionFlags = EXCEPTION_NONCONTINUABLE;
   ms_exc.NumberParameters = 4;
   ms_exc.ExceptionInformation[0] = (ULONG_PTR) gcc_exc;
@@ -372,34 +373,70 @@ _Unwind_Resume (struct _Unwind_Exception *gcc_exc)
   abort ();
 }
 
-static _Unwind_Reason_Code
-_Unwind_ForcedUnwind_Phase2 (struct _Unwind_Exception *exc)
-{
-  _Unwind_Stop_Fn stop;
-  void * stop_argument;
-
-  RaiseException (STATUS_GCC_FORCED, 0, 1, (ULONG_PTR *)&exc);
-
-  /* If we get here, we got to top-of-stack.  */
-  /* ??? We no longer have a context pointer to pass in.  */
-
-  stop = (_Unwind_Stop_Fn) exc->private_[0];
-  stop_argument = (void *) exc->private_[4];
-  stop (1, _UA_FORCE_UNWIND | _UA_CLEANUP_PHASE | _UA_END_OF_STACK,
-	exc->exception_class, exc, NULL, stop_argument);
-
-  return _UA_END_OF_STACK;
-}
-
 _Unwind_Reason_Code
 _Unwind_Resume_or_Rethrow (struct _Unwind_Exception *exc)
 {
   if (exc->private_[0] == 0)
     return _Unwind_RaiseException (exc);
 
-  _Unwind_ForcedUnwind_Phase2 (exc);
+  _Unwind_Resume (exc);
   abort ();
 }
+
+/* Return the establisher frame of the outermost frame on this stack.  */
+
+static ULONG64
+outermost_frame (void)
+{
+  UNWIND_HISTORY_TABLE ms_history;
+  CONTEXT ms_context;
+  ULONG64 frame = 0;
+
+  memset (&ms_history, 0, sizeof(ms_history));
+  ms_context.ContextFlags = CONTEXT_ALL;
+  RtlCaptureContext (&ms_context);
+
+  while (ms_context.Rip != 0)
+    {
+      PRUNTIME_FUNCTION entry;
+      ULONG64 image_base;
+      PVOID handler_data;
+
+      entry = RtlLookupFunctionEntry (ms_context.Rip, &image_base,
+				      &ms_history);
+      if (!entry)
+	break;
+      RtlVirtualUnwind (0, image_base, ms_context.Rip, entry, &ms_context,
+			&handler_data, &frame, NULL);
+    }
+
+  return frame;
+}
+
+static void __attribute__((noreturn, used, noipa))
+forced_unwind_end_of_stack (struct _Unwind_Exception *exc)
+{
+  _Unwind_Stop_Fn stop = (_Unwind_Stop_Fn) exc->private_[0];
+  void *stop_argument = (void *) exc->private_[4];
+
+  /* ??? We no longer have a context pointer to pass in.  */
+  stop (1, _UA_FORCE_UNWIND | _UA_CLEANUP_PHASE | _UA_END_OF_STACK,
+	exc->exception_class, exc, NULL, stop_argument);
+  abort ();
+}
+
+/* The target IP of a forced unwind.  RtlUnwindEx jumps here rather than
+   calling, with RAX holding the exception object and RSP at a call site
+   of the outermost frame, so RSP is 16-byte aligned.  */
+
+extern void forced_unwind_target (void);
+asm ("\t.text\n"
+     "\t.def\tforced_unwind_target;\t.scl\t3;\t.type\t32;\t.endef\n"
+     "forced_unwind_target:\n"
+     "\tmovq\t%rax, %rcx\n"
+     "\tsubq\t$32, %rsp\n"
+     "\tcall\tforced_unwind_end_of_stack\n"
+     "\tud2\n");
 
 /* Raise an exception for forced unwinding.  */
 
@@ -407,16 +444,21 @@ _Unwind_Reason_Code
 _Unwind_ForcedUnwind (struct _Unwind_Exception *exc,
 		      _Unwind_Stop_Fn stop, void * stop_argument)
 {
-  /* ??? This is a hack that only works with _GCC_specific_handler.
-     There's no way to invoke STOP within frames that use a different
-     exception handler.  This is essentially just good enough to run
-     the code within the gcc testsuite.  */
+  /* Unlike RaiseException, whose dispatch calls only exception handlers
+     and lets a foreign one claim the exception, RtlUnwindEx calls the
+     unwind handler of every frame, so frames that do not use
+     _GCC_specific_handler run their cleanups too.  RtlUnwindEx cannot
+     return at the end of the stack, so the unwind targets the outermost
+     frame and reports _UA_END_OF_STACK from there.  */
 
   memset (exc->private_, 0, sizeof (exc->private_));
   exc->private_[0] = (_Unwind_Ptr) stop;
+  exc->private_[1] = outermost_frame ();
+  exc->private_[2] = (_Unwind_Ptr) forced_unwind_target;
   exc->private_[4] = (_Unwind_Ptr) stop_argument;
 
-  return _Unwind_ForcedUnwind_Phase2 (exc);
+  _Unwind_Resume (exc);
+  abort ();
 }
 
 /* A convenience function that calls the exception_cleanup field.  */
