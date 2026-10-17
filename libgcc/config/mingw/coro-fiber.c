@@ -76,8 +76,16 @@ struct __gcc_coro
      a resume from another handler only changes BASE.  */
   struct __gcc_effect_handler *chain;
   struct __gcc_effect_handler base;
+  /* The coroutine that last resumed this one, or NULL.  */
+  struct __gcc_coro *parent;
+  /* Where this coroutine last resumed another one.  A capture through the
+     other one walks this coroutine's frames from here.  */
+  CONTEXT ctx;
   struct _Unwind_Exception exc;
 };
+
+/* The coroutine running on this thread, or NULL.  */
+static __thread struct __gcc_coro *running;
 
 struct __gcc_coro *__gcc_coro_create (void (*) (void *), void *, size_t);
 int __gcc_coro_resume (struct __gcc_coro *);
@@ -119,16 +127,115 @@ static void
 switch_into (struct __gcc_coro *c)
 {
   struct __gcc_effect_handler *outer = chain;
+  struct __gcc_coro *self = running;
 
   if (!IsThreadAFiber ()
       && !ConvertThreadToFiberEx (NULL, FIBER_FLAG_FLOAT_SWITCH))
     abort ();
   c->resumer = GetCurrentFiber ();
+  c->parent = self;
+  if (self)
+    RtlCaptureContext (&self->ctx);
   c->base.next = outer;
   chain = c->chain;
+  running = c->top;
   SwitchToFiber (c->top->fiber);
+  running = self;
   c->chain = chain;
   chain = outer;
+}
+
+/* An entry of the .gcceff table that the compiler emits for each function
+   part compiled with -feffects.  BEGIN is the image-relative start of its
+   .pdata entry.  */
+
+struct effects_entry
+{
+  DWORD begin;
+  DWORD flags;
+};
+
+#define EFFECTS_ALLOW_FOREIGN_CAPTURE 1
+
+static int
+compare_entries (const void *a, const void *b)
+{
+  DWORD x = ((const struct effects_entry *) a)->begin;
+  DWORD y = ((const struct effects_entry *) b)->begin;
+
+  return x < y ? -1 : x > y;
+}
+
+static BOOL CALLBACK
+sort_entries (PINIT_ONCE once, PVOID n, PVOID *context __attribute__((unused)))
+{
+  qsort (once + 1, *(size_t *) n, sizeof (struct effects_entry),
+	 compare_entries);
+  return TRUE;
+}
+
+/* Return the entry for the function part starting at BEGIN in the image
+   at BASE, or NULL if it was not compiled with -feffects.  The linker
+   concatenates the entries of each object, so the table is sorted in
+   place on first use, under the INIT_ONCE that heads it.  */
+
+static const struct effects_entry *
+find_entry (ULONG64 base, DWORD begin)
+{
+  IMAGE_NT_HEADERS *nt
+    = (IMAGE_NT_HEADERS *) (base + ((IMAGE_DOS_HEADER *) base)->e_lfanew);
+  IMAGE_SECTION_HEADER *s = IMAGE_FIRST_SECTION (nt);
+  struct effects_entry key = { begin, 0 };
+  unsigned int i;
+
+  for (i = 0; i < nt->FileHeader.NumberOfSections; i++, s++)
+    if (memcmp (s->Name, ".gcceff", sizeof (s->Name)) == 0)
+      {
+	INIT_ONCE *once = (INIT_ONCE *) (base + s->VirtualAddress);
+	size_t n = (s->Misc.VirtualSize - sizeof (*once)) / sizeof (key);
+
+	InitOnceExecuteOnce (once, sort_entries, &n, NULL);
+	return bsearch (&key, once + 1, n, sizeof (key), compare_entries);
+      }
+  return NULL;
+}
+
+/* Abort if the frames from CTX up to the coroutine's outermost frame
+   include a run of functions compiled without -feffects whose caller does
+   not have allow_foreign_capture.  */
+
+static void
+check_frames (CONTEXT *ctx)
+{
+  int foreign = 0;
+
+  for (;;)
+    {
+      ULONG64 base, establisher;
+      PRUNTIME_FUNCTION rf = RtlLookupFunctionEntry (ctx->Rip, &base, NULL);
+      const struct effects_entry *e;
+      void *handler_data;
+
+      if (!rf)
+	abort ();
+      if (base + rf->BeginAddress == (ULONG64) fiber_main)
+	{
+	  if (foreign)
+	    abort ();
+	  return;
+	}
+      e = find_entry (base, rf->BeginAddress);
+      if (!e)
+	foreign = 1;
+      else
+	{
+	  if (foreign && !(e->flags & EFFECTS_ALLOW_FOREIGN_CAPTURE))
+	    abort ();
+	  foreign = 0;
+	}
+      RtlVirtualUnwind (UNW_FLAG_NHANDLER, base, ctx->Rip, rf, ctx,
+			&handler_data, &establisher, NULL);
+    }
 }
 
 /* The forced unwind ends at the fiber's outermost frame, once every frame
@@ -245,6 +352,17 @@ __gcc_effect_suspend (struct __gcc_effect_handler *h, void *message)
   struct __gcc_coro *c
     = (struct __gcc_coro *) ((char *) h - offsetof (struct __gcc_coro, base));
   struct __gcc_coro *self = current_coro ();
+  struct __gcc_coro *p;
+  CONTEXT ctx;
+
+  RtlCaptureContext (&ctx);
+  check_frames (&ctx);
+  for (p = self; p != c; )
+    {
+      p = p->parent;
+      ctx = p->ctx;
+      check_frames (&ctx);
+    }
 
   c->top = self;
   c->message = message;

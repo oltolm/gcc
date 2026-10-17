@@ -2252,6 +2252,14 @@ is given by the product of arguments 1 and 2, and similarly, that
 is a pointer to a function that returns an object whose size is
 given by argument 1 to the function.
 
+@atindex @code{allow_foreign_capture}
+@item allow_foreign_capture
+When an effect handler captures a continuation, the frames of functions
+compiled without @option{-feffects} are an error unless the nearest
+function compiled with @option{-feffects} that calls them has this
+attribute.  Use it on a function that passes a callback which can perform
+effects to code that tolerates being suspended, such as @code{qsort}.
+
 @atindex @code{always_inline}
 @cindex inlining
 @cindex function inlining

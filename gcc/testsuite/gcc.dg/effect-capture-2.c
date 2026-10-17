@@ -1,5 +1,5 @@
 /* { dg-do run { target *-*-mingw* } } */
-/* { dg-options "-O2" } */
+/* { dg-options "-O2 -feffects" } */
 /* __gcc_effect_suspend from a coroutine running inside the coroutine whose
    handler record is targeted must switch directly to the outer
    coroutine's resumer, without running code of the outer coroutine, and

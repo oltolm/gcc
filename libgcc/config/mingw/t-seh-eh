@@ -5,3 +5,6 @@ EH_MODEL = seh
 # Use SEH exception handling.
 LIB2ADDEH = $(srcdir)/unwind-seh.c $(srcdir)/unwind-sjlj.c $(srcdir)/unwind-c.c \
   $(srcdir)/config/mingw/coro-fiber.c
+
+# The runtime's own frames are part of every captured continuation.
+CFLAGS-coro-fiber.c += -feffects

@@ -1,5 +1,5 @@
 /* { dg-do run { target *-*-mingw* } } */
-/* { dg-options "-O2 -fexceptions" } */
+/* { dg-options "-O2 -feffects -fexceptions" } */
 /* __gcc_coro_destroy of a coroutine suspended by __gcc_effect_suspend from
    an inner coroutine must run the cleanups of both coroutines, inner
    first, and return to the destroyer with its handler chain intact.  */
