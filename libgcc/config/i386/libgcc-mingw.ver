@@ -21,3 +21,10 @@ GCC_13 {
   __gthr_win32_join
   __gthr_win32_self
 }
+
+GCC_17 {
+  __gcc_coro_create
+  __gcc_coro_destroy
+  __gcc_coro_resume
+  __gcc_coro_yield
+}
