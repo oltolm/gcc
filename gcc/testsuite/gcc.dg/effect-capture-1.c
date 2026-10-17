@@ -1,5 +1,5 @@
 /* { dg-do run { target *-*-mingw* } } */
-/* { dg-options "-O2" } */
+/* { dg-options "-O2 -feffects" } */
 /* __gcc_effect_suspend through the handler record of a coroutine must
    return from the __gcc_coro_resume that ran it, with the message
    available to the resumer and the coroutine's handler record not in the

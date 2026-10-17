@@ -1,5 +1,5 @@
 /* { dg-do run { target *-*-mingw* } } */
-/* { dg-options "-O2" } */
+/* { dg-options "-O2 -feffects" } */
 /* A suspended coroutine resumed from a different place with a different
    operation table in its handler record (shallow re-handle) must see the
    new table and the new resumer's chain, not the ones of the original

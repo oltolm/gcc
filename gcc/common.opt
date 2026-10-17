@@ -1734,6 +1734,10 @@ femit-class-debug-always
 Common Var(flag_emit_class_debug_always) Init(0)
 Do not suppress C++ class debug information.
 
+feffects
+Common Var(flag_effects) Optimization
+Allow effect handlers to capture continuations through the generated code.
+
 fexceptions
 Common Var(flag_exceptions) Optimization EnabledBy(fnon-call-exceptions)
 Enable exception handling.

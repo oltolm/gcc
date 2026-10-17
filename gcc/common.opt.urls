@@ -953,6 +953,9 @@ UrlSuffix(gcc/Debugging-Options.html#index-feliminate-unused-debug-types)
 femit-class-debug-always
 UrlSuffix(gcc/Debugging-Options.html#index-femit-class-debug-always)
 
+feffects
+UrlSuffix(gcc/Code-Gen-Options.html#index-feffects)
+
 fexceptions
 UrlSuffix(gcc/Code-Gen-Options.html#index-fexceptions)
 

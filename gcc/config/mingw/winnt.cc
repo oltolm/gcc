@@ -806,6 +806,11 @@ i386_find_on_wrapper_list (const char *target)
 
 #endif /* CXX_WRAP_SPEC_LIST */
 
+/* Number of the next label of an effects table entry, and whether this
+   object has one.  */
+static unsigned int effects_labelno;
+static bool effects_table_used;
+
 /* This is called at the end of assembly.  For each external function
    which has not been defined, we output a declaration now.  We also
    output the .drectve section.  */
@@ -887,6 +892,15 @@ mingw_pe_file_end (void)
 	  fputc ('\n', asm_out_file);
 	}
     }
+
+  /* The linker sorts .gcceff$a before the entries in .gcceff$m.  The
+     runtime sorts the entries in place on first use and keeps its
+     INIT_ONCE for that in this header, one per image.  */
+  if (effects_table_used)
+    fputs ("\t.section\t.gcceff$a, \"dw\"\n"
+	   "\t.linkonce\tdiscard\n"
+	   "\t.p2align\t3\n"
+	   "\t.quad\t0\n", asm_out_file);
 }
 
 /* Kludge because of missing PE-COFF support for early LTO debug.  */
@@ -904,6 +918,33 @@ void
 mingw_pe_asm_lto_end (void)
 {
   debug_info_level = saved_debug_info_level;
+}
+
+/* The effect handler runtime walks the frames of a continuation it
+   captures and rejects frames of functions not compiled with -feffects.
+   It identifies a frame's function by the start of its .pdata entry, so
+   record here, where .seh_proc starts one, the start of the function part
+   in the image's .gcceff table.  The flags word says whether the function
+   has allow_foreign_capture.  */
+
+static void
+mingw_pe_seh_effects_entry (FILE *f)
+{
+  char label[32];
+  section *text = in_section;
+
+  if (!opt_for_fn (cfun->decl, flag_effects))
+    return;
+  ASM_GENERATE_INTERNAL_LABEL (label, "LEFF", effects_labelno++);
+  switch_to_section (get_section (".gcceff$m", SECTION_WRITE, NULL));
+  fputs ("\t.p2align\t2\n\t.rva\t", f);
+  assemble_name (f, label);
+  fprintf (f, "\n\t.long\t%d\n",
+	   lookup_attribute ("allow_foreign_capture",
+			     DECL_ATTRIBUTES (cfun->decl)) != NULL_TREE);
+  switch_to_section (text);
+  ASM_OUTPUT_LABEL (f, label);
+  effects_table_used = true;
 }
 
 /* Set up data structures beginning output for SEH.  */
@@ -932,6 +973,7 @@ mingw_pe_seh_init (FILE *f)
   fputs ("\t.seh_proc\t", f);
   assemble_name (f, IDENTIFIER_POINTER (DECL_ASSEMBLER_NAME (cfun->decl)));
   fputc ('\n', f);
+  mingw_pe_seh_effects_entry (f);
 }
 
 /* Emit an assembler directive for the end of the prologue.  */
@@ -964,6 +1006,7 @@ mingw_pe_seh_cold_init (FILE *f, const char *name)
   fputs ("\t.seh_proc\t", f);
   assemble_name (f, name);
   fputc ('\n', f);
+  mingw_pe_seh_effects_entry (f);
 
   /* In the normal case, the frame pointer is near the bottom of the frame
      so we can do the full stack allocation and set it afterwards.  There

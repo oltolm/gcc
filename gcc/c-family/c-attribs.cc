@@ -79,6 +79,8 @@ static tree handle_nocf_check_attribute (tree *, tree, tree, int, bool *);
 static tree handle_symver_attribute (tree *, tree, tree, int, bool *);
 static tree handle_noicf_attribute (tree *, tree, tree, int, bool *);
 static tree handle_noipa_attribute (tree *, tree, tree, int, bool *);
+static tree handle_allow_foreign_capture_attribute (tree *, tree, tree, int,
+						    bool *);
 static tree handle_gnu_inline_attribute (tree *, tree, tree, int, bool *);
 static tree handle_artificial_attribute (tree *, tree, tree, int, bool *);
 static tree handle_flatten_attribute (tree *, tree, tree, int, bool *);
@@ -300,6 +302,8 @@ const struct attribute_spec c_common_gnu_attributes[] =
 			      handle_noicf_attribute, NULL },
   { "noipa",		      0, 0, true,  false, false, false,
 			      handle_noipa_attribute, NULL },
+  { "allow_foreign_capture",  0, 0, true,  false, false, false,
+			      handle_allow_foreign_capture_attribute, NULL },
   { "leaf",                   0, 0, true,  false, false, false,
 			      handle_leaf_attribute, NULL },
   { "always_inline",          0, 0, true,  false, false, false,
@@ -1417,6 +1421,22 @@ handle_no_stack_protector_function_attribute (tree *node, tree name, tree,
 
 static tree
 handle_noipa_attribute (tree *node, tree name, tree, int, bool *no_add_attrs)
+{
+  if (TREE_CODE (*node) != FUNCTION_DECL)
+    {
+      warning (OPT_Wattributes, "%qE attribute ignored", name);
+      *no_add_attrs = true;
+    }
+
+  return NULL_TREE;
+}
+
+/* Handle an "allow_foreign_capture" attribute; arguments as in
+   struct attribute_spec.handler.  */
+
+static tree
+handle_allow_foreign_capture_attribute (tree *node, tree name, tree, int,
+					bool *no_add_attrs)
 {
   if (TREE_CODE (*node) != FUNCTION_DECL)
     {

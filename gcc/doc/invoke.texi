@@ -806,7 +806,7 @@ Objective-C and Objective-C++ Dialects}.
 @item Code Generation Options
 @xref{Code Gen Options,,Options for Code Generation Conventions}.
 @gccoptlist{-fcall-saved-@var{reg}  -fcall-used-@var{reg}
--ffixed-@var{reg}  -fexceptions
+-ffixed-@var{reg}  -feffects  -fexceptions
 -fnon-call-exceptions  -fdelete-dead-exceptions  -funwind-tables
 -fasynchronous-unwind-tables
 -fno-gnu-unique
@@ -19297,6 +19297,17 @@ This option implies @option{-fno-wrapv} @option{-fno-wrapv-pointer} and when
 negated implies @option{-fwrapv} @option{-fwrapv-pointer}.  You should
 consider using @code{-fwrapv} instead of @code{-fstrict-overflow},
 the (implicit) use of @code{-fwrapv-pointer} is discouraged.
+
+@opindex feffects
+@opindex fno-effects
+@item -feffects
+Allow effect handlers to capture continuations whose frames include
+functions compiled with this option.  Capturing a continuation through
+the frame of a function compiled without it is a run-time error, unless
+its nearest caller compiled with it has the @code{allow_foreign_capture}
+attribute
+(@pxref{Common Function Attributes}).  This option is currently
+supported only on 64-bit Windows targets.
 
 @opindex fexceptions
 @opindex fno-exceptions
