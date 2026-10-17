@@ -66,9 +66,14 @@ struct __gcc_coro
   void (*fn) (void *);
   void *arg;
   enum coro_state state;
-  /* The coroutine's chain while it is not running.  Its records end in
-     BASE, which matches no effect and is relinked on every switch into
-     the coroutine to the chain of the fiber switching in.  */
+  /* The innermost coroutine of the suspended computation: this one, or a
+     coroutine it runs that suspended it through __gcc_effect_suspend.  */
+  struct __gcc_coro *top;
+  void *message;
+  /* The computation's chain while it is not running.  Its records end in
+     BASE, the record of the handler the coroutine runs under, which is
+     relinked on every switch in to the chain of the fiber switching in;
+     a resume from another handler only changes BASE.  */
   struct __gcc_effect_handler *chain;
   struct __gcc_effect_handler base;
   struct _Unwind_Exception exc;
@@ -78,6 +83,9 @@ struct __gcc_coro *__gcc_coro_create (void (*) (void *), void *, size_t);
 int __gcc_coro_resume (struct __gcc_coro *);
 void __gcc_coro_yield (void);
 void __gcc_coro_destroy (struct __gcc_coro *);
+void *__gcc_coro_message (struct __gcc_coro *);
+struct __gcc_effect_handler *__gcc_coro_handler (struct __gcc_coro *);
+void __gcc_effect_suspend (struct __gcc_effect_handler *, void *);
 struct __gcc_effect_handler *__gcc_effect_top (void);
 void __gcc_effect_set_top (struct __gcc_effect_handler *);
 struct __gcc_effect_handler *__gcc_effect_find (const void *);
@@ -118,7 +126,7 @@ switch_into (struct __gcc_coro *c)
   c->resumer = GetCurrentFiber ();
   c->base.next = outer;
   chain = c->chain;
-  SwitchToFiber (c->fiber);
+  SwitchToFiber (c->top->fiber);
   c->chain = chain;
   chain = outer;
 }
@@ -141,6 +149,14 @@ destroy_stop (int version __attribute__((unused)), _Unwind_Action actions,
   return _URC_NO_REASON;
 }
 
+static void __attribute__((noreturn))
+unwind (struct __gcc_coro *c)
+{
+  c->state = CORO_DESTROYING;
+  _Unwind_ForcedUnwind (&c->exc, destroy_stop, c);
+  abort ();
+}
+
 struct __gcc_coro *
 __gcc_coro_create (void (*fn) (void *), void *arg, size_t stack_size)
 {
@@ -152,6 +168,7 @@ __gcc_coro_create (void (*fn) (void *), void *arg, size_t stack_size)
   c->fn = fn;
   c->arg = arg;
   c->state = CORO_CREATED;
+  c->top = c;
   c->chain = &c->base;
   c->fiber = CreateFiberEx (0, stack_size, FIBER_FLAG_FLOAT_SWITCH,
 			    fiber_main, c);
@@ -170,6 +187,13 @@ __gcc_coro_resume (struct __gcc_coro *c)
     abort ();
   c->state = CORO_RUNNING;
   switch_into (c);
+  if (c->state == CORO_DESTROYING)
+    {
+      /* C was suspended inside a computation that is being destroyed and
+	 has been unwound; the computation continues on this fiber.  */
+      c->state = CORO_DONE;
+      unwind (current_coro ());
+    }
   return c->state == CORO_SUSPENDED;
 }
 
@@ -178,13 +202,11 @@ __gcc_coro_yield (void)
 {
   struct __gcc_coro *c = current_coro ();
 
+  c->top = c;
   c->state = CORO_SUSPENDED;
   SwitchToFiber (c->resumer);
   if (c->state == CORO_DESTROYING)
-    {
-      _Unwind_ForcedUnwind (&c->exc, destroy_stop, c);
-      abort ();
-    }
+    unwind (c);
 }
 
 void
@@ -199,6 +221,37 @@ __gcc_coro_destroy (struct __gcc_coro *c)
     abort ();
   DeleteFiber (c->fiber);
   free (c);
+}
+
+void *
+__gcc_coro_message (struct __gcc_coro *c)
+{
+  return c->message;
+}
+
+struct __gcc_effect_handler *
+__gcc_coro_handler (struct __gcc_coro *c)
+{
+  return &c->base;
+}
+
+/* Suspend the coroutine whose handler record is H, together with the
+   coroutines it runs, up to the current one.  Control goes directly to
+   whoever resumed it; the coroutines in between do not run.  */
+
+void
+__gcc_effect_suspend (struct __gcc_effect_handler *h, void *message)
+{
+  struct __gcc_coro *c
+    = (struct __gcc_coro *) ((char *) h - offsetof (struct __gcc_coro, base));
+  struct __gcc_coro *self = current_coro ();
+
+  c->top = self;
+  c->message = message;
+  c->state = CORO_SUSPENDED;
+  SwitchToFiber (c->resumer);
+  if (c->state == CORO_DESTROYING)
+    unwind (self);
 }
 
 struct __gcc_effect_handler *
