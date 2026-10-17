@@ -1045,6 +1045,31 @@ objc_mark_locals_volatile (void *enclosing_blk)
     }
 }
 
+/* Declare the effect NAME, whose operations are the members of the
+   structure TYPE, at file scope.  An effect is identified by the address
+   of its descriptor, which is one-only so that every translation unit
+   declaring the effect refers to the same object.  */
+
+tree
+declare_effect (location_t loc, tree name, tree type)
+{
+  tree decl = build_decl (loc, VAR_DECL, name,
+			  c_build_qualified_type (type, TYPE_QUAL_CONST));
+  C_DECL_EFFECT (decl) = 1;
+  TREE_PUBLIC (decl) = 1;
+  TREE_STATIC (decl) = 1;
+  TREE_READONLY (decl) = 1;
+  DECL_INITIAL (decl) = build_constructor (TREE_TYPE (decl), NULL);
+  char *asmname = concat ("__gcc_effect_", IDENTIFIER_POINTER (name), NULL);
+  SET_DECL_ASSEMBLER_NAME (decl, get_identifier (asmname));
+  free (asmname);
+  decl = pushdecl (decl);
+  make_decl_one_only (decl, DECL_ASSEMBLER_NAME (decl));
+  DECL_COMDAT (decl) = 1;
+  rest_of_decl_compilation (decl, 1, 0);
+  return decl;
+}
+
 /* Return true if we are in the global binding level.  */
 
 bool
@@ -2179,6 +2204,17 @@ diagnose_mismatched_decls (tree newdecl, tree olddecl,
       else
 	warning (OPT_Wshadow, "declaration of %q+D shadows "
 		 "a built-in function", newdecl);
+      return false;
+    }
+
+  if (VAR_P (olddecl) && (C_DECL_EFFECT (olddecl) || C_DECL_EFFECT (newdecl)))
+    {
+      auto_diagnostic_group d;
+      if (C_DECL_EFFECT (olddecl) && C_DECL_EFFECT (newdecl))
+	error ("redefinition of effect %q+D", newdecl);
+      else
+	error ("%q+D redeclared as different kind of symbol", newdecl);
+      locate_old_decl (olddecl);
       return false;
     }
 
