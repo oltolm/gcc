@@ -494,6 +494,7 @@ const struct c_common_resword c_common_reswords[] =
   { "__transaction_atomic", RID_TRANSACTION_ATOMIC, 0 },
   { "__transaction_relaxed", RID_TRANSACTION_RELAXED, 0 },
   { "__transaction_cancel", RID_TRANSACTION_CANCEL, 0 },
+  { "_Effect",		RID_EFFECT,	D_CONLY | D_EFFECTS },
   { "__typeof",		RID_TYPEOF,	0 },
   { "__typeof__",	RID_TYPEOF,	0 },
   { "__typeof_unqual",	RID_TYPEOF_UNQUAL, D_CONLY },

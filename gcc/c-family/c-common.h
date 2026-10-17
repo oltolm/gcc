@@ -149,6 +149,9 @@ enum rid
   /* GNU transactional memory extension */
   RID_TRANSACTION_ATOMIC, RID_TRANSACTION_RELAXED, RID_TRANSACTION_CANCEL,
 
+  /* GNU effect handlers extension */
+  RID_EFFECT,
+
   /* Too many ways of getting the name of a function as a string */
   RID_FUNCTION_NAME, RID_PRETTY_FUNCTION_NAME, RID_C99_FUNCTION_NAME,
 
@@ -455,6 +458,7 @@ extern machine_mode c_default_pointer_mode;
 #define D_CXX_COROUTINES 0x10000  /* In C++, only with coroutines.  */
 #define D_CXX_MODULES	0x20000  /* In C++, only with modules.  */
 #define D_CXX26         0x40000	/* In C++, C++26 only.  */
+#define D_EFFECTS	0x80000	/* In C, only with -feffects.  */
 
 #define D_CXX_CONCEPTS_FLAGS D_CXXONLY | D_CXX_CONCEPTS
 #define D_CXX_CHAR8_T_FLAGS D_CXXONLY | D_CXX_CHAR8_T

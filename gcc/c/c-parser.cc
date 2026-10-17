@@ -137,6 +137,8 @@ c_parse_init (void)
     }
   if (!c_dialect_objc ())
     mask |= D_OBJC | D_CXX_OBJC;
+  if (!flag_effects)
+    mask |= D_EFFECTS;
 
   ridpointers = ggc_cleared_vec_alloc<tree> ((int) RID_MAX);
   for (i = 0; i < num_c_common_reswords; i++)
@@ -1818,6 +1820,7 @@ static void c_parser_static_assert_declaration (c_parser *);
 static struct c_typespec c_parser_enum_specifier (c_parser *);
 static struct c_typespec c_parser_struct_or_union_specifier (c_parser *);
 static tree c_parser_struct_declaration (c_parser *, tree *);
+static void c_parser_effect_declaration (c_parser *);
 static struct c_typespec c_parser_typeof_specifier (c_parser *);
 static tree c_parser_alignas_specifier (c_parser *);
 static struct c_declarator *c_parser_direct_declarator (c_parser *, bool,
@@ -2208,6 +2211,9 @@ c_parser_external_declaration (c_parser *parser)
 	  break;
 	case RID_ASM:
 	  c_parser_asm_definition (parser);
+	  break;
+	case RID_EFFECT:
+	  c_parser_effect_declaration (parser);
 	  break;
 	case RID_AT_INTERFACE:
 	case RID_AT_IMPLEMENTATION:
@@ -4772,6 +4778,132 @@ c_parser_struct_declaration (c_parser *parser, tree *expr)
 	}
     }
   return decls;
+}
+
+/* Parse the operations declared by one declaration in an effect
+   declaration, without the trailing semicolon, and return them as fields
+   chained in reverse order.
+
+   effect-operation-declaration:
+     specifier-qualifier-list effect-operation-declarator-list
+
+   effect-operation-declarator-list:
+     declarator
+     effect-operation-declarator-list , declarator
+
+   Each declarator must declare a function.  The field for an operation
+   has the type of a pointer to that function.  */
+
+static tree
+c_parser_effect_operations (c_parser *parser, tree *expr)
+{
+  struct c_declspecs *specs = build_null_declspecs ();
+  tree decls = NULL_TREE;
+
+  c_parser_declspecs (parser, specs, false, true, true, false, false, true,
+		      true, cla_nonabstract_decl);
+  if (parser->error)
+    return NULL_TREE;
+  if (!specs->declspecs_seen_p)
+    {
+      c_parser_error (parser, "expected specifier-qualifier-list");
+      return NULL_TREE;
+    }
+  finish_declspecs (specs);
+  pending_xref_error ();
+  while (true)
+    {
+      bool dummy = false;
+      location_t loc = c_parser_peek_token (parser)->location;
+      struct c_declarator *declarator
+	= c_parser_declarator (parser, specs->typespec_kind != ctsk_none,
+			       C_DTR_NORMAL, &dummy);
+      if (declarator == NULL)
+	return decls;
+
+      struct c_declarator *outer = NULL, *id;
+      for (id = declarator; id->kind != cdk_id; id = id->declarator)
+	if (id->kind != cdk_attrs)
+	  outer = id;
+      if (outer && outer->kind == cdk_function)
+	{
+	  tree attrs = NULL_TREE;
+	  outer->declarator = make_pointer_declarator (NULL,
+						       outer->declarator);
+	  tree d = grokfield (loc, declarator, specs, NULL_TREE, &attrs, expr);
+	  DECL_CHAIN (d) = decls;
+	  decls = d;
+	}
+      else
+	error_at (loc, "effect operation %qE is not a function", id->u.id.id);
+
+      if (c_parser_next_token_is_not (parser, CPP_COMMA))
+	return decls;
+      c_parser_consume_token (parser);
+    }
+}
+
+/* Parse an effect declaration (GNU extension).
+
+   effect-declaration:
+     _Effect identifier { effect-operation-declaration-list } ;
+
+   effect-operation-declaration-list:
+     effect-operation-declaration ;
+     effect-operation-declaration-list effect-operation-declaration ;  */
+
+static void
+c_parser_effect_declaration (c_parser *parser)
+{
+  location_t loc = c_parser_peek_token (parser)->location;
+  bool file_scope_p = global_bindings_p ();
+
+  gcc_assert (c_parser_next_token_is_keyword (parser, RID_EFFECT));
+  c_parser_consume_token (parser);
+  if (!file_scope_p)
+    error_at (loc, "%<_Effect%> declaration not at file scope");
+  if (c_parser_next_token_is_not (parser, CPP_NAME))
+    {
+      c_parser_error (parser, "expected identifier");
+      c_parser_skip_to_end_of_block_or_statement (parser);
+      return;
+    }
+  tree name = c_parser_peek_token (parser)->value;
+  location_t name_loc = c_parser_peek_token (parser)->location;
+  c_parser_consume_token (parser);
+  if (!c_parser_require (parser, CPP_OPEN_BRACE, "expected %<{%>"))
+    {
+      c_parser_skip_to_end_of_block_or_statement (parser);
+      return;
+    }
+
+  class c_struct_parse_info *struct_info;
+  tree type = start_struct (name_loc, RECORD_TYPE, NULL_TREE, &struct_info);
+  tree contents = NULL_TREE;
+  tree expr = NULL_TREE;
+  while (true)
+    {
+      if (c_parser_next_token_is (parser, CPP_CLOSE_BRACE))
+	{
+	  c_parser_consume_token (parser);
+	  break;
+	}
+      contents = chainon (c_parser_effect_operations (parser, &expr),
+			  contents);
+      if (c_parser_next_token_is (parser, CPP_SEMICOLON))
+	c_parser_consume_token (parser);
+      else
+	{
+	  c_parser_error (parser, "expected %<;%>");
+	  c_parser_skip_until_found (parser, CPP_CLOSE_BRACE, NULL);
+	  break;
+	}
+    }
+  type = finish_struct (name_loc, type, nreverse (contents), NULL_TREE,
+			struct_info, &expr);
+  c_parser_skip_until_found (parser, CPP_SEMICOLON, "expected %<;%>");
+  if (file_scope_p)
+    declare_effect (name_loc, name, type);
 }
 
 /* Parse a typeof specifier (a GNU extension adopted in C23).
@@ -8474,6 +8606,9 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	case RID_TRANSACTION_CANCEL:
 	  stmt = c_parser_transaction_cancel (parser);
 	  goto expect_semicolon;
+	case RID_EFFECT:
+	  c_parser_effect_declaration (parser);
+	  break;
 	case RID_AT_THROW:
 	  gcc_assert (c_dialect_objc ());
 	  c_parser_consume_token (parser);

@@ -4044,6 +4044,11 @@ build_external_ref (location_t loc, tree id, bool fun, tree *type)
   decl = objc_lookup_ivar (decl, id);
 
   *type = NULL;
+  if (decl && VAR_P (decl) && C_DECL_EFFECT (decl))
+    {
+      error_at (loc, "effect %qD used as a value", decl);
+      return error_mark_node;
+    }
   if (decl && decl != error_mark_node)
     {
       ref = decl;

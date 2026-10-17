@@ -132,6 +132,9 @@ along with GCC; see the file COPYING3.  If not see
    #pragma omp threadprivate.  */
 #define C_DECL_THREADPRIVATE_P(DECL) DECL_LANG_FLAG_3 (VAR_DECL_CHECK (DECL))
 
+/* Set on VAR_DECLs that declare an effect.  */
+#define C_DECL_EFFECT(DECL) DECL_LANG_FLAG_6 (VAR_DECL_CHECK (DECL))
+
 /* Set on VAR_DECLs for compound literals.  */
 #define C_DECL_COMPOUND_LITERAL_P(DECL) \
   DECL_LANG_FLAG_5 (VAR_DECL_CHECK (DECL))
@@ -695,6 +698,7 @@ extern tree build_enumerator (location_t, location_t, struct c_enum_contents *,
 extern tree check_for_loop_decls (location_t, bool);
 extern void mark_forward_parm_decls (void);
 extern void declare_parm_level (void);
+extern tree declare_effect (location_t, tree, tree);
 extern void undeclared_variable (location_t, tree);
 extern tree lookup_label_for_goto (location_t, tree);
 extern tree declare_label (tree);
