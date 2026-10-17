@@ -27,4 +27,7 @@ GCC_17 {
   __gcc_coro_destroy
   __gcc_coro_resume
   __gcc_coro_yield
+  __gcc_effect_find
+  __gcc_effect_set_top
+  __gcc_effect_top
 }
