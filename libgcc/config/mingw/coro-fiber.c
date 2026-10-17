@@ -46,6 +46,18 @@ enum coro_state
   CORO_DONE
 };
 
+/* A record in the per-thread handler chain.  An effect is identified by
+   the address of its descriptor.  */
+
+struct __gcc_effect_handler
+{
+  struct __gcc_effect_handler *next;
+  const void *effect;
+  void *ops;
+};
+
+static __thread struct __gcc_effect_handler *chain;
+
 struct __gcc_coro
 {
   void *fiber;
@@ -54,6 +66,11 @@ struct __gcc_coro
   void (*fn) (void *);
   void *arg;
   enum coro_state state;
+  /* The coroutine's chain while it is not running.  Its records end in
+     BASE, which matches no effect and is relinked on every switch into
+     the coroutine to the chain of the fiber switching in.  */
+  struct __gcc_effect_handler *chain;
+  struct __gcc_effect_handler base;
   struct _Unwind_Exception exc;
 };
 
@@ -61,6 +78,9 @@ struct __gcc_coro *__gcc_coro_create (void (*) (void *), void *, size_t);
 int __gcc_coro_resume (struct __gcc_coro *);
 void __gcc_coro_yield (void);
 void __gcc_coro_destroy (struct __gcc_coro *);
+struct __gcc_effect_handler *__gcc_effect_top (void);
+void __gcc_effect_set_top (struct __gcc_effect_handler *);
+struct __gcc_effect_handler *__gcc_effect_find (const void *);
 
 static void WINAPI
 fiber_main (void *data)
@@ -90,11 +110,17 @@ current_coro (void)
 static void
 switch_into (struct __gcc_coro *c)
 {
+  struct __gcc_effect_handler *outer = chain;
+
   if (!IsThreadAFiber ()
       && !ConvertThreadToFiberEx (NULL, FIBER_FLAG_FLOAT_SWITCH))
     abort ();
   c->resumer = GetCurrentFiber ();
+  c->base.next = outer;
+  chain = c->chain;
   SwitchToFiber (c->fiber);
+  c->chain = chain;
+  chain = outer;
 }
 
 /* The forced unwind ends at the fiber's outermost frame, once every frame
@@ -126,6 +152,7 @@ __gcc_coro_create (void (*fn) (void *), void *arg, size_t stack_size)
   c->fn = fn;
   c->arg = arg;
   c->state = CORO_CREATED;
+  c->chain = &c->base;
   c->fiber = CreateFiberEx (0, stack_size, FIBER_FLAG_FLOAT_SWITCH,
 			    fiber_main, c);
   if (!c->fiber)
@@ -172,4 +199,27 @@ __gcc_coro_destroy (struct __gcc_coro *c)
     abort ();
   DeleteFiber (c->fiber);
   free (c);
+}
+
+struct __gcc_effect_handler *
+__gcc_effect_top (void)
+{
+  return chain;
+}
+
+void
+__gcc_effect_set_top (struct __gcc_effect_handler *h)
+{
+  chain = h;
+}
+
+struct __gcc_effect_handler *
+__gcc_effect_find (const void *effect)
+{
+  struct __gcc_effect_handler *h;
+
+  for (h = chain; h; h = h->next)
+    if (h->effect == effect)
+      return h;
+  abort ();
 }
