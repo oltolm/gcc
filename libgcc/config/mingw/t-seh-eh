@@ -3,4 +3,5 @@
 EH_MODEL = seh
 
 # Use SEH exception handling.
-LIB2ADDEH = $(srcdir)/unwind-seh.c $(srcdir)/unwind-sjlj.c $(srcdir)/unwind-c.c
+LIB2ADDEH = $(srcdir)/unwind-seh.c $(srcdir)/unwind-sjlj.c $(srcdir)/unwind-c.c \
+  $(srcdir)/config/mingw/coro-fiber.c
