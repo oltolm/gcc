@@ -712,6 +712,8 @@ extern void mark_forward_parm_decls (void);
 extern void declare_parm_level (void);
 extern tree declare_effect (location_t, tree, tree);
 extern tree c_seh_funclet;
+extern void c_seh_prepare_function (tree);
+extern void c_seh_prepare_funclet (tree, const char *);
 extern tree c_build_effect_handler_type (tree);
 extern tree c_effect_of_handler_type (tree);
 extern tree c_begin_effect_try (location_t);

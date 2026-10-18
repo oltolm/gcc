@@ -1259,6 +1259,48 @@ build_effect_address (location_t loc, tree effect)
 
 tree c_seh_funclet;
 
+/* Prepare FN, a function that contains a Microsoft __try statement, for
+   structured exception handling.  Any trapping instruction in it can
+   raise an exception, also when it is compiled without -fexceptions.
+   The filter and __finally functions reach its frame through the SEH
+   runtime, so its body must stay as it is.  */
+
+void
+c_seh_prepare_function (tree fn)
+{
+  if (lookup_attribute ("seh function", DECL_ATTRIBUTES (fn)))
+    return;
+  c_seh_prepare_funclet (fn, "seh function");
+
+  struct cl_optimization saved;
+  cl_optimization_save (&saved, &global_options, &global_options_set);
+  if (tree old = DECL_FUNCTION_SPECIFIC_OPTIMIZATION (fn))
+    cl_optimization_restore (&global_options, &global_options_set,
+			     TREE_OPTIMIZATION (old));
+  global_options.x_flag_exceptions = 1;
+  global_options.x_flag_non_call_exceptions = 1;
+  DECL_FUNCTION_SPECIFIC_OPTIMIZATION (fn)
+    = build_optimization_node (&global_options, &global_options_set);
+  cl_optimization_restore (&global_options, &global_options_set, &saved);
+  DECL_STRUCT_FUNCTION (fn)->can_throw_non_call_exceptions = 1;
+}
+
+/* Keep FN, a filter or __finally function of a Microsoft __try statement
+   or a function containing one, out of inlining and other IPA
+   transformations.  If KIND is not NULL, record it as an internal
+   attribute, by which the compiler recognizes the function.  */
+
+void
+c_seh_prepare_funclet (tree fn, const char *kind)
+{
+  DECL_UNINLINABLE (fn) = 1;
+  DECL_ATTRIBUTES (fn) = tree_cons (get_identifier ("noipa"), NULL_TREE,
+				    DECL_ATTRIBUTES (fn));
+  if (kind)
+    DECL_ATTRIBUTES (fn) = tree_cons (get_identifier (kind), NULL_TREE,
+				      DECL_ATTRIBUTES (fn));
+}
+
 /* The types _Handler (EFFECT), indexed by EFFECT, and the effects,
    indexed by the types.  */
 static GTY(()) hash_map<tree, tree> *effect_handler_types;

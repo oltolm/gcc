@@ -1017,6 +1017,26 @@ get_eh_else (gimple_seq finally)
   return NULL;
 }
 
+/* A subroutine of lower_try_finally.  If FINALLY is the cleanup of a
+   Microsoft __finally block, return the function that the SEH runtime
+   calls on its exception path, which is the only statement there.  */
+
+static tree
+seh_finally_funclet (gimple_seq finally)
+{
+  geh_else *eh_else = get_eh_else (finally);
+  if (!eh_else)
+    return NULL_TREE;
+  gimple_seq e = gimple_eh_else_e_body (eh_else);
+  if (!gimple_seq_singleton_p (e)
+      || !is_gimple_call (gimple_seq_first_stmt (e)))
+    return NULL_TREE;
+  tree fn = gimple_call_fndecl (gimple_seq_first_stmt (e));
+  if (fn && lookup_attribute ("seh finally", DECL_ATTRIBUTES (fn)))
+    return fn;
+  return NULL_TREE;
+}
+
 /* A subroutine of lower_try_finally.  If the eh_protect_cleanup_actions
    langhook returns non-null, then the language requires that the exception
    path out of a try_finally be treated specially.  To wit: the code within
@@ -1725,9 +1745,12 @@ lower_try_finally (struct leh_state *state, gtry *tp)
   this_tf.try_finally_expr = tp;
   this_tf.top_p = tp;
   this_tf.outer = state;
-  if (using_eh_for_cleanups_p () && !cleanup_is_dead_in (state))
+  tree seh_funclet = seh_finally_funclet (gimple_try_cleanup (tp));
+  if ((using_eh_for_cleanups_p () || seh_funclet)
+      && !cleanup_is_dead_in (state))
     {
       this_tf.region = gen_eh_region_cleanup (state->cur_region);
+      this_tf.region->seh_funclet = seh_funclet;
       this_state.cur_region = this_tf.region;
     }
   else
