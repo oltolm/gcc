@@ -918,6 +918,13 @@ c_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
 
   switch (code)
     {
+    case SEH_TRY_EXCEPT:
+    case SEH_TRY_FINALLY:
+      sorry_at (EXPR_LOCATION (*expr_p),
+		"structured exception handling is not yet implemented");
+      *expr_p = SEH_TRY_BODY (*expr_p);
+      return GS_OK;
+
     case LSHIFT_EXPR:
     case RSHIFT_EXPR:
     case LROTATE_EXPR:

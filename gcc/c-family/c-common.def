@@ -94,6 +94,17 @@ DEFTREECODE (CONTINUE_STMT, "continue_stmt", tcc_statement, 1)
    and SWITCH_STMT_NAME, respectively.  */
 DEFTREECODE (SWITCH_STMT, "switch_stmt", tcc_statement, 5)
 
+/* Used to represent a Microsoft __try/__except statement.  The operands
+   are SEH_TRY_BODY, SEH_EXCEPT_FILTER, the nested function that computes
+   the filter, SEH_EXCEPT_HANDLER and SEH_EXCEPT_CODE, the variable that
+   holds the exception code in the handler.  */
+DEFTREECODE (SEH_TRY_EXCEPT, "seh_try_except", tcc_statement, 4)
+
+/* Used to represent a Microsoft __try/__finally statement.  The operands
+   are SEH_TRY_BODY and SEH_FINALLY_FN, the nested function that runs the
+   __finally block, given whether the body was left by an exception.  */
+DEFTREECODE (SEH_TRY_FINALLY, "seh_try_finally", tcc_statement, 2)
+
 /* Extensions for C++ Concepts. */
 
 /* Concept definition. This is not entirely different than a VAR_DECL
