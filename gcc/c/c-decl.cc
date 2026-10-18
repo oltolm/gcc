@@ -1579,18 +1579,111 @@ build_effect_ops (location_t loc, tree effect, tree clauses, tree kclauses)
   return ops;
 }
 
+/* A _Try whose clauses are being parsed.  A nonlocal goto lands at its
+   label without leaving the try/finally regions between the call that
+   led to the goto and the label, so a goto from a clause to a label
+   outside it is redirected to a label in the body of the _Try, from
+   which a local goto leaves the regions.  */
+
+struct c_effect_clauses
+{
+  /* The function containing the _Try.  */
+  tree fn;
+  /* The redirected gotos: their labels in TREE_PURPOSE and the labels
+     they are redirected to in TREE_VALUE.  */
+  tree jumps;
+  c_effect_clauses *outer;
+};
+
+static c_effect_clauses *current_effect_clauses;
+
+/* Begin parsing the clauses of a _Try in the current function.  */
+
+void
+c_begin_effect_clauses (void)
+{
+  c_effect_clauses *c = new c_effect_clauses;
+  c->fn = current_function_decl;
+  c->jumps = NULL_TREE;
+  c->outer = current_effect_clauses;
+  current_effect_clauses = c;
+}
+
+/* End parsing the clauses of a _Try and return its redirected gotos,
+   for c_finish_effect_try.  */
+
+tree
+c_end_effect_clauses (void)
+{
+  c_effect_clauses *c = current_effect_clauses;
+  tree jumps = c->jumps;
+  current_effect_clauses = c->outer;
+  delete c;
+  return jumps;
+}
+
+/* Return the label that a goto at LOC to LABEL in the current function
+   jumps to: a label in the body of the _Try if the goto leaves one of its
+   clauses, otherwise LABEL.  */
+
+tree
+c_effect_redirect_goto (location_t loc, tree label)
+{
+  c_effect_clauses *c = current_effect_clauses;
+  if (!c || c->fn == current_function_decl)
+    return label;
+  tree f;
+  for (f = c->fn; f; f = decl_function_context (f))
+    if (f == DECL_CONTEXT (label))
+      break;
+  if (!f)
+    return label;
+  for (tree j = c->jumps; j; j = TREE_CHAIN (j))
+    if (TREE_PURPOSE (j) == label)
+      return TREE_VALUE (j);
+  tree to = create_artificial_label (loc);
+  DECL_CONTEXT (to) = c->fn;
+  TREE_USED (to) = 1;
+  c->jumps = tree_cons (label, to, c->jumps);
+  return to;
+}
+
 /* Finish a _Try statement whose record is REC, whose body is BODY and
    whose _Handle clauses for EFFECT are the nested functions in the
    TREE_VALUEs of CLAUSES, for the operations in their TREE_PURPOSEs.
    The statements are added to the current block: REC, pointing to a
    table of the clauses, is pushed on the chain for the duration of BODY.
    If NAMED, the handler is performed only by name, so _Perform without
-   a name must not find REC.  */
+   a name must not find REC.  JUMPS are the gotos out of the clauses, as
+   returned by c_end_effect_clauses.  */
 
 void
 c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
-		     tree clauses, bool named)
+		     tree clauses, bool named, tree jumps)
 {
+  if (jumps)
+    {
+      tree stmts = NULL_TREE;
+      tree skip = create_artificial_label (loc);
+      append_to_statement_list (body, &stmts);
+      append_to_statement_list (build1 (GOTO_EXPR, void_type_node, skip),
+				&stmts);
+      for (tree j = nreverse (jumps); j; j = TREE_CHAIN (j))
+	{
+	  tree to = TREE_VALUE (j);
+	  append_to_statement_list (build1 (LABEL_EXPR, void_type_node, to),
+				    &stmts);
+	  tree go = build1 (GOTO_EXPR, void_type_node,
+			    c_effect_redirect_goto (DECL_SOURCE_LOCATION (to),
+						    TREE_PURPOSE (j)));
+	  SET_EXPR_LOCATION (go, DECL_SOURCE_LOCATION (to));
+	  append_to_statement_list (go, &stmts);
+	}
+      append_to_statement_list (build1 (LABEL_EXPR, void_type_node, skip),
+				&stmts);
+      body = stmts;
+    }
+
   tree ops = build_effect_ops (loc, effect, clauses, NULL_TREE);
   tree rec_addr = build_fold_addr_expr_loc (loc, rec);
   add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,

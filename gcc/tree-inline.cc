@@ -4087,6 +4087,7 @@ inline_forbidden_p_stmt (gimple_stmt_iterator *gsi, bool *handled_ops_p,
 	    return t;
 
 	  case BUILT_IN_NONLOCAL_GOTO:
+	  case BUILT_IN_NONLOCAL_GOTO_UNWIND:
 	    /* Similarly.  */
 	    inline_forbidden_reason
 	      = G_("function %q+F can never be inlined because "

@@ -36,4 +36,5 @@ GCC_17 {
   __gcc_effect_set_top
   __gcc_effect_suspend
   __gcc_effect_top
+  __gcc_nonlocal_goto_unwind
 }

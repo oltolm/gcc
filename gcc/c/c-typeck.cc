@@ -13684,6 +13684,7 @@ c_finish_goto_label (location_t loc, tree label)
     return NULL_TREE;
   TREE_USED (decl) = 1;
   mark_decl_used (decl, false);
+  decl = c_effect_redirect_goto (loc, decl);
   {
     add_stmt (build_predict_expr (PRED_GOTO, NOT_TAKEN));
     tree t = build1 (GOTO_EXPR, void_type_node, decl);

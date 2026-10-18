@@ -5614,6 +5614,7 @@ c_parser_effect_try_statement (c_parser *parser)
   parser->effect_coro = NULL_TREE;
   if (!c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
     c_parser_error (parser, "expected %<_Handle%>");
+  c_begin_effect_clauses ();
   while (c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
     {
       location_t clause_loc = c_parser_peek_token (parser)->location;
@@ -5646,6 +5647,7 @@ c_parser_effect_try_statement (c_parser *parser)
       else
 	clauses = tree_cons (field, fn, clauses);
     }
+  tree jumps = c_end_effect_clauses ();
   /* Every operation needs a clause, since a _Perform calls whatever its
      entry in the operation table holds.  */
   if (effect && !clause_error)
@@ -5660,6 +5662,10 @@ c_parser_effect_try_statement (c_parser *parser)
   parser->effect_action = saved_action;
   parser->effect_coro = saved_coro;
 
+  if (jumps && (rehandle || kclauses))
+    sorry_at (DECL_SOURCE_LOCATION (TREE_VALUE (jumps)),
+	      "jump out of a %<_Handle%> clause of a %<_Try%> that runs as "
+	      "a coroutine");
   if (rehandle)
     c_parser_effect_rehandle (parser, loc, tokens, effect, clauses, kclauses,
 			      action, coro);
@@ -5689,7 +5695,7 @@ c_parser_effect_try_statement (c_parser *parser)
       else
 	body = c_parser_replay_compound_statement (parser, tokens);
       if (rec)
-	c_finish_effect_try (loc, rec, body, effect, clauses, named);
+	c_finish_effect_try (loc, rec, body, effect, clauses, named, jumps);
       else
 	add_stmt (body);
     }

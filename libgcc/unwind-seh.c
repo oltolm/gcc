@@ -461,6 +461,65 @@ _Unwind_ForcedUnwind (struct _Unwind_Exception *exc,
   abort ();
 }
 
+static _Unwind_Reason_Code
+nonlocal_goto_stop (int version __attribute__((unused)),
+		    _Unwind_Action actions __attribute__((unused)),
+		    _Unwind_Exception_Class exc_class __attribute__((unused)),
+		    struct _Unwind_Exception *exc __attribute__((unused)),
+		    struct _Unwind_Context *context __attribute__((unused)),
+		    void *stop_argument __attribute__((unused)))
+{
+  return _URC_NO_REASON;
+}
+
+/* Perform a nonlocal goto to LABEL with the buffer SAVE_AREA of its
+   function, running the cleanups of the frames in between.  The
+   unwinding reuses the stack below the target frame, so the exception
+   object lives in SAVE_AREA after the saved frame and stack pointers.  */
+
+void
+__gcc_nonlocal_goto_unwind (void *label, void **save_area)
+{
+  UNWIND_HISTORY_TABLE ms_history;
+  CONTEXT ms_context;
+  ULONG64 sp = (ULONG64) save_area[1];
+  ULONG64 frame;
+  struct _Unwind_Exception *exc;
+
+  memset (&ms_history, 0, sizeof (ms_history));
+  ms_context.ContextFlags = CONTEXT_ALL;
+  RtlCaptureContext (&ms_context);
+
+  /* The target is the frame below the first caller whose stack pointer
+     is above the target's stack pointer saved in SAVE_AREA.  */
+  do
+    {
+      PRUNTIME_FUNCTION entry;
+      ULONG64 image_base;
+      PVOID handler_data;
+
+      if (ms_context.Rip == 0)
+	abort ();
+      entry = RtlLookupFunctionEntry (ms_context.Rip, &image_base,
+				      &ms_history);
+      if (!entry)
+	abort ();
+      RtlVirtualUnwind (0, image_base, ms_context.Rip, entry, &ms_context,
+			&handler_data, &frame, NULL);
+    }
+  while (ms_context.Rsp <= sp);
+
+  exc = (struct _Unwind_Exception *) (((_Unwind_Ptr) &save_area[2] + 15)
+				      & -(_Unwind_Ptr) 16);
+  memset (exc, 0, sizeof (*exc));
+  exc->private_[0] = (_Unwind_Ptr) nonlocal_goto_stop;
+  exc->private_[1] = frame;
+  exc->private_[2] = (_Unwind_Ptr) label;
+
+  _Unwind_Resume (exc);
+  abort ();
+}
+
 /* A convenience function that calls the exception_cleanup field.  */
 
 void

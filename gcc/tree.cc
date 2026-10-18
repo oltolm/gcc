@@ -10258,6 +10258,12 @@ build_common_builtin_nodes (void)
 			"__builtin_nonlocal_goto",
 			ECF_NORETURN | ECF_NOTHROW);
 
+  /* Not ECF_NOTHROW: the cleanups of the caller must run.  */
+  local_define_builtin ("__builtin_nonlocal_goto_unwind", ftype,
+			BUILT_IN_NONLOCAL_GOTO_UNWIND,
+			"__gcc_nonlocal_goto_unwind",
+			ECF_NORETURN);
+
   tree ptr_ptr_type_node = build_pointer_type (ptr_type_node);
 
   if (!builtin_decl_explicit_p (BUILT_IN_GCC_NESTED_PTR_CREATED))
