@@ -1078,15 +1078,31 @@ static GTY(()) tree effect_find_decl;
 static GTY(()) tree effect_top_decl;
 static GTY(()) tree effect_set_top_decl;
 
+/* The message a _Perform passes to the clause of a coroutine's handler,
+   struct __gcc_effect_message, and the runtime functions for
+   coroutines.  */
+
+static GTY(()) tree effect_message_type;
+static GTY(()) tree effect_coro_create_decl;
+static GTY(()) tree effect_coro_resume_decl;
+static GTY(()) tree effect_coro_destroy_decl;
+static GTY(()) tree effect_coro_message_decl;
+static GTY(()) tree effect_coro_handler_decl;
+static GTY(()) tree effect_suspend_decl;
+
+/* Build the declaration of the runtime function NAME of TYPE.  It throws
+   only if THROWS: a resumption that destroys the coroutine unwinds the
+   frames that suspended it.  */
+
 static tree
-build_effect_runtime_fn (const char *name, tree type)
+build_effect_runtime_fn (const char *name, tree type, bool throws = false)
 {
   tree decl = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
 			  get_identifier (name), type);
   DECL_EXTERNAL (decl) = 1;
   TREE_PUBLIC (decl) = 1;
   DECL_ARTIFICIAL (decl) = 1;
-  TREE_NOTHROW (decl) = 1;
+  TREE_NOTHROW (decl) = !throws;
   return decl;
 }
 
@@ -1123,6 +1139,68 @@ init_effect_runtime (void)
     = build_effect_runtime_fn ("__gcc_effect_set_top",
 			       build_function_type_list (void_type_node, ptr,
 							 NULL_TREE));
+
+  type = make_node (RECORD_TYPE);
+  fields = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier ("op"),
+		       unsigned_type_node);
+  f = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier ("args"),
+		  build_pointer_type (ptr_type_node));
+  DECL_CHAIN (f) = fields;
+  fields = f;
+  f = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier ("result"),
+		  ptr_type_node);
+  DECL_CHAIN (f) = fields;
+  fields = f;
+  finish_builtin_struct (type, "__gcc_effect_message", fields, NULL_TREE);
+  effect_message_type = type;
+
+  tree body_ptr
+    = build_pointer_type (build_function_type_list (void_type_node,
+						    ptr_type_node, NULL_TREE));
+  effect_coro_create_decl
+    = build_effect_runtime_fn ("__gcc_coro_create",
+			       build_function_type_list (ptr_type_node,
+							 body_ptr,
+							 ptr_type_node,
+							 size_type_node,
+							 NULL_TREE));
+  effect_coro_resume_decl
+    = build_effect_runtime_fn ("__gcc_coro_resume",
+			       build_function_type_list (integer_type_node,
+							 ptr_type_node,
+							 NULL_TREE),
+			       true);
+  effect_coro_destroy_decl
+    = build_effect_runtime_fn ("__gcc_coro_destroy",
+			       build_function_type_list (void_type_node,
+							 ptr_type_node,
+							 NULL_TREE));
+  effect_coro_message_decl
+    = build_effect_runtime_fn ("__gcc_coro_message",
+			       build_function_type_list (ptr_type_node,
+							 ptr_type_node,
+							 NULL_TREE));
+  effect_coro_handler_decl
+    = build_effect_runtime_fn ("__gcc_coro_handler",
+			       build_function_type_list (ptr, ptr_type_node,
+							 NULL_TREE));
+  effect_suspend_decl
+    = build_effect_runtime_fn ("__gcc_effect_suspend",
+			       build_function_type_list (void_type_node, ptr,
+							 ptr_type_node,
+							 NULL_TREE),
+			       true);
+}
+
+/* Return field number N of the message that MSG refers to.  */
+
+static tree
+effect_message_field (tree msg, int n)
+{
+  tree field = TYPE_FIELDS (effect_message_type);
+  while (n--)
+    field = DECL_CHAIN (field);
+  return build3 (COMPONENT_REF, TREE_TYPE (field), msg, field, NULL_TREE);
 }
 
 /* Return field number N of the handler record that REC refers to.  */
@@ -1208,8 +1286,9 @@ c_effect_of_handler_type (tree type)
   return slot ? *slot : NULL_TREE;
 }
 
-/* Begin a _Try statement: declare the handler record that it pushes on
-   the chain in the current block and return it.  */
+/* Begin a _Try statement whose clauses do not take a continuation:
+   declare the handler record that it pushes on the chain in the current
+   block and return it.  */
 
 tree
 c_begin_effect_try (location_t loc)
@@ -1221,33 +1300,49 @@ c_begin_effect_try (location_t loc)
 }
 
 /* Declare NAME in the current scope as the handler of EFFECT whose
-   record is REC.  */
+   record is at REC_ADDR.  */
 
 void
-c_declare_effect_handler (location_t loc, tree effect, tree name, tree rec)
+c_declare_effect_handler (location_t loc, tree effect, tree name,
+			  tree rec_addr)
 {
   tree type = c_build_qualified_type (c_build_effect_handler_type (effect),
 				      TYPE_QUAL_CONST);
   tree decl = build_decl (loc, VAR_DECL, name, type);
   DECL_CONTEXT (decl) = current_function_decl;
-  DECL_INITIAL (decl) = fold_convert_loc (loc, type,
-					  build_fold_addr_expr_loc (loc, rec));
+  DECL_INITIAL (decl) = fold_convert_loc (loc, type, rec_addr);
   TREE_READONLY (decl) = 1;
   pushdecl (decl);
   add_stmt (build_stmt (loc, DECL_EXPR, decl));
 }
 
-/* Finish a _Try statement whose record is REC, whose body is BODY and
-   whose _Handle clauses for EFFECT are the nested functions in the
-   TREE_VALUEs of CLAUSES, for the operations in their TREE_PURPOSEs.
-   The statements are added to the current block: REC, pointing to a
-   table of the clauses, is pushed on the chain for the duration of BODY.
-   If NAMED, the handler is performed only by name, so _Perform without
-   a name must not find REC.  */
+/* Return the address of the record of the handler a coroutine body runs
+   under, for c_declare_effect_handler at the start of the body.  */
 
-void
-c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
-		     tree clauses, bool named)
+tree
+c_effect_body_handler (location_t loc)
+{
+  init_effect_runtime ();
+  return build_call_expr_loc (loc, effect_top_decl, 0);
+}
+
+/* Declare and return the variable that a _Handle clause with a
+   continuation sets to nonzero when it resumes the continuation.  */
+
+tree
+c_build_effect_action (location_t loc)
+{
+  return build_effect_temp (loc, integer_type_node, integer_zero_node);
+}
+
+/* Declare and return the operation table of a handler of EFFECT whose
+   clauses called on the stack of _Perform are the nested functions in
+   the TREE_VALUEs of CLAUSES, for the operations in their TREE_PURPOSEs.
+   The operations in the TREE_PURPOSEs of KCLAUSES get null entries, so
+   that _Perform suspends the coroutine instead.  */
+
+static tree
+build_effect_ops (location_t loc, tree effect, tree clauses, tree kclauses)
 {
   tree ops = build_effect_temp (loc, TYPE_MAIN_VARIANT (TREE_TYPE (effect)),
 				NULL_TREE);
@@ -1269,7 +1364,31 @@ c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
 				    field, NULL_TREE),
 			    addr));
     }
+  for (tree c = kclauses; c; c = TREE_CHAIN (c))
+    {
+      tree field = TREE_PURPOSE (c);
+      add_stmt (build2_loc (loc, MODIFY_EXPR, TREE_TYPE (field),
+			    build3 (COMPONENT_REF, TREE_TYPE (field), ops,
+				    field, NULL_TREE),
+			    fold_convert (TREE_TYPE (field),
+					  null_pointer_node)));
+    }
+  return ops;
+}
 
+/* Finish a _Try statement whose record is REC, whose body is BODY and
+   whose _Handle clauses for EFFECT are the nested functions in the
+   TREE_VALUEs of CLAUSES, for the operations in their TREE_PURPOSEs.
+   The statements are added to the current block: REC, pointing to a
+   table of the clauses, is pushed on the chain for the duration of BODY.
+   If NAMED, the handler is performed only by name, so _Perform without
+   a name must not find REC.  */
+
+void
+c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
+		     tree clauses, bool named)
+{
+  tree ops = build_effect_ops (loc, effect, clauses, NULL_TREE);
   tree rec_addr = build_fold_addr_expr_loc (loc, rec);
   add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
 			effect_handler_field (rec, 0),
@@ -1288,11 +1407,276 @@ c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
 					     effect_handler_field (rec, 0))));
 }
 
+/* The body of a _Try that runs as a coroutine, while it is parsed.  The
+   body is a nested function that gets copies of the automatic variables
+   of the enclosing functions it uses, so that it does not depend on
+   their frames.  */
+
+struct c_effect_body
+{
+  tree fn;
+  /* The variables used and their copies in FN.  */
+  auto_vec<tree> vars;
+  auto_vec<tree> copies;
+  c_effect_body *outer;
+};
+
+static c_effect_body *current_effect_body;
+
+/* Begin parsing FN as the body of a _Try that runs as a coroutine.  */
+
+void
+c_begin_effect_body (tree fn)
+{
+  c_effect_body *b = new c_effect_body;
+  b->fn = fn;
+  b->outer = current_effect_body;
+  current_effect_body = b;
+}
+
+/* Return what a use of DECL refers to: its copy if DECL is an automatic
+   variable of a function enclosing the coroutine body being parsed,
+   otherwise DECL.  */
+
+tree
+c_effect_capture (tree decl)
+{
+  c_effect_body *b = current_effect_body;
+  if (!b
+      || !(VAR_P (decl) || TREE_CODE (decl) == PARM_DECL)
+      || TREE_STATIC (decl)
+      || DECL_EXTERNAL (decl))
+    return decl;
+  tree ctx = decl_function_context (decl);
+  if (!ctx)
+    return decl;
+  tree f;
+  for (f = decl_function_context (b->fn); f; f = decl_function_context (f))
+    if (f == ctx)
+      break;
+  if (!f)
+    return decl;
+  for (unsigned i = 0; i < b->vars.length (); i++)
+    if (b->vars[i] == decl)
+      return b->copies[i];
+  if (variably_modified_type_p (TREE_TYPE (decl), NULL_TREE))
+    {
+      sorry ("use of %qD of variably modified type in the body of a "
+	     "%<_Try%> that runs as a coroutine", decl);
+      return decl;
+    }
+  tree copy = build_decl (DECL_SOURCE_LOCATION (decl), VAR_DECL,
+			  DECL_NAME (decl), TREE_TYPE (decl));
+  DECL_CONTEXT (copy) = b->fn;
+  TREE_READONLY (copy) = TREE_READONLY (decl);
+  TREE_THIS_VOLATILE (copy) = TREE_THIS_VOLATILE (decl);
+  b->vars.safe_push (decl);
+  b->copies.safe_push (copy);
+  return copy;
+}
+
+/* Finish parsing the coroutine body begun by c_begin_effect_body, whose
+   parameter PARM points to the values of the variables it uses.  Declare
+   their copies in the current scope, initialized from PARM, and return
+   the type PARM points to, or NULL_TREE if the body uses none.  Set
+   *CAPTURES to a list of the variables, in the TREE_PURPOSEs, and their
+   fields in that type, in the TREE_VALUEs.  */
+
+tree
+c_finish_effect_body (location_t loc, tree parm, tree *captures)
+{
+  c_effect_body *b = current_effect_body;
+  current_effect_body = b->outer;
+  *captures = NULL_TREE;
+  if (b->copies.is_empty ())
+    {
+      delete b;
+      return NULL_TREE;
+    }
+
+  tree type = make_node (RECORD_TYPE);
+  tree fields = NULL_TREE;
+  auto_vec<tree> field_decls;
+  for (tree copy : b->copies)
+    {
+      tree f = build_decl (loc, FIELD_DECL, DECL_NAME (copy),
+			   TYPE_MAIN_VARIANT (TREE_TYPE (copy)));
+      DECL_CHAIN (f) = fields;
+      fields = f;
+      field_decls.safe_push (f);
+    }
+  finish_builtin_struct (type, "__gcc_effect_captures", fields, NULL_TREE);
+
+  tree p = build_fold_indirect_ref_loc (loc,
+					fold_convert_loc
+					  (loc, build_pointer_type (type),
+					   parm));
+  for (unsigned i = 0; i < b->copies.length (); i++)
+    {
+      tree copy = b->copies[i];
+      tree f = field_decls[i];
+      DECL_INITIAL (copy) = build3 (COMPONENT_REF, TREE_TYPE (f), p, f,
+				    NULL_TREE);
+      bind (DECL_NAME (copy), copy, current_scope, false, false, loc);
+      add_stmt (build_stmt (loc, DECL_EXPR, copy));
+      *captures = tree_cons (b->vars[i], f, *captures);
+    }
+  delete b;
+  return type;
+}
+
+/* Return the index of FIELD among the operations of EFFECT.  */
+
+static unsigned
+effect_operation_index (tree effect, tree field)
+{
+  unsigned n = 0;
+  for (tree f = TYPE_FIELDS (TREE_TYPE (effect)); f != field;
+       f = DECL_CHAIN (f))
+    n++;
+  return n;
+}
+
+/* Finish a _Try statement whose body is the nested function BODY_FN,
+   started as a coroutine, and whose _Handle clauses for EFFECT are the
+   nested functions in the TREE_VALUEs of CLAUSES and KCLAUSES, for the
+   operations in their TREE_PURPOSEs.  The clauses in KCLAUSES take a
+   continuation and run on the stack of the _Try whenever the body
+   performs their operation; they set ACTION when they resume it.
+   CAP_TYPE and CAPTURES are as returned by c_finish_effect_body.  NAMED
+   is as for c_finish_effect_try.  */
+
+void
+c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
+			   tree captures, tree effect, tree clauses,
+			   tree kclauses, tree action, bool named)
+{
+  init_effect_runtime ();
+  tree ops = build_effect_ops (loc, effect, clauses, kclauses);
+
+  tree cap_addr = null_pointer_node;
+  if (cap_type)
+    {
+      tree cap = build_effect_temp (loc, cap_type, NULL_TREE);
+      TREE_ADDRESSABLE (cap) = 1;
+      for (tree c = captures; c; c = TREE_CHAIN (c))
+	{
+	  tree f = TREE_VALUE (c);
+	  tree v = c_effect_capture (TREE_PURPOSE (c));
+	  TREE_USED (v) = 1;
+	  mark_exp_read (v);
+	  add_stmt (build2_loc (loc, MODIFY_EXPR, TREE_TYPE (f),
+				build3 (COMPONENT_REF, TREE_TYPE (f), cap, f,
+					NULL_TREE),
+				v));
+	}
+      cap_addr = build_fold_addr_expr_loc (loc, cap);
+    }
+
+  TREE_USED (body_fn) = 1;
+  tree coro = build_effect_temp (loc, ptr_type_node,
+				 build_call_expr_loc
+				   (loc, effect_coro_create_decl, 3,
+				    build_fold_addr_expr_loc (loc, body_fn),
+				    fold_convert_loc (loc, ptr_type_node,
+						      cap_addr),
+				    size_zero_node));
+  add_stmt (build3_loc (loc, COND_EXPR, void_type_node,
+			build2 (EQ_EXPR, boolean_type_node, coro,
+				null_pointer_node),
+			build_call_expr_loc (loc,
+					     builtin_decl_explicit
+					       (BUILT_IN_ABORT), 0),
+			NULL_TREE));
+  tree ptr = build_pointer_type (effect_handler_type);
+  tree h = build_effect_temp (loc, ptr,
+			      build_call_expr_loc (loc,
+						   effect_coro_handler_decl,
+						   1, coro));
+  tree hrec = build_indirect_ref (loc, h, RO_NULL);
+  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			effect_handler_field (hrec, 1),
+			named ? null_pointer_node
+			: build_effect_address (loc, effect)));
+  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			effect_handler_field (hrec, 2),
+			fold_convert_loc (loc, ptr_type_node,
+					  build_fold_addr_expr_loc (loc, ops))));
+
+  /* Resume the body until it finishes, running the clause of each
+     operation it suspends in, or until a clause does not resume it.  */
+  tree loop = push_stmt_list ();
+  add_stmt (build1_loc (loc, EXIT_EXPR, void_type_node,
+			build2 (EQ_EXPR, boolean_type_node,
+				build_call_expr_loc (loc,
+						     effect_coro_resume_decl,
+						     1, coro),
+				integer_zero_node)));
+  tree mptr = build_pointer_type (effect_message_type);
+  tree m = build_effect_temp (loc, mptr,
+			      fold_convert_loc
+				(loc, mptr,
+				 build_call_expr_loc (loc,
+						      effect_coro_message_decl,
+						      1, coro)));
+  tree msg = build_indirect_ref (loc, m, RO_NULL);
+  add_stmt (build2_loc (loc, MODIFY_EXPR, integer_type_node, action,
+			integer_zero_node));
+  for (tree c = kclauses; c; c = TREE_CHAIN (c))
+    {
+      tree field = TREE_PURPOSE (c);
+      tree fn = TREE_VALUE (c);
+      tree ftype = TREE_TYPE (TREE_TYPE (field));
+      vec<tree, va_gc> *args = NULL;
+      unsigned j = 0;
+      for (tree t = TYPE_ARG_TYPES (ftype); t && t != void_list_node;
+	   t = TREE_CHAIN (t), j++)
+	{
+	  tree slot = fold_build_pointer_plus_hwi_loc
+			(loc, effect_message_field (msg, 1),
+			 j * tree_to_uhwi (TYPE_SIZE_UNIT (ptr_type_node)));
+	  slot = build_fold_indirect_ref_loc (loc, slot);
+	  vec_safe_push (args,
+			 build_fold_indirect_ref_loc
+			   (loc, fold_convert_loc
+				   (loc, build_pointer_type (TREE_VALUE (t)),
+				    slot)));
+	}
+      TREE_USED (fn) = 1;
+      tree call = build_call_expr_loc_vec (loc, fn, args);
+      tree rtype = TREE_TYPE (ftype);
+      if (!VOID_TYPE_P (rtype))
+	call = build2_loc (loc, MODIFY_EXPR, rtype,
+			   build_fold_indirect_ref_loc
+			     (loc, fold_convert_loc
+				     (loc, build_pointer_type (rtype),
+				      effect_message_field (msg, 2))),
+			   call);
+      add_stmt (build3_loc (loc, COND_EXPR, void_type_node,
+			    build2 (EQ_EXPR, boolean_type_node,
+				    effect_message_field (msg, 0),
+				    build_int_cst (unsigned_type_node,
+						   effect_operation_index
+						     (effect, field))),
+			    call, NULL_TREE));
+    }
+  add_stmt (build1_loc (loc, EXIT_EXPR, void_type_node,
+			build2 (EQ_EXPR, boolean_type_node, action,
+				integer_zero_node)));
+  loop = pop_stmt_list (loop);
+  add_stmt (build2_loc (loc, TRY_FINALLY_EXPR, void_type_node,
+			build1_loc (loc, LOOP_EXPR, void_type_node, loop),
+			build_call_expr_loc (loc, effect_coro_destroy_decl, 1,
+					     coro)));
+}
+
 /* Build _Perform of the operation FIELD of EFFECT with arguments ARGS,
-   whose locations are ARG_LOC.  The arguments are evaluated first; the
-   clause of HANDLER, or if it is NULL_TREE of the innermost handler for
-   EFFECT, is then called with that handler and the ones inside it
-   removed from the chain.  */
+   whose locations are ARG_LOC.  The arguments are evaluated first, then
+   the handler is HANDLER, or if it is NULL_TREE the innermost handler for
+   EFFECT.  If its clause takes no continuation, it is called with that
+   handler and the ones inside it removed from the chain; otherwise the
+   coroutine of the handler suspends with a message holding the
+   arguments, and the clause stores the result in it.  */
 
 tree
 c_build_effect_perform (location_t loc, tree effect, tree handler, tree field,
@@ -1312,30 +1696,113 @@ c_build_effect_perform (location_t loc, tree effect, tree handler, tree field,
 			      : build_call_expr_loc (loc, effect_find_decl, 1,
 						     build_effect_address
 						       (loc, effect)));
-  tree saved = build_effect_temp (loc, ptr,
-				  build_call_expr_loc (loc, effect_top_decl,
-						       0));
   tree hrec = build_indirect_ref (loc, h, RO_NULL);
-  add_stmt (build_call_expr_loc (loc, effect_set_top_decl, 1,
-				 effect_handler_field (hrec, 0)));
-  push_cleanup (saved, build_call_expr_loc (loc, effect_set_top_decl, 1,
-					    saved), false);
-
   tree ops = build_indirect_ref
 	       (loc, fold_convert_loc (loc,
 				       build_pointer_type (TREE_TYPE (effect)),
 				       effect_handler_field (hrec, 2)),
 		RO_NULL);
-  tree fn = build3 (COMPONENT_REF, TREE_TYPE (field), ops, field, NULL_TREE);
+  tree fn = build_effect_temp (loc, TREE_TYPE (field),
+			       build3 (COMPONENT_REF, TREE_TYPE (field), ops,
+				       field, NULL_TREE));
   tree call = c_fully_fold (build_function_call_vec (loc, arg_loc, fn, args,
 						     NULL),
 			    false, NULL);
   tree inner = call;
   STRIP_NOPS (inner);
-  if (TREE_CODE (inner) == CALL_EXPR)
-    CALL_EXPR_BY_DESCRIPTOR (inner)
-      = targetm.calls.custom_function_descriptors > 0;
-  add_stmt (call);
+  if (TREE_CODE (inner) != CALL_EXPR)
+    {
+      add_stmt (call);
+      return c_finish_stmt_expr (loc, stmt);
+    }
+  CALL_EXPR_BY_DESCRIPTOR (inner)
+    = targetm.calls.custom_function_descriptors > 0;
+
+  tree ftype = TREE_TYPE (TREE_TYPE (field));
+  tree rtype = TREE_TYPE (ftype);
+  tree result = NULL_TREE;
+  if (!VOID_TYPE_P (rtype))
+    {
+      result = build_effect_temp (loc, rtype, NULL_TREE);
+      TREE_ADDRESSABLE (result) = 1;
+    }
+
+  tree direct = push_stmt_list ();
+  tree saved = build_effect_temp (loc, ptr,
+				  build_call_expr_loc (loc, effect_top_decl,
+						       0));
+  add_stmt (build_call_expr_loc (loc, effect_set_top_decl, 1,
+				 effect_handler_field (hrec, 0)));
+  push_cleanup (saved, build_call_expr_loc (loc, effect_set_top_decl, 1,
+					    saved), false);
+  add_stmt (result
+	    ? build2_loc (loc, MODIFY_EXPR, rtype, result, call)
+	    : call);
+  direct = pop_stmt_list (direct);
+
+  tree suspend = push_stmt_list ();
+  tree argv = null_pointer_node;
+  unsigned n = 0;
+  for (tree t = TYPE_ARG_TYPES (ftype); t && t != void_list_node;
+       t = TREE_CHAIN (t))
+    n++;
+  if (n)
+    {
+      argv = build_effect_temp (loc,
+				build_array_type_nelts (ptr_type_node, n),
+				NULL_TREE);
+      unsigned i = 0;
+      for (tree t = TYPE_ARG_TYPES (ftype); i < n;
+	   t = TREE_CHAIN (t), i++)
+	{
+	  tree arg = build_effect_temp (loc, TREE_VALUE (t),
+					fold_convert_loc
+					  (loc, TREE_VALUE (t),
+					   unshare_expr
+					     (CALL_EXPR_ARG (inner, i))));
+	  TREE_ADDRESSABLE (arg) = 1;
+	  add_stmt (build2_loc (loc, MODIFY_EXPR, ptr_type_node,
+				build4 (ARRAY_REF, ptr_type_node, argv,
+					size_int (i), NULL_TREE, NULL_TREE),
+				fold_convert_loc
+				  (loc, ptr_type_node,
+				   build_fold_addr_expr_loc (loc, arg))));
+	}
+      TREE_ADDRESSABLE (argv) = 1;
+      argv = fold_convert_loc (loc, build_pointer_type (ptr_type_node),
+			       build_fold_addr_expr_loc (loc, argv));
+    }
+  tree msg = build_effect_temp (loc, effect_message_type, NULL_TREE);
+  TREE_ADDRESSABLE (msg) = 1;
+  add_stmt (build2_loc (loc, MODIFY_EXPR, unsigned_type_node,
+			effect_message_field (msg, 0),
+			build_int_cst (unsigned_type_node,
+				       effect_operation_index (effect, field))));
+  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			effect_message_field (msg, 1),
+			fold_convert_loc (loc,
+					  build_pointer_type (ptr_type_node),
+					  argv)));
+  add_stmt (build2_loc (loc, MODIFY_EXPR, ptr_type_node,
+			effect_message_field (msg, 2),
+			result
+			? fold_convert_loc (loc, ptr_type_node,
+					    build_fold_addr_expr_loc (loc,
+								      result))
+			: null_pointer_node));
+  add_stmt (build_call_expr_loc (loc, effect_suspend_decl, 2, h,
+				 fold_convert_loc
+				   (loc, ptr_type_node,
+				    build_fold_addr_expr_loc (loc, msg))));
+  suspend = pop_stmt_list (suspend);
+
+  add_stmt (build3_loc (loc, COND_EXPR, void_type_node,
+			build2 (NE_EXPR, boolean_type_node, fn,
+				fold_convert (TREE_TYPE (fn),
+					      null_pointer_node)),
+			direct, suspend));
+  if (result)
+    add_stmt (result);
   return c_finish_stmt_expr (loc, stmt);
 }
 

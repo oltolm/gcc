@@ -135,6 +135,9 @@ along with GCC; see the file COPYING3.  If not see
 /* Set on VAR_DECLs that declare an effect.  */
 #define C_DECL_EFFECT(DECL) DECL_LANG_FLAG_6 (VAR_DECL_CHECK (DECL))
 
+/* Set on VAR_DECLs that name the continuation of a _Handle clause.  */
+#define C_DECL_CONTINUATION(DECL) DECL_LANG_FLAG_1 (VAR_DECL_CHECK (DECL))
+
 /* Set on VAR_DECLs for compound literals.  */
 #define C_DECL_COMPOUND_LITERAL_P(DECL) \
   DECL_LANG_FLAG_5 (VAR_DECL_CHECK (DECL))
@@ -703,7 +706,14 @@ extern tree c_build_effect_handler_type (tree);
 extern tree c_effect_of_handler_type (tree);
 extern tree c_begin_effect_try (location_t);
 extern void c_declare_effect_handler (location_t, tree, tree, tree);
+extern tree c_effect_body_handler (location_t);
+extern tree c_build_effect_action (location_t);
 extern void c_finish_effect_try (location_t, tree, tree, tree, tree, bool);
+extern void c_begin_effect_body (tree);
+extern tree c_effect_capture (tree);
+extern tree c_finish_effect_body (location_t, tree, tree *);
+extern void c_finish_effect_fiber_try (location_t, tree, tree, tree, tree,
+				       tree, tree, tree, bool);
 extern tree c_build_effect_perform (location_t, tree, tree, tree,
 				    vec<tree, va_gc> *,
 				    const vec<location_t> &);
