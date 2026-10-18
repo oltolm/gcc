@@ -5542,7 +5542,7 @@ c_parser_effect_rehandle_p (auto_vec<c_token> &tokens)
 static void
 c_parser_effect_rehandle (c_parser *parser, location_t loc,
 			  auto_vec<c_token> &tokens, tree effect, tree clauses,
-			  tree kclauses, tree action, tree coro)
+			  tree kclauses, tree action, tree coro, tree jumps)
 {
   c_token *saved_tokens = parser->tokens;
   unsigned int saved_avail = parser->tokens_avail;
@@ -5608,7 +5608,7 @@ c_parser_effect_rehandle (c_parser *parser, location_t loc,
       return;
     }
   c_finish_effect_rehandle (loc, k.value, value, vloc, origtype, effect,
-			    clauses, kclauses, action, coro);
+			    clauses, kclauses, action, coro, jumps);
 }
 
 /* Parse a _Try statement (GNU extension).
@@ -5725,23 +5725,22 @@ c_parser_effect_try_statement (c_parser *parser)
   parser->effect_action = saved_action;
   parser->effect_coro = saved_coro;
 
-  if (jumps && (rehandle || kclauses))
-    sorry_at (DECL_SOURCE_LOCATION (TREE_VALUE (jumps)),
-	      "jump out of a %<_Handle%> clause of a %<_Try%> that runs as "
-	      "a coroutine");
   if (rehandle)
     c_parser_effect_rehandle (parser, loc, tokens, effect, clauses, kclauses,
-			      action, coro);
+			      action, coro, jumps);
   else if (kclauses)
     {
       tree cap_type, captures;
+      c_begin_effect_clauses ();
       tree body_fn = c_parser_effect_fiber_body (parser, loc, effect,
 						 named_effect ? name : NULL_TREE,
 						 name_loc, tokens, &cap_type,
 						 &captures);
+      jumps = chainon (jumps, c_end_effect_clauses ());
       if (body_fn)
 	c_finish_effect_fiber_try (loc, body_fn, cap_type, captures, effect,
-				   clauses, kclauses, action, coro, named);
+				   clauses, kclauses, action, coro, named,
+				   jumps);
     }
   else
     {
