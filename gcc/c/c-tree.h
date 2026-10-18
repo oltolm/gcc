@@ -731,7 +731,11 @@ extern tree c_declare_effect_continuation (location_t, tree, tree, tree, tree);
 extern tree c_build_effect_discard (location_t, tree);
 extern void c_finish_effect_rehandle (location_t, tree, tree, location_t, tree,
 				      tree, tree, tree, tree, tree);
-extern void c_finish_effect_try (location_t, tree, tree, tree, tree, bool);
+extern void c_begin_effect_clauses (void);
+extern tree c_end_effect_clauses (void);
+extern tree c_effect_redirect_goto (location_t, tree);
+extern void c_finish_effect_try (location_t, tree, tree, tree, tree, bool,
+				 tree);
 extern void c_begin_effect_body (tree);
 extern tree c_effect_capture (tree);
 extern tree c_finish_effect_body (location_t, tree, tree *);
