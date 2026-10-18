@@ -102,6 +102,7 @@ void __gcc_effect_suspend (struct __gcc_effect_handler *, void *);
 struct __gcc_effect_handler *__gcc_effect_top (void);
 void __gcc_effect_set_top (struct __gcc_effect_handler *);
 struct __gcc_effect_handler *__gcc_effect_find (const void *);
+void *__gcc_dynamic_find (void *);
 
 static void WINAPI
 fiber_main (void *data)
@@ -417,4 +418,18 @@ __gcc_effect_find (const void *effect)
     if (h->effect == effect)
       return h;
   abort ();
+}
+
+/* A dynamic variable is identified by the address of its global value,
+   which it falls back to outside any binding.  */
+
+void *
+__gcc_dynamic_find (void *var)
+{
+  struct __gcc_effect_handler *h;
+
+  for (h = chain; h; h = h->next)
+    if (h->effect == var)
+      return h->ops;
+  return var;
 }
