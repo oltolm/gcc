@@ -14389,8 +14389,9 @@ whose clause for @var{op} has the parameters @var{params}, runs
 @var{statement} and resumes.  The effect must have no other operation,
 and @var{op} must return @code{void}.  @code{continue} resumes
 @var{expr}.  @code{break}, like a @code{goto} out of @var{statement},
-ends the @code{_Try} and runs the cleanups of the frames of @var{expr}.
-@var{statement} cannot contain @code{return} or @code{_Resume}.
+ends the @code{_Try} and runs the cleanups of the frames of @var{expr};
+so does @code{return}, which returns from the function containing the
+loop.  @var{statement} cannot contain @code{_Resume}.
 
 @subsubheading Continuations
 @findex _Continuation
