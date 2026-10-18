@@ -730,7 +730,7 @@ extern bool c_effect_continuation_type_p (tree, tree *, tree *);
 extern tree c_declare_effect_continuation (location_t, tree, tree, tree, tree);
 extern tree c_build_effect_discard (location_t, tree);
 extern void c_finish_effect_rehandle (location_t, tree, tree, location_t, tree,
-				      tree, tree, tree, tree, tree);
+				      tree, tree, tree, tree, tree, tree);
 extern void c_begin_effect_clauses (void);
 extern tree c_end_effect_clauses (void);
 extern tree c_effect_redirect_goto (location_t, tree);
@@ -740,7 +740,7 @@ extern void c_begin_effect_body (tree);
 extern tree c_effect_capture (tree);
 extern tree c_finish_effect_body (location_t, tree, tree *);
 extern void c_finish_effect_fiber_try (location_t, tree, tree, tree, tree,
-				       tree, tree, tree, tree, bool);
+				       tree, tree, tree, tree, bool, tree);
 extern tree c_build_effect_perform (location_t, tree, tree, tree,
 				    vec<tree, va_gc> *,
 				    const vec<location_t> &);
@@ -750,7 +750,7 @@ extern tree c_build_dynamic_binding (location_t, tree, location_t, tree,
 				     tree, bool);
 extern void c_finish_dynamic_let (location_t, tree, tree);
 extern void undeclared_variable (location_t, tree);
-extern tree lookup_label_for_goto (location_t, tree);
+extern tree lookup_label_for_goto (location_t, tree, bool = false);
 extern tree declare_label (tree);
 extern tree define_label (location_t, tree);
 extern struct c_spot_bindings *c_get_switch_bindings (void);

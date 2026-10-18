@@ -472,6 +472,10 @@ nonlocal_goto_stop (int version __attribute__((unused)),
   return _URC_NO_REASON;
 }
 
+#ifdef __MINGW32__
+extern void __gcc_coro_leave (void *, void **) __attribute__((noreturn));
+#endif
+
 /* Perform a nonlocal goto to LABEL with the buffer SAVE_AREA of its
    function, running the cleanups of the frames in between.  The
    unwinding reuses the stack below the target frame, so the exception
@@ -489,6 +493,14 @@ __gcc_nonlocal_goto_unwind (void *label, void **save_area)
   memset (&ms_history, 0, sizeof (ms_history));
   ms_context.ContextFlags = CONTEXT_ALL;
   RtlCaptureContext (&ms_context);
+
+#ifdef __MINGW32__
+  /* A goto out of a coroutine targets a frame on the stack of a fiber
+     that resumed it.  */
+  if (sp < ms_context.Rsp
+      || sp >= (ULONG64) ((NT_TIB *) NtCurrentTeb ())->StackBase)
+    __gcc_coro_leave (label, save_area);
+#endif
 
   /* The target is the frame below the first caller whose stack pointer
      is above the target's stack pointer saved in SAVE_AREA.  */

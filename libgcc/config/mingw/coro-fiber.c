@@ -90,6 +90,11 @@ struct __gcc_coro
 /* The coroutine running on this thread, or NULL.  */
 static __thread struct __gcc_coro *running;
 
+/* The label and buffer of a nonlocal goto that left a coroutine for the
+   fiber that resumed it, or NULL.  */
+static __thread void *jump_label;
+static __thread void **jump_save_area;
+
 struct __gcc_coro *__gcc_coro_create (void (*) (void *), void *, size_t);
 int __gcc_coro_resume (struct __gcc_coro *);
 void __gcc_coro_yield (void);
@@ -103,13 +108,25 @@ struct __gcc_effect_handler *__gcc_effect_top (void);
 void __gcc_effect_set_top (struct __gcc_effect_handler *);
 struct __gcc_effect_handler *__gcc_effect_find (const void *);
 void *__gcc_dynamic_find (void *);
+void __gcc_coro_leave (void *, void **) __attribute__((noreturn));
+void __gcc_nonlocal_goto_unwind (void *, void **);
 
 static void WINAPI
 fiber_main (void *data)
 {
   struct __gcc_coro *c = data;
 
-  c->fn (c->arg);
+  /* A function with the low bit set is a descriptor made by the compiler
+     for a nested function: its static chain and its address.  */
+  if ((__UINTPTR_TYPE__) c->fn & 1)
+    {
+      void **d = (void **) ((__UINTPTR_TYPE__) c->fn - 1);
+
+      __builtin_call_with_static_chain (((void (*) (void *)) d[1]) (c->arg),
+					d[0]);
+    }
+  else
+    c->fn (c->arg);
   c->state = CORO_DONE;
   /* Returning from a fiber routine would exit the thread.  */
   SwitchToFiber (c->resumer);
@@ -307,6 +324,13 @@ __gcc_coro_resume (struct __gcc_coro *c)
       c->state = CORO_DONE;
       unwind (current_coro ());
     }
+  if (jump_label)
+    {
+      void *label = jump_label;
+
+      jump_label = NULL;
+      __gcc_nonlocal_goto_unwind (label, jump_save_area);
+    }
   return c->state == CORO_SUSPENDED;
 }
 
@@ -395,6 +419,26 @@ __gcc_effect_suspend (struct __gcc_effect_handler *h, void *message)
   SwitchToFiber (c->resumer);
   if (c->state == CORO_DESTROYING)
     unwind (self);
+}
+
+/* Continue a nonlocal goto to LABEL with the buffer SAVE_AREA, whose
+   target is not on the stack of the running coroutine, on the fiber that
+   resumed it.  The coroutine stays suspended until the _Try that runs it
+   destroys it, which runs the cleanups of its frames.  */
+
+void
+__gcc_coro_leave (void *label, void **save_area)
+{
+  struct __gcc_coro *c = current_coro ();
+
+  c->top = c;
+  c->state = CORO_SUSPENDED;
+  jump_label = label;
+  jump_save_area = save_area;
+  SwitchToFiber (c->resumer);
+  if (c->state == CORO_DESTROYING)
+    unwind (c);
+  abort ();
 }
 
 struct __gcc_effect_handler *
