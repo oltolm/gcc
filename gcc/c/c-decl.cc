@@ -1449,6 +1449,20 @@ c_begin_effect_body (tree fn)
   current_effect_body = b;
 }
 
+/* Return true if FN encloses the coroutine body being parsed.  */
+
+static bool
+effect_body_encloser_p (tree fn)
+{
+  if (!current_effect_body || !fn)
+    return false;
+  for (tree f = decl_function_context (current_effect_body->fn); f;
+       f = decl_function_context (f))
+    if (f == fn)
+      return true;
+  return false;
+}
+
 /* Return what a use of DECL refers to: its copy if DECL is an automatic
    variable of a function enclosing the coroutine body being parsed,
    otherwise DECL.  */
@@ -1462,14 +1476,7 @@ c_effect_capture (tree decl)
       || TREE_STATIC (decl)
       || DECL_EXTERNAL (decl))
     return decl;
-  tree ctx = decl_function_context (decl);
-  if (!ctx)
-    return decl;
-  tree f;
-  for (f = decl_function_context (b->fn); f; f = decl_function_context (f))
-    if (f == ctx)
-      break;
-  if (!f)
+  if (!effect_body_encloser_p (decl_function_context (decl)))
     return decl;
   for (unsigned i = 0; i < b->vars.length (); i++)
     if (b->vars[i] == decl)
@@ -5240,6 +5247,14 @@ lookup_label_for_goto (location_t loc, tree name)
   if (DECL_CONTEXT (label) != current_function_decl)
     {
       gcc_assert (C_DECLARED_LABEL_FLAG (label));
+      /* A coroutine body runs on its own stack, so a nonlocal goto out
+	 of it cannot restore the stack of the label's function.  */
+      if (effect_body_encloser_p (DECL_CONTEXT (label)))
+	{
+	  error_at (loc, "jump out of the body of a %<_Try%> that runs as a "
+		    "coroutine");
+	  return NULL_TREE;
+	}
       return label;
     }
 
