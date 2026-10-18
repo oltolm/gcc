@@ -44,6 +44,10 @@ struct seh_frame_state
   HOST_WIDE_INT cfa_offset;
   rtx cfa_reg;
 
+  /* The offset in the .seh_setframe directive, if CFA_REG is the frame
+     pointer: the frame pointer minus the establisher frame.  */
+  HOST_WIDE_INT setframe_offset;
+
   /* The offset wrt the CFA where register N has been saved.  */
   HOST_WIDE_INT reg_offset[FIRST_PSEUDO_REGISTER];
 
@@ -76,6 +80,7 @@ extern void mingw_pe_seh_init (FILE *);
 extern void mingw_pe_seh_init_sections (void);
 extern void mingw_pe_seh_cold_init (FILE *, const char *);
 extern void mingw_pe_seh_emit_except_personality (rtx);
+extern void mingw_pe_seh_output_scope_table (FILE *);
 extern void mingw_pe_seh_emit_stackalloc (FILE *, struct seh_frame_state *,
 					  HOST_WIDE_INT);
 extern void mingw_pe_seh_end_prologue (FILE *);

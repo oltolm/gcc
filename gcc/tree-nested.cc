@@ -3546,6 +3546,7 @@ finalize_nesting_tree_1 (struct nesting_info *root)
 
       declare_vars (root->frame_decl,
 		    gimple_seq_first_stmt (gimple_body (context)), true);
+      DECL_STRUCT_FUNCTION (context)->nonlocal_frame = root->frame_decl;
     }
 
   /* If any parameters were referenced non-locally, then we need to insert
