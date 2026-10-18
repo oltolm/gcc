@@ -4138,10 +4138,23 @@ build_external_ref (location_t loc, tree id, bool fun, tree *type)
     record_inline_static (loc, current_function_decl, ref,
 			  csi_internal);
 
+  if (VAR_P (ref) && C_DECL_DYNAMIC (ref))
+    ref = c_build_dynamic_ref (loc, ref);
+
   return ref;
 }
 
 static struct maybe_used_decl *maybe_used_decls;
+
+/* Return what readonly_error should name for the lvalue ARG: the
+   variable, if ARG is a reference to a _Dynamic variable.  */
+
+static tree
+c_readonly_operand (tree arg)
+{
+  tree var = c_dynamic_ref_var (arg);
+  return var ? var : arg;
+}
 
 /* Record that DECL, a reference seen inside sizeof or typeof or _Countof or
    _Generic, might be used if the operand of sizeof is a VLA type or the
@@ -6368,7 +6381,7 @@ build_unary_op (location_t location, enum tree_code code, tree xarg,
 	/* Report a read-only lvalue.  */
 	if (TYPE_READONLY (argtype))
 	  {
-	    readonly_error (location, arg,
+	    readonly_error (location, c_readonly_operand (arg),
 			    ((code == PREINCREMENT_EXPR
 			      || code == POSTINCREMENT_EXPR)
 			     ? lv_increment : lv_decrement));
@@ -8099,7 +8112,7 @@ build_modify_expr (location_t location, tree lhs, tree lhs_origtype,
       || (RECORD_OR_UNION_TYPE_P (lhstype)
 	  && C_TYPE_FIELDS_READONLY (lhstype)))
     {
-      readonly_error (location, lhs, lv_assign);
+      readonly_error (location, c_readonly_operand (lhs), lv_assign);
       return error_mark_node;
     }
   else if (TREE_READONLY (lhs))
@@ -13498,7 +13511,7 @@ build_asm_expr (location_t loc, tree string, tree outputs, tree inputs,
 	      || TYPE_READONLY (TREE_TYPE (output))
 	      || (RECORD_OR_UNION_TYPE_P (TREE_TYPE (output))
 		  && C_TYPE_FIELDS_READONLY (TREE_TYPE (output)))))
-	readonly_error (loc, output, lv_asm);
+	readonly_error (loc, c_readonly_operand (output), lv_asm);
 
       constraint = TREE_STRING_POINTER (TREE_VALUE (TREE_PURPOSE (tail)));
       oconstraints[i] = constraint;
