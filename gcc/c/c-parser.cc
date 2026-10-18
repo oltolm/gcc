@@ -307,6 +307,10 @@ struct GTY(()) c_parser {
   /* The function of the coroutine body being parsed, or NULL_TREE.  */
   tree effect_body;
 
+  /* The function of the body of a for statement over an effect operation
+     being parsed, or NULL_TREE.  */
+  tree effect_for;
+
   /* While a saved compound statement is replayed, the first of its tokens
      whose identifier has not been classified in the scope it is parsed
      in; otherwise NULL.  */
@@ -1928,6 +1932,11 @@ static struct c_typespec c_parser_effect_handler_specifier (c_parser *);
 static struct c_typespec c_parser_effect_continuation_specifier (c_parser *);
 static bool c_parser_save_compound_statement (c_parser *, auto_vec<c_token> &);
 static void c_parser_effect_try_statement (c_parser *);
+static tree c_parser_start_effect_clause (c_parser *, location_t, tree, tree,
+					  struct c_arg_info *, bool *);
+static void c_finish_effect_clause (tree, location_t);
+static bool c_parser_effect_for_p (c_parser *);
+static void c_parser_effect_for_statement (c_parser *, location_t, tree);
 static void c_parser_seh_try_statement (c_parser *);
 static tree c_parser_seh_leave_statement (c_parser *);
 static bool c_parser_seh_intrinsic_p (c_parser *);
@@ -5225,43 +5234,20 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field,
       return NULL_TREE;
     }
 
-  tree optype = TREE_TYPE (TREE_TYPE (*field));
-  char *name = concat (IDENTIFIER_POINTER (DECL_NAME (*effect)), ".",
-		       IDENTIFIER_POINTER (DECL_NAME (*field)), NULL);
-  struct c_declarator *declarator
-    = build_function_declarator (args,
-				 build_id_declarator (get_identifier (name)));
-  free (name);
-  struct c_declspecs *specs = build_null_declspecs ();
-  struct c_typespec ts;
-  ts.kind = ctsk_typeof;
-  ts.spec = TREE_TYPE (optype);
-  ts.expr = NULL_TREE;
-  ts.expr_const_operands = true;
-  ts.has_enum_type_specifier = false;
-  declspecs_add_type (loc, specs, ts);
-  finish_declspecs (specs);
-
   /* The variables of the loop that runs the clause are declared in the
      block of the _Try.  */
   if (kname && !parser->effect_action)
     c_build_effect_state (loc, &parser->effect_action, &parser->effect_coro);
 
-  c_push_function_context ();
-  if (!start_function (specs, declarator, NULL_TREE))
+  bool ok;
+  tree fn = c_parser_start_effect_clause (parser, loc, *effect, *field, args,
+					  &ok);
+  if (!fn)
     {
-      c_pop_function_context ();
       c_parser_compound_statement (parser);
       return NULL_TREE;
     }
-  tree fn = current_function_decl;
-  bool ok = comptypes (TREE_TYPE (fn), optype);
-  if (!ok)
-    error_at (loc, "parameters of %<_Handle%> clause do not match "
-	      "operation %qD", *field);
-  store_parm_decls ();
   location_t endloc = c_parser_peek_token (parser)->location;
-  DECL_STRUCT_FUNCTION (fn)->function_start_locus = endloc;
 
   tree scope = c_begin_compound_stmt (true);
   tree k = NULL_TREE;
@@ -5294,15 +5280,65 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field,
   parser->effect_body = saved_body;
   add_stmt (body);
   add_stmt (c_end_compound_stmt (loc, scope, true));
+  c_finish_effect_clause (fn, endloc);
+  *kclause = k != NULL_TREE;
+  return ok ? fn : NULL_TREE;
+}
 
+/* Start the nested function of a clause at LOC for the operation FIELD
+   of EFFECT with the parameters ARGS, and return it, or NULL_TREE after
+   an error.  Set *OK to whether the parameters match the operation.  */
+
+static tree
+c_parser_start_effect_clause (c_parser *parser, location_t loc, tree effect,
+			      tree field, struct c_arg_info *args, bool *ok)
+{
+  tree optype = TREE_TYPE (TREE_TYPE (field));
+  char *name = concat (IDENTIFIER_POINTER (DECL_NAME (effect)), ".",
+		       IDENTIFIER_POINTER (DECL_NAME (field)), NULL);
+  struct c_declarator *declarator
+    = build_function_declarator (args,
+				 build_id_declarator (get_identifier (name)));
+  free (name);
+  struct c_declspecs *specs = build_null_declspecs ();
+  struct c_typespec ts;
+  ts.kind = ctsk_typeof;
+  ts.spec = TREE_TYPE (optype);
+  ts.expr = NULL_TREE;
+  ts.expr_const_operands = true;
+  ts.has_enum_type_specifier = false;
+  declspecs_add_type (loc, specs, ts);
+  finish_declspecs (specs);
+
+  c_push_function_context ();
+  if (!start_function (specs, declarator, NULL_TREE))
+    {
+      c_pop_function_context ();
+      return NULL_TREE;
+    }
+  tree fn = current_function_decl;
+  *ok = comptypes (TREE_TYPE (fn), optype);
+  if (!*ok)
+    error_at (loc, "parameters of %<_Handle%> clause do not match "
+	      "operation %qD", field);
+  store_parm_decls ();
+  DECL_STRUCT_FUNCTION (fn)->function_start_locus
+    = c_parser_peek_token (parser)->location;
+  return fn;
+}
+
+/* Finish the nested function FN of a clause, whose body ends at ENDLOC,
+   and declare it in the enclosing function.  */
+
+static void
+c_finish_effect_clause (tree fn, location_t endloc)
+{
   /* As for other nested functions, assume a static chain until
      lower_nested_functions computes whether one is needed.  */
   DECL_STATIC_CHAIN (fn) = 1;
   finish_function (endloc);
   c_pop_function_context ();
   add_stmt (build_stmt (DECL_SOURCE_LOCATION (fn), DECL_EXPR, fn));
-  *kclause = k != NULL_TREE;
-  return ok ? fn : NULL_TREE;
 }
 
 /* Consume a compound statement and save its tokens in TOKENS, followed
@@ -5700,6 +5736,142 @@ c_parser_effect_try_statement (c_parser *parser)
 	add_stmt (body);
     }
   add_stmt (c_end_compound_stmt (loc, block, true));
+}
+
+/* Return true if the tokens after the for keyword start a for statement
+   over an effect operation.  */
+
+static bool
+c_parser_effect_for_p (c_parser *parser)
+{
+  if (c_parser_next_token_is_not (parser, CPP_OPEN_PAREN)
+      || c_parser_peek_2nd_token (parser)->type != CPP_NAME
+      || c_parser_peek_nth_token (parser, 3)->type != CPP_DOT)
+    return false;
+  tree decl = lookup_name (c_parser_peek_2nd_token (parser)->value);
+  return decl && VAR_P (decl) && C_DECL_EFFECT (decl);
+}
+
+/* Parse a for statement over an effect operation (GNU extension), after
+   the for keyword at LOC.  LOOP_NAME is the name of the loop, or
+   NULL_TREE.
+
+   effect-for-statement:
+     for ( effect-operation-name ( parameter-type-list[opt] ) : expression )
+       statement
+
+   The statement is the clause of a _Try whose body is the expression,
+   for an effect whose only operation returns nothing.  The clause
+   resumes at the end of the statement and at continue; break and other
+   jumps out of the statement leave the _Try.  */
+
+static void
+c_parser_effect_for_statement (c_parser *parser, location_t loc,
+			       tree loop_name)
+{
+  tree block = c_begin_compound_stmt (true);
+  matching_parens parens;
+  parens.consume_open (parser);
+  tree effect = NULL_TREE;
+  tree field = c_parser_effect_operation_name (parser, &effect, NULL);
+  struct c_arg_info *args = NULL;
+  if (c_parser_require (parser, CPP_OPEN_PAREN, "expected %<(%>"))
+    args = c_parser_parms_declarator (parser, false, NULL_TREE, false);
+  /* A _Try must handle every operation, and the end of the statement
+     gives the operation no result.  */
+  if (field && DECL_CHAIN (TYPE_FIELDS (TREE_TYPE (effect))))
+    {
+      error_at (loc, "%<for%> statement over effect %qD, which has more "
+		"than one operation", effect);
+      field = NULL_TREE;
+    }
+  else if (field
+	   && !VOID_TYPE_P (TREE_TYPE (TREE_TYPE (TREE_TYPE (field)))))
+    {
+      error_at (loc, "operation %qD of a %<for%> statement returns a value",
+		field);
+      field = NULL_TREE;
+    }
+  tree rec = field && args ? c_begin_effect_try (loc) : NULL_TREE;
+  tree body = push_stmt_list ();
+  if (c_parser_require (parser, CPP_COLON, "expected %<:%>"))
+    {
+      location_t expr_loc = c_parser_peek_token (parser)->location;
+      struct c_expr expr = c_parser_expression (parser);
+      expr = convert_lvalue_to_rvalue (expr_loc, expr, true, false);
+      c_finish_expr_stmt (expr_loc, expr.value);
+    }
+  body = pop_stmt_list (body);
+  parens.skip_until_found_close (parser);
+
+  tree break_label = create_artificial_label (loc);
+  c_begin_effect_clauses ();
+  bool ok = false;
+  tree fn = (rec
+	     ? c_parser_start_effect_clause (parser, loc, effect, field, args,
+					     &ok)
+	     : NULL_TREE);
+  tree scope = c_begin_compound_stmt (true);
+
+  unsigned char save_in_statement = in_statement;
+  tree save_break = objc_foreach_break_label;
+  tree save_continue = objc_foreach_continue_label;
+  tree save_clause = parser->effect_clause;
+  tree save_continuation = parser->effect_continuation;
+  tree save_body = parser->effect_body;
+  tree save_for = parser->effect_for;
+  parser->effect_clause = NULL_TREE;
+  parser->effect_continuation = NULL_TREE;
+  parser->effect_body = NULL_TREE;
+  parser->effect_for = fn;
+  /* As for an Objective-C foreach statement, break and continue are
+     gotos.  */
+  in_statement = IN_OBJC_FOREACH;
+  objc_foreach_break_label = break_label;
+  objc_foreach_continue_label = create_artificial_label (loc);
+  if (loop_name)
+    {
+      C_DECL_SWITCH_NAME (loop_name) = 1;
+      DECL_CHAIN (loop_name) = objc_foreach_break_label;
+      DECL_CHAIN (objc_foreach_break_label) = objc_foreach_continue_label;
+      C_DECL_LOOP_SWITCH_NAME_VALID (loop_name) = 1;
+      in_statement |= IN_NAMED_STMT;
+    }
+
+  add_stmt (c_parser_c99_block_statement (parser, NULL));
+  add_stmt (build1 (LABEL_EXPR, void_type_node, objc_foreach_continue_label));
+  if (fn)
+    c_finish_return (loc, NULL_TREE, NULL_TREE);
+  scope = c_end_compound_stmt (loc, scope, true);
+
+  if (loop_name)
+    {
+      C_DECL_SWITCH_NAME (loop_name) = 0;
+      DECL_CHAIN (loop_name) = NULL_TREE;
+      DECL_CHAIN (objc_foreach_break_label) = NULL_TREE;
+    }
+  in_statement = save_in_statement;
+  objc_foreach_break_label = save_break;
+  objc_foreach_continue_label = save_continue;
+  parser->effect_clause = save_clause;
+  parser->effect_continuation = save_continuation;
+  parser->effect_body = save_body;
+  parser->effect_for = save_for;
+
+  if (fn)
+    {
+      add_stmt (scope);
+      c_finish_effect_clause (fn, parser->last_token_location);
+    }
+  tree jumps = c_end_effect_clauses ();
+  if (fn && ok)
+    {
+      c_finish_effect_try (loc, rec, body, effect, build_tree_list (field, fn),
+			   false, jumps);
+      add_stmt (build1 (LABEL_EXPR, void_type_node, break_label));
+    }
+  add_stmt (c_end_compound_stmt (loc, block, true));
+  c_parser_maybe_reclassify_token (parser);
 }
 
 /* Parse a _Let statement (GNU extension).
@@ -9879,6 +10051,15 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	  goto expect_semicolon;
 	case RID_RETURN:
 	  c_parser_consume_token (parser);
+	  if (parser->effect_for
+	      && parser->effect_for == current_function_decl)
+	    {
+	      sorry_at (loc, "%<return%> in a %<for%> statement over an "
+			"effect operation");
+	      if (c_parser_next_token_is_not (parser, CPP_SEMICOLON))
+		c_parser_expression (parser);
+	      goto expect_semicolon;
+	    }
 	  if (parser->effect_body
 	      && parser->effect_body == current_function_decl)
 	    {
@@ -10738,6 +10919,13 @@ c_parser_for_statement (c_parser *parser, bool ivdep, unsigned short unroll,
     }
 
   c_parser_consume_token (parser);
+  if (c_parser_effect_for_p (parser))
+    {
+      c_parser_effect_for_statement (parser, for_loc, loop_name);
+      if (num_names)
+	c_release_loop_names (num_names);
+      return;
+    }
   /* Open a compound statement in Objective-C as well, just in case this is
      as foreach expression.  */
   block = c_begin_compound_stmt (flag_isoc99 || c_dialect_objc ());
