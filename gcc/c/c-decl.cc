@@ -1279,6 +1279,8 @@ c_seh_prepare_function (tree fn)
 			     TREE_OPTIMIZATION (old));
   global_options.x_flag_exceptions = 1;
   global_options.x_flag_non_call_exceptions = 1;
+  /* Its scope table covers the function in one piece.  */
+  global_options.x_flag_reorder_blocks_and_partition = 0;
   DECL_FUNCTION_SPECIFIC_OPTIMIZATION (fn)
     = build_optimization_node (&global_options, &global_options_set);
   cl_optimization_restore (&global_options, &global_options_set, &saved);

@@ -50,6 +50,8 @@ along with GCC; see the file COPYING3.  If not see
 #define TARGET_ASM_FUNCTION_END_PROLOGUE  mingw_pe_seh_end_prologue
 #undef  TARGET_ASM_EMIT_EXCEPT_PERSONALITY
 #define TARGET_ASM_EMIT_EXCEPT_PERSONALITY mingw_pe_seh_emit_except_personality
+#undef  TARGET_ASM_OUTPUT_SEH_SCOPE_TABLE
+#define TARGET_ASM_OUTPUT_SEH_SCOPE_TABLE mingw_pe_seh_output_scope_table
 #undef  TARGET_ASM_INIT_SECTIONS
 #define TARGET_ASM_INIT_SECTIONS  mingw_pe_seh_init_sections
 #define SUBTARGET_ASM_UNWIND_INIT  mingw_pe_seh_init
