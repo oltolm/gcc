@@ -13679,7 +13679,7 @@ build_asm_expr (location_t loc, tree string, tree outputs, tree inputs,
 tree
 c_finish_goto_label (location_t loc, tree label)
 {
-  tree decl = lookup_label_for_goto (loc, label);
+  tree decl = lookup_label_for_goto (loc, label, true);
   if (!decl)
     return NULL_TREE;
   TREE_USED (decl) = 1;

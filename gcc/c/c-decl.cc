@@ -1648,6 +1648,37 @@ c_effect_redirect_goto (location_t loc, tree label)
   return to;
 }
 
+/* Return BODY followed by the targets of JUMPS, the gotos redirected out
+   of the clauses or the body of a _Try as returned by
+   c_end_effect_clauses: from each, a goto to the original label leaves
+   the regions that BODY is in.  */
+
+static tree
+build_effect_jumps (location_t loc, tree body, tree jumps)
+{
+  if (!jumps)
+    return body;
+  tree stmts = NULL_TREE;
+  tree skip = create_artificial_label (loc);
+  append_to_statement_list (body, &stmts);
+  append_to_statement_list (build1 (GOTO_EXPR, void_type_node, skip),
+			    &stmts);
+  for (tree j = nreverse (jumps); j; j = TREE_CHAIN (j))
+    {
+      tree to = TREE_VALUE (j);
+      append_to_statement_list (build1 (LABEL_EXPR, void_type_node, to),
+				&stmts);
+      tree go = build1 (GOTO_EXPR, void_type_node,
+			c_effect_redirect_goto (DECL_SOURCE_LOCATION (to),
+						TREE_PURPOSE (j)));
+      SET_EXPR_LOCATION (go, DECL_SOURCE_LOCATION (to));
+      append_to_statement_list (go, &stmts);
+    }
+  append_to_statement_list (build1 (LABEL_EXPR, void_type_node, skip),
+			    &stmts);
+  return stmts;
+}
+
 /* Finish a _Try statement whose record is REC, whose body is BODY and
    whose _Handle clauses for EFFECT are the nested functions in the
    TREE_VALUEs of CLAUSES, for the operations in their TREE_PURPOSEs.
@@ -1661,28 +1692,7 @@ void
 c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
 		     tree clauses, bool named, tree jumps)
 {
-  if (jumps)
-    {
-      tree stmts = NULL_TREE;
-      tree skip = create_artificial_label (loc);
-      append_to_statement_list (body, &stmts);
-      append_to_statement_list (build1 (GOTO_EXPR, void_type_node, skip),
-				&stmts);
-      for (tree j = nreverse (jumps); j; j = TREE_CHAIN (j))
-	{
-	  tree to = TREE_VALUE (j);
-	  append_to_statement_list (build1 (LABEL_EXPR, void_type_node, to),
-				    &stmts);
-	  tree go = build1 (GOTO_EXPR, void_type_node,
-			    c_effect_redirect_goto (DECL_SOURCE_LOCATION (to),
-						    TREE_PURPOSE (j)));
-	  SET_EXPR_LOCATION (go, DECL_SOURCE_LOCATION (to));
-	  append_to_statement_list (go, &stmts);
-	}
-      append_to_statement_list (build1 (LABEL_EXPR, void_type_node, skip),
-				&stmts);
-      body = stmts;
-    }
+  body = build_effect_jumps (loc, body, jumps);
 
   tree ops = build_effect_ops (loc, effect, clauses, NULL_TREE);
   tree rec_addr = build_fold_addr_expr_loc (loc, rec);
@@ -2075,11 +2085,12 @@ c_build_effect_discard (location_t loc, tree cont)
    operations OPS of EFFECT: resume it until it finishes, running the
    clause in KCLAUSES of each operation it suspends in, until a clause
    does not resume it.  ACTION holds the state of the loop; the coroutine
-   is destroyed at the end unless a clause kept its continuation.  */
+   is destroyed at the end unless a clause kept its continuation, and by
+   the gotos in JUMPS out of the clauses and the body.  */
 
 static void
 build_effect_resume_loop (location_t loc, tree coro, tree effect, tree ops,
-			  tree kclauses, tree action)
+			  tree kclauses, tree action, tree jumps)
 {
   tree ptr = build_pointer_type (effect_handler_type);
   tree h = build_effect_temp (loc, ptr,
@@ -2169,7 +2180,10 @@ build_effect_resume_loop (location_t loc, tree coro, tree effect, tree ops,
 					       EFFECT_ACTION_RESUME))));
   loop = pop_stmt_list (loop);
   add_stmt (build2_loc (loc, TRY_FINALLY_EXPR, void_type_node,
-			build1_loc (loc, LOOP_EXPR, void_type_node, loop),
+			build_effect_jumps (loc,
+					    build1_loc (loc, LOOP_EXPR,
+							void_type_node, loop),
+					    jumps),
 			build3_loc (loc, COND_EXPR, void_type_node,
 				    build2 (NE_EXPR, boolean_type_node, action,
 					    build_int_cst (integer_type_node,
@@ -2186,12 +2200,14 @@ build_effect_resume_loop (location_t loc, tree coro, tree effect, tree ops,
    continuation and run on the stack of the _Try whenever the body
    performs their operation.  ACTION and CORO are the variables from
    c_build_effect_state.  CAP_TYPE and CAPTURES are as returned by
-   c_finish_effect_body.  NAMED is as for c_finish_effect_try.  */
+   c_finish_effect_body.  NAMED and JUMPS are as for c_finish_effect_try,
+   JUMPS also including the gotos out of the body.  */
 
 void
 c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
 			   tree captures, tree effect, tree clauses,
-			   tree kclauses, tree action, tree coro, bool named)
+			   tree kclauses, tree action, tree coro, bool named,
+			   tree jumps)
 {
   init_effect_runtime ();
   tree ops = build_effect_ops (loc, effect, clauses, kclauses);
@@ -2216,10 +2232,20 @@ c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
     }
 
   TREE_USED (body_fn) = 1;
+  TREE_ADDRESSABLE (body_fn) = 1;
+  /* A goto out of the body reaches the frame of the _Try through the
+     static chain.  Where the target allows, pass the body as a
+     descriptor, which the coroutine calls, so that no trampoline is
+     needed.  */
+  tree body_addr = build1_loc (loc, ADDR_EXPR,
+			       build_pointer_type (TREE_TYPE (body_fn)),
+			       body_fn);
+  FUNC_ADDR_BY_DESCRIPTOR (body_addr)
+    = targetm.calls.custom_function_descriptors > 0;
   add_stmt (build2_loc (loc, MODIFY_EXPR, ptr_type_node, coro,
 			build_call_expr_loc
 			  (loc, effect_coro_create_decl, 3,
-			   build_fold_addr_expr_loc (loc, body_fn),
+			   body_addr,
 			   fold_convert_loc (loc, ptr_type_node, cap_addr),
 			   size_zero_node)));
   add_stmt (build3_loc (loc, COND_EXPR, void_type_node,
@@ -2240,7 +2266,7 @@ c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
 					      1),
 			named ? null_pointer_node
 			: build_effect_address (loc, effect)));
-  build_effect_resume_loop (loc, coro, effect, ops, kclauses, action);
+  build_effect_resume_loop (loc, coro, effect, ops, kclauses, action, jumps);
 }
 
 /* Finish a _Try statement whose body is _Resume (CONT, VALUE), where
@@ -2248,12 +2274,13 @@ c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
    VALUE_LOC and original type ORIGTYPE, and whose clauses are as for
    c_finish_effect_fiber_try.  The coroutine of CONT continues under
    these clauses, with VALUE as the value of the _Perform it is suspended
-   in.  */
+   in.  JUMPS is as for c_finish_effect_try.  */
 
 void
 c_finish_effect_rehandle (location_t loc, tree cont, tree value,
 			  location_t value_loc, tree origtype, tree effect,
-			  tree clauses, tree kclauses, tree action, tree coro)
+			  tree clauses, tree kclauses, tree action, tree coro,
+			  tree jumps)
 {
   init_effect_runtime ();
   tree ops = build_effect_ops (loc, effect, clauses, kclauses);
@@ -2278,7 +2305,7 @@ c_finish_effect_rehandle (location_t loc, tree cont, tree value,
       add_stmt (build_modify_expr (loc, result, NULL_TREE, NOP_EXPR,
 				   value_loc, value, origtype));
     }
-  build_effect_resume_loop (loc, coro, effect, ops, kclauses, action);
+  build_effect_resume_loop (loc, coro, effect, ops, kclauses, action, jumps);
 }
 
 /* Build _Perform of the operation FIELD of EFFECT with arguments ARGS,
@@ -5633,10 +5660,12 @@ warn_about_goto (location_t goto_loc, tree label, tree decl)
 }
 
 /* Look up a label because of a goto statement.  This is like
-   lookup_label, but also issues any appropriate warnings.  */
+   lookup_label, but also issues any appropriate warnings.  EFFECT_JUMP is
+   true for a goto that c_effect_redirect_goto redirects out of the body of
+   a _Try that runs as a coroutine.  */
 
 tree
-lookup_label_for_goto (location_t loc, tree name)
+lookup_label_for_goto (location_t loc, tree name, bool effect_jump)
 {
   tree label;
   struct c_label_vars *label_vars;
@@ -5653,8 +5682,10 @@ lookup_label_for_goto (location_t loc, tree name)
     {
       gcc_assert (C_DECLARED_LABEL_FLAG (label));
       /* A coroutine body runs on its own stack, so a nonlocal goto out
-	 of it cannot restore the stack of the label's function.  */
-      if (effect_body_encloser_p (DECL_CONTEXT (label)))
+	 of it cannot restore the stack of the label's function; a goto
+	 continues on that stack through the runtime, but asm goto
+	 cannot.  */
+      if (!effect_jump && effect_body_encloser_p (DECL_CONTEXT (label)))
 	{
 	  error_at (loc, "jump out of the body of a %<_Try%> that runs as a "
 		    "coroutine");
