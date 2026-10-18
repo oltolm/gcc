@@ -1295,9 +1295,8 @@ c_seh_prepare_function (tree fn)
 void
 c_seh_prepare_funclet (tree fn, const char *kind)
 {
-  DECL_UNINLINABLE (fn) = 1;
-  DECL_ATTRIBUTES (fn) = tree_cons (get_identifier ("noipa"), NULL_TREE,
-				    DECL_ATTRIBUTES (fn));
+  decl_attributes (&fn, build_tree_list (get_identifier ("noipa"), NULL_TREE),
+		   0);
   if (kind)
     DECL_ATTRIBUTES (fn) = tree_cons (get_identifier (kind), NULL_TREE,
 				      DECL_ATTRIBUTES (fn));
