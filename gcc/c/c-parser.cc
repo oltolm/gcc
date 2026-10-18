@@ -649,6 +649,7 @@ c_keyword_starts_typename (enum rid keyword)
     case RID_UNION:
     case RID_TYPEOF:
     case RID_TYPEOF_UNQUAL:
+    case RID_EFFECT_HANDLER:
     case RID_CONST:
     case RID_ATOMIC:
     case RID_VOLATILE:
@@ -855,6 +856,7 @@ c_token_starts_declspecs (c_token *token)
 	case RID_UNION:
 	case RID_TYPEOF:
 	case RID_TYPEOF_UNQUAL:
+	case RID_EFFECT_HANDLER:
 	case RID_CONST:
 	case RID_VOLATILE:
 	case RID_RESTRICT:
@@ -1833,7 +1835,8 @@ static struct c_typespec c_parser_enum_specifier (c_parser *);
 static struct c_typespec c_parser_struct_or_union_specifier (c_parser *);
 static tree c_parser_struct_declaration (c_parser *, tree *);
 static void c_parser_effect_declaration (c_parser *);
-static tree c_parser_effect_operation_name (c_parser *, tree *);
+static tree c_parser_effect_operation_name (c_parser *, tree *, tree *);
+static struct c_typespec c_parser_effect_handler_specifier (c_parser *);
 static void c_parser_effect_try_statement (c_parser *);
 static tree c_parser_effect_resume_statement (c_parser *);
 static struct c_typespec c_parser_typeof_specifier (c_parser *);
@@ -3960,6 +3963,14 @@ c_parser_declspecs (c_parser *parser, struct c_declspecs *specs,
 	  t = c_parser_typeof_specifier (parser);
 	  declspecs_add_type (loc, specs, t);
 	  break;
+	case RID_EFFECT_HANDLER:
+	  if (!typespec_ok || seen_type)
+	    goto out;
+	  attrs_ok = true;
+	  seen_type = true;
+	  t = c_parser_effect_handler_specifier (parser);
+	  declspecs_add_type (loc, specs, t);
+	  break;
 	case RID_BITINT:
 	  if (!typespec_ok)
 	    goto out;
@@ -4921,15 +4932,11 @@ c_parser_effect_declaration (c_parser *parser)
     declare_effect (name_loc, name, type);
 }
 
-/* Parse the name of an effect operation (GNU extension), set *EFFECT to
-   the effect and return the field of the operation, or NULL_TREE after
-   an error.
-
-   effect-operation-name:
-     identifier . identifier  */
+/* Parse the name of an effect (GNU extension) and return it, or
+   NULL_TREE after an error.  */
 
 static tree
-c_parser_effect_operation_name (c_parser *parser, tree *effect)
+c_parser_effect_name (c_parser *parser)
 {
   if (c_parser_next_token_is_not (parser, CPP_NAME))
     {
@@ -4938,13 +4945,97 @@ c_parser_effect_operation_name (c_parser *parser, tree *effect)
     }
   c_token *tok = c_parser_peek_token (parser);
   tree decl = lookup_name (tok->value);
-  if (!decl || !VAR_P (decl) || !C_DECL_EFFECT (decl))
+  c_parser_consume_token (parser);
+  if (!decl)
     {
-      error_at (tok->location, "%qE is not an effect", tok->value);
-      c_parser_consume_token (parser);
+      undeclared_variable (tok->location, tok->value);
       return NULL_TREE;
     }
+  if (!VAR_P (decl) || !C_DECL_EFFECT (decl))
+    {
+      error_at (tok->location, "%qE is not an effect", tok->value);
+      return NULL_TREE;
+    }
+  return decl;
+}
+
+/* Parse a handler type specifier (GNU extension).
+
+   handler-type-specifier:
+     _Handler ( identifier )  */
+
+static struct c_typespec
+c_parser_effect_handler_specifier (c_parser *parser)
+{
+  struct c_typespec ret;
+  ret.kind = ctsk_typeof;
+  ret.spec = error_mark_node;
+  ret.expr = NULL_TREE;
+  ret.expr_const_operands = true;
+  ret.has_enum_type_specifier = false;
+
   c_parser_consume_token (parser);
+  matching_parens parens;
+  if (!parens.require_open (parser))
+    return ret;
+  tree effect = c_parser_effect_name (parser);
+  parens.skip_until_found_close (parser);
+  if (effect)
+    ret.spec = c_build_effect_handler_type (effect);
+  return ret;
+}
+
+/* Parse the name of an effect operation (GNU extension), set *EFFECT to
+   the effect and return the field of the operation, or NULL_TREE after
+   an error.  If HANDLER is not NULL, the operation may instead be named
+   through a handler, which is then stored in *HANDLER.
+
+   effect-operation-name:
+     identifier . identifier  */
+
+static tree
+c_parser_effect_operation_name (c_parser *parser, tree *effect,
+				tree *handler)
+{
+  if (c_parser_next_token_is_not (parser, CPP_NAME))
+    {
+      c_parser_error (parser, "expected identifier");
+      return NULL_TREE;
+    }
+  c_token *tok = c_parser_peek_token (parser);
+  tree decl = lookup_name (tok->value);
+  if (handler
+      && decl
+      && (VAR_P (decl) || TREE_CODE (decl) == PARM_DECL)
+      && c_effect_of_handler_type (TREE_TYPE (decl)))
+    {
+      tree orig_type;
+      *handler = build_external_ref (tok->location, tok->value, false,
+				     &orig_type);
+      mark_exp_read (*handler);
+      decl = c_effect_of_handler_type (TREE_TYPE (decl));
+      c_parser_consume_token (parser);
+    }
+  else if (!decl || !VAR_P (decl) || !C_DECL_EFFECT (decl))
+    {
+      if (!decl)
+	undeclared_variable (tok->location, tok->value);
+      else if (handler)
+	error_at (tok->location, "%qE is not an effect or a handler",
+		  tok->value);
+      else
+	error_at (tok->location, "%qE is not an effect", tok->value);
+      c_parser_consume_token (parser);
+      if (c_parser_next_token_is (parser, CPP_DOT)
+	  && c_parser_peek_2nd_token (parser)->type == CPP_NAME)
+	{
+	  c_parser_consume_token (parser);
+	  c_parser_consume_token (parser);
+	}
+      return NULL_TREE;
+    }
+  else
+    c_parser_consume_token (parser);
   if (!c_parser_require (parser, CPP_DOT, "expected %<.%>"))
     return NULL_TREE;
   if (c_parser_next_token_is_not (parser, CPP_NAME))
@@ -4988,7 +5079,7 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field)
   matching_parens parens;
   if (parens.require_open (parser))
     {
-      *field = c_parser_effect_operation_name (parser, effect);
+      *field = c_parser_effect_operation_name (parser, effect, NULL);
       if (c_parser_require (parser, CPP_OPEN_PAREN, "expected %<(%>"))
 	args = c_parser_parms_declarator (parser, false, NULL_TREE, false);
       parens.skip_until_found_close (parser);
@@ -5040,6 +5131,7 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field)
   tree last = expr_last (TREE_CODE (body) == BIND_EXPR
 			 ? BIND_EXPR_BODY (body) : body);
   if (body != error_mark_node
+      && parser->effect_resume != error_mark_node
       && (!parser->effect_resume || last != parser->effect_resume))
     sorry_at (loc, "%<_Handle%> clause that does not end in %<_Resume%>");
   parser->effect_clause = saved_clause;
@@ -5058,11 +5150,17 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field)
 /* Parse a _Try statement (GNU extension).
 
    effect-try-statement:
-     _Try compound-statement handle-clause-seq
+     _Try handler-declaration[opt] compound-statement handle-clause-seq
+
+   handler-declaration:
+     ( identifier identifier )
 
    handle-clause-seq:
      handle-clause
-     handle-clause-seq handle-clause  */
+     handle-clause-seq handle-clause
+
+   A handler declaration names the effect and declares the handler,
+   which is in scope in the compound statement.  */
 
 static void
 c_parser_effect_try_statement (c_parser *parser)
@@ -5071,9 +5169,39 @@ c_parser_effect_try_statement (c_parser *parser)
   tree block = c_begin_compound_stmt (true);
   tree effect = NULL_TREE;
   tree clauses = NULL_TREE;
+  bool named = false;
+  tree name = NULL_TREE;
+  location_t name_loc = UNKNOWN_LOCATION;
 
   c_parser_consume_token (parser);
-  tree body = c_parser_compound_statement (parser);
+  if (c_parser_next_token_is (parser, CPP_OPEN_PAREN))
+    {
+      named = true;
+      matching_parens parens;
+      parens.consume_open (parser);
+      effect = c_parser_effect_name (parser);
+      if (c_parser_next_token_is (parser, CPP_NAME))
+	{
+	  name = c_parser_peek_token (parser)->value;
+	  name_loc = c_parser_peek_token (parser)->location;
+	  c_parser_consume_token (parser);
+	}
+      else
+	c_parser_error (parser, "expected identifier");
+      parens.skip_until_found_close (parser);
+    }
+  tree named_effect = effect;
+  tree rec = c_begin_effect_try (loc);
+  tree body;
+  if (effect && name)
+    {
+      tree scope = c_begin_compound_stmt (true);
+      c_declare_effect_handler (name_loc, effect, name, rec);
+      add_stmt (c_parser_compound_statement (parser));
+      body = c_end_compound_stmt (loc, scope, true);
+    }
+  else
+    body = c_parser_compound_statement (parser);
   if (!c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
     c_parser_error (parser, "expected %<_Handle%>");
   while (c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
@@ -5083,6 +5211,12 @@ c_parser_effect_try_statement (c_parser *parser)
       tree fn = c_parser_effect_handle_clause (parser, &clause_effect, &field);
       if (!fn)
 	continue;
+      if (named_effect && clause_effect != named_effect)
+	{
+	  error_at (clause_loc, "%<_Try%> for a handler of effect %qD does "
+		    "not handle effect %qD", named_effect, clause_effect);
+	  continue;
+	}
       if (effect && clause_effect != effect)
 	{
 	  sorry_at (clause_loc, "handling more than one effect in a "
@@ -5093,7 +5227,7 @@ c_parser_effect_try_statement (c_parser *parser)
       clauses = tree_cons (field, fn, clauses);
     }
   if (effect)
-    c_finish_effect_try (loc, body, effect, clauses);
+    c_finish_effect_try (loc, rec, body, effect, clauses, named);
   else
     add_stmt (body);
   add_stmt (c_end_compound_stmt (loc, block, true));
@@ -5129,8 +5263,11 @@ c_parser_effect_resume_statement (c_parser *parser)
       error_at (loc, "%<_Resume%> not within a %<_Handle%> clause");
       return NULL_TREE;
     }
-  parser->effect_resume = c_finish_return (loc, value, origtype);
-  return parser->effect_resume;
+  tree ret = c_finish_return (loc, value, origtype);
+  /* An erroneous operand leaves no return statement; do not also report
+     the clause as not ending in _Resume.  */
+  parser->effect_resume = ret ? ret : error_mark_node;
+  return ret;
 }
 
 /* Parse a typeof specifier (a GNU extension adopted in C23).
@@ -12367,8 +12504,9 @@ c_parser_postfix_expression (c_parser *parser)
 	case RID_EFFECT_PERFORM:
 	  {
 	    c_parser_consume_token (parser);
-	    tree effect = NULL_TREE;
-	    tree field = c_parser_effect_operation_name (parser, &effect);
+	    tree effect = NULL_TREE, handler = NULL_TREE;
+	    tree field = c_parser_effect_operation_name (parser, &effect,
+							 &handler);
 	    vec<tree, va_gc> *args = NULL;
 	    auto_vec<location_t> arg_loc;
 	    matching_parens parens;
@@ -12391,8 +12529,8 @@ c_parser_postfix_expression (c_parser *parser)
 	      }
 	    else
 	      {
-		expr.value = c_build_effect_perform (loc, effect, field, args,
-						     arg_loc);
+		expr.value = c_build_effect_perform (loc, effect, handler,
+						     field, args, arg_loc);
 		set_c_expr_source_range (&expr, loc, end_loc);
 	      }
 	    release_tree_vector (args);

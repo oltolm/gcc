@@ -499,6 +499,7 @@ const struct c_common_resword c_common_reswords[] =
   { "_Handle",		RID_EFFECT_HANDLE, D_CONLY | D_EFFECTS },
   { "_Perform",		RID_EFFECT_PERFORM, D_CONLY | D_EFFECTS },
   { "_Resume",		RID_EFFECT_RESUME, D_CONLY | D_EFFECTS },
+  { "_Handler",		RID_EFFECT_HANDLER, D_CONLY | D_EFFECTS },
   { "__typeof",		RID_TYPEOF,	0 },
   { "__typeof__",	RID_TYPEOF,	0 },
   { "__typeof_unqual",	RID_TYPEOF_UNQUAL, D_CONLY },
