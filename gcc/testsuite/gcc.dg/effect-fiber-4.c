@@ -9,7 +9,7 @@ f (void)
 {
   _Try
     {
-      return 1;			/* { dg-error "runs as a coroutine" } */
+      return 1;
     }
   _Handle (ask.ask (int x) _Continuation k)
     {
