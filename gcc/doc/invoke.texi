@@ -19301,8 +19301,9 @@ the (implicit) use of @code{-fwrapv-pointer} is discouraged.
 @opindex feffects
 @opindex fno-effects
 @item -feffects
-Allow effect handlers to capture continuations whose frames include
-functions compiled with this option.  Capturing a continuation through
+Enable effect handlers (@pxref{Effect Handlers}), and allow them to
+capture continuations whose frames include functions compiled with this
+option.  Capturing a continuation through
 the frame of a function compiled without it is a run-time error, unless
 its nearest caller compiled with it has the @code{allow_foreign_capture}
 attribute

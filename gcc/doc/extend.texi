@@ -2254,8 +2254,8 @@ given by argument 1 to the function.
 
 @atindex @code{allow_foreign_capture}
 @item allow_foreign_capture
-When an effect handler captures a continuation, the frames of functions
-compiled without @option{-feffects} are an error unless the nearest
+When an effect handler captures a continuation (@pxref{Effect Handlers}),
+the frames of functions compiled without @option{-feffects} are an error unless the nearest
 function compiled with @option{-feffects} that calls them has this
 attribute.  Use it on a function that passes a callback which can perform
 effects to code that tolerates being suspended, such as @code{qsort}.
@@ -13770,6 +13770,7 @@ C and/or C++ standards, while others remain specific to GNU C.
 * Local Labels::        Labels local to a block.
 * Labels as Values::    Getting pointers to labels, and computed gotos.
 * Nested Functions::    Nested functions in GNU C.
+* Effect Handlers::     Operations whose callers decide how they are done.
 * Typeof::              @code{typeof}: referring to the type of an expression.
 * _Countof::            Determining the number of elements of arrays
 * _Maxof and _Minof::   The maximum and minimum representable values of a type.
@@ -14254,6 +14255,223 @@ bar (int *array, int offset, int size)
   /* @r{@dots{}} */
 @}
 @end smallexample
+
+@node Effect Handlers
+@subsection Effect Handlers
+@cindex effect handlers
+@cindex continuations
+@cindex coroutines
+@findex _Effect
+@findex _Try
+@findex _Handle
+@findex _Perform
+@findex _Resume
+@findex _Discard
+
+With @option{-feffects}, GNU C supports effect handlers.  An effect is a
+set of operations that code can perform without knowing how they are
+carried out; a handler installed by one of its callers decides.
+Performing an operation is like throwing an exception that the handler
+catches, except that the handler can return a value to the point of the
+throw and let the code continue from there.
+
+An effect is declared at file scope with @code{_Effect}, its name and
+the prototypes of its operations:
+
+@smallexample
+_Effect logger @{ void log (const char *); int level (void); @};
+@end smallexample
+
+The name of an effect is an ordinary identifier, but it cannot be used
+as a value.  Declarations of an effect with the same name in different
+translation units denote the same effect and must declare the same
+operations.
+
+@code{_Perform @var{effect}.@var{op} (@var{args})} performs an
+operation.  It is an expression whose value is the one the handler
+returns.  A @code{_Try} statement installs a handler for the duration of
+its body:
+
+@smallexample
+static void
+work (void)
+@{
+  if (_Perform logger.level () > 1)
+    _Perform logger.log ("working");
+@}
+
+void
+run (void)
+@{
+  int lines = 0;
+  _Try
+    @{
+      work ();
+    @}
+  _Handle (logger.log (const char *msg))
+    @{
+      puts (msg);
+      lines++;
+      _Resume ();
+    @}
+  _Handle (logger.level ())
+    @{
+      _Resume (2);
+    @}
+@}
+@end smallexample
+
+A @code{_Try} handles one effect and has exactly one @code{_Handle}
+clause for each of its operations, whose parameters have the types of
+the operation's parameters.  The body and the clauses must be compound
+statements.  A clause can use the variables of the function that
+contains the @code{_Try}.
+
+@code{_Perform} uses the innermost active handler for the effect; it is
+a run-time error if there is none.  While a clause runs, its handler and
+the handlers installed inside it are not active, so a @code{_Perform} of
+the same effect in a clause uses an enclosing handler.
+
+@code{_Resume (@var{value})}, or @code{_Resume ()} for an operation
+without a result, returns @var{value} from the clause as the value of
+the @code{_Perform}.  A clause like the ones above runs as a function
+called by the @code{_Perform}, and must end with @code{_Resume}.
+
+@subsubheading Named Handlers
+@findex _Handler
+
+@code{_Try (@var{effect} @var{h})} declares the handler @var{h}, of type
+@code{_Handler (@var{effect})}, in the body of the @code{_Try}.
+@code{_Perform @var{h}.@var{op} (@var{args})} uses that handler
+directly, even if handlers for the same effect are installed inside it.
+A named handler is used only through its name: @code{_Perform
+@var{effect}.@var{op}} does not find it.  A handler can be passed to
+functions.  Handlers of different effects have incompatible types, and
+nothing can be done with a handler other than performing through it.
+
+@subsubheading Continuations
+@findex _Continuation
+
+A clause can take the continuation of the @code{_Perform}: the rest of
+the computation that performed the operation, from the @code{_Perform}
+up to the end of the body of the @code{_Try}.  The continuation is named
+after the parameters of the clause:
+
+@smallexample
+_Effect fail @{ void fail (const char *); @};
+
+int
+parse_all (void)
+@{
+  int ok = 1;
+  _Try
+    @{
+      parse ();
+    @}
+  _Handle (fail.fail (const char *why) _Continuation k)
+    @{
+      fputs (why, stderr);
+      ok = 0;
+      _Discard (k);
+    @}
+  return ok;
+@}
+@end smallexample
+
+If any clause of a @code{_Try} takes a continuation, the body of the
+@code{_Try} runs as a coroutine, on a stack of its own.  When the body
+performs an operation whose clause takes a continuation, the body is
+suspended and the clause runs on the stack of the @code{_Try}.  The
+clause can then end in one of three ways:
+
+@itemize @bullet
+@item
+@code{_Resume (@var{k}, @var{value})}, or @code{_Resume (@var{k})} for
+an operation without a result, continues the body with @var{value} as
+the value of the @code{_Perform}.
+
+@item
+@code{_Discard (@var{k})} destroys the suspended body, running the
+cleanups of its frames, such as those of the @code{cleanup} variable
+attribute, and the @code{_Try} ends.  @option{-feffects} enables
+@option{-fexceptions} for this.
+
+@item
+If the clause returns in any other way, the @code{_Try} ends and the
+body stays suspended.
+@end itemize
+
+The body of such a @code{_Try} uses copies of the automatic variables
+of the enclosing functions, made when the @code{_Try} starts, so that
+it does not depend on their frames.  Assignments to these variables in
+the body are not seen outside it; to pass results out, use pointers or
+the clauses.  The body cannot @code{return} from the enclosing function
+or jump to its labels.
+
+A continuation has the type @code{_Continuation (@var{effect}.@var{op})}
+and can be stored.  A @code{_Try} whose body is only
+@code{_Resume (@var{k}, @var{value});} continues the computation of a
+stored continuation @var{k} under the clauses of that @code{_Try},
+which handle the operations the computation performs from then on.
+@code{_Discard (@var{k})} of a stored continuation destroys its
+computation.  This generator prints 0, 1 and 2:
+
+@smallexample
+_Effect gen @{ void yield (int); @};
+static _Continuation (gen.yield) next;
+static int value, more;
+
+static void
+numbers (void)
+@{
+  for (int i = 0; i < 3; i++)
+    _Perform gen.yield (i);
+@}
+
+void
+print_numbers (void)
+@{
+  _Try
+    @{
+      numbers ();
+    @}
+  _Handle (gen.yield (int v) _Continuation k)
+    @{
+      value = v;
+      next = k;
+      more = 1;
+    @}
+  while (more)
+    @{
+      printf ("%d\n", value);
+      more = 0;
+      _Try
+        @{
+          _Resume (next);
+        @}
+      _Handle (gen.yield (int v) _Continuation k)
+        @{
+          value = v;
+          next = k;
+          more = 1;
+        @}
+    @}
+@}
+@end smallexample
+
+Each continuation can be resumed or discarded once: doing so again
+while its computation is suspended at a later @code{_Perform} aborts the
+program.  Once the computation has finished or been discarded, using
+any of its continuations is undefined.  A computation that is neither
+finished nor discarded is never freed.
+
+The frames of a continuation must belong to functions compiled with
+@option{-feffects}; capturing a continuation through other frames is a
+run-time error unless allowed with the @code{allow_foreign_capture}
+function attribute (@pxref{Common Function Attributes}).  A coroutine
+must be resumed on the thread that created it.  Effect handlers are
+currently supported only on 64-bit Windows targets.  In system headers,
+the keywords of effect handlers are ordinary identifiers.
 
 @node Typeof
 @subsection Referring to a Type with @code{typeof}
