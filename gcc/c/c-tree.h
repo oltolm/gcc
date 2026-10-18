@@ -740,6 +740,11 @@ extern void c_finish_effect_fiber_try (location_t, tree, tree, tree, tree,
 extern tree c_build_effect_perform (location_t, tree, tree, tree,
 				    vec<tree, va_gc> *,
 				    const vec<location_t> &);
+extern tree c_build_dynamic_ref (location_t, tree);
+extern tree c_dynamic_ref_var (tree);
+extern tree c_build_dynamic_binding (location_t, tree, location_t, tree,
+				     tree);
+extern void c_finish_dynamic_let (location_t, tree, tree);
 extern void undeclared_variable (location_t, tree);
 extern tree lookup_label_for_goto (location_t, tree);
 extern tree declare_label (tree);
