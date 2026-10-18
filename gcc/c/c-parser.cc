@@ -197,6 +197,31 @@ c_parse_init (void)
     }
 }
 
+/* A return statement in the body of a for statement over an effect
+   operation.  The body is a nested function, so the statement stores its
+   value in VAR and jumps to LABEL, after the loop, where the return
+   statement is finished at LOC with VAR, VOID_NODE for a value of void
+   type, or no value, and the original type ORIGTYPE.  */
+
+struct c_effect_for_return
+{
+  tree label;
+  tree var;
+  tree value;
+  tree origtype;
+  location_t loc;
+};
+
+/* A for statement over an effect operation whose body is being parsed.  */
+
+struct c_effect_for
+{
+  /* The function of the body.  */
+  tree fn;
+  auto_vec<c_effect_for_return> returns;
+  c_effect_for *outer;
+};
+
 /* A parser structure recording information about the state and
    context of parsing.  Includes lexer information with up to two
    tokens of look-ahead; more are not needed for C.  */
@@ -307,9 +332,9 @@ struct GTY(()) c_parser {
   /* The function of the coroutine body being parsed, or NULL_TREE.  */
   tree effect_body;
 
-  /* The function of the body of a for statement over an effect operation
-     being parsed, or NULL_TREE.  */
-  tree effect_for;
+  /* The for statement over an effect operation whose body is being
+     parsed, or NULL.  */
+  struct c_effect_for * GTY((skip)) effect_for;
 
   /* While a saved compound statement is replayed, the first of its tokens
      whose identifier has not been classified in the scope it is parsed
@@ -1937,6 +1962,8 @@ static tree c_parser_start_effect_clause (c_parser *, location_t, tree, tree,
 static void c_finish_effect_clause (tree, location_t);
 static bool c_parser_effect_for_p (c_parser *);
 static void c_parser_effect_for_statement (c_parser *, location_t, tree);
+static tree c_parser_finish_return (c_parser *, location_t, tree, tree,
+				    bool);
 static void c_parser_seh_try_statement (c_parser *);
 static tree c_parser_seh_leave_statement (c_parser *);
 static bool c_parser_seh_intrinsic_p (c_parser *);
@@ -5819,11 +5846,13 @@ c_parser_effect_for_statement (c_parser *parser, location_t loc,
   tree save_clause = parser->effect_clause;
   tree save_continuation = parser->effect_continuation;
   tree save_body = parser->effect_body;
-  tree save_for = parser->effect_for;
+  c_effect_for loop;
+  loop.fn = fn;
+  loop.outer = parser->effect_for;
   parser->effect_clause = NULL_TREE;
   parser->effect_continuation = NULL_TREE;
   parser->effect_body = NULL_TREE;
-  parser->effect_for = fn;
+  parser->effect_for = &loop;
   /* As for an Objective-C foreach statement, break and continue are
      gotos.  */
   in_statement = IN_OBJC_FOREACH;
@@ -5856,7 +5885,7 @@ c_parser_effect_for_statement (c_parser *parser, location_t loc,
   parser->effect_clause = save_clause;
   parser->effect_continuation = save_continuation;
   parser->effect_body = save_body;
-  parser->effect_for = save_for;
+  parser->effect_for = loop.outer;
 
   if (fn)
     {
@@ -5868,10 +5897,73 @@ c_parser_effect_for_statement (c_parser *parser, location_t loc,
     {
       c_finish_effect_try (loc, rec, body, effect, build_tree_list (field, fn),
 			   false, jumps);
+      if (!loop.returns.is_empty ())
+	{
+	  add_stmt (build1 (GOTO_EXPR, void_type_node, break_label));
+	  for (c_effect_for_return &r : loop.returns)
+	    {
+	      if (r.var)
+		pushdecl (r.var);
+	      add_stmt (build1 (LABEL_EXPR, void_type_node, r.label));
+	      c_parser_finish_return (parser, r.loc, r.value, r.origtype,
+				      false);
+	    }
+	}
       add_stmt (build1 (LABEL_EXPR, void_type_node, break_label));
     }
   add_stmt (c_end_compound_stmt (loc, block, true));
   c_parser_maybe_reclassify_token (parser);
+}
+
+/* Finish a return statement at LOC with the value VALUE, or none if it is
+   NULL_TREE, of original type ORIGTYPE, as c_finish_return does.  In the
+   body of a for statement over an effect operation, return from the
+   function containing the loop instead of from the body.  */
+
+static tree
+c_parser_finish_return (c_parser *parser, location_t loc, tree value,
+			tree origtype, bool musttail_p)
+{
+  c_effect_for *f = parser->effect_for;
+  if (!f || f->fn != current_function_decl)
+    return c_finish_return (loc, value, origtype, musttail_p);
+
+  /* The value is checked against the return type when the statement is
+     finished after the loop, in the function containing it.  */
+  tree outer_fn = decl_function_context (f->fn);
+  c_effect_for_return r;
+  r.label = create_artificial_label (loc);
+  DECL_CONTEXT (r.label) = outer_fn;
+  r.var = NULL_TREE;
+  r.value = NULL_TREE;
+  r.origtype = origtype;
+  r.loc = loc;
+  if (value)
+    {
+      if (TREE_CODE (value) == EXCESS_PRECISION_EXPR)
+	value = TREE_OPERAND (value, 0);
+      value = c_fully_fold (value, false, NULL);
+      if (VOID_TYPE_P (TREE_TYPE (value)))
+	{
+	  add_stmt (value);
+	  r.value = void_node;
+	}
+      else
+	{
+	  tree type = TYPE_MAIN_VARIANT (TREE_TYPE (value));
+	  r.var = build_decl (loc, VAR_DECL, NULL_TREE, type);
+	  DECL_ARTIFICIAL (r.var) = 1;
+	  DECL_IGNORED_P (r.var) = 1;
+	  DECL_CONTEXT (r.var) = outer_fn;
+	  add_stmt (build2_loc (loc, MODIFY_EXPR, type, r.var, value));
+	  r.value = r.var;
+	}
+    }
+  f->returns.safe_push (r);
+  tree t = build1 (GOTO_EXPR, void_type_node,
+		   c_effect_redirect_goto (loc, r.label));
+  SET_EXPR_LOCATION (t, loc);
+  return add_stmt (t);
 }
 
 /* Parse a _Let statement (GNU extension).
@@ -10051,15 +10143,6 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	  goto expect_semicolon;
 	case RID_RETURN:
 	  c_parser_consume_token (parser);
-	  if (parser->effect_for
-	      && parser->effect_for == current_function_decl)
-	    {
-	      sorry_at (loc, "%<return%> in a %<for%> statement over an "
-			"effect operation");
-	      if (c_parser_next_token_is_not (parser, CPP_SEMICOLON))
-		c_parser_expression (parser);
-	      goto expect_semicolon;
-	    }
 	  if (parser->effect_body
 	      && parser->effect_body == current_function_decl)
 	    {
@@ -10084,8 +10167,8 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	    }
 	  if (c_parser_next_token_is (parser, CPP_SEMICOLON))
 	    {
-	      stmt = c_finish_return (loc, NULL_TREE, NULL_TREE,
-				      astate.musttail_p);
+	      stmt = c_parser_finish_return (parser, loc, NULL_TREE,
+					     NULL_TREE, astate.musttail_p);
 	      c_parser_consume_token (parser);
 	    }
 	  else
@@ -10093,9 +10176,10 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	      location_t xloc = c_parser_peek_token (parser)->location;
 	      struct c_expr expr = c_parser_expression_conv (parser);
 	      mark_exp_read (expr.value);
-	      stmt = c_finish_return (EXPR_LOC_OR_LOC (expr.value, xloc),
-				      expr.value, expr.original_type,
-				      astate.musttail_p);
+	      stmt = c_parser_finish_return (parser,
+					     EXPR_LOC_OR_LOC (expr.value, xloc),
+					     expr.value, expr.original_type,
+					     astate.musttail_p);
 	      goto expect_semicolon;
 	    }
 	  break;
