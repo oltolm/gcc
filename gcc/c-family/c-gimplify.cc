@@ -27,6 +27,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "system.h"
 #include "coretypes.h"
 #include "tm.h"
+#include "target.h"
 #include "function.h"
 #include "basic-block.h"
 #include "tree.h"
@@ -907,6 +908,80 @@ fma_supported_p (enum internal_fn fn, tree type)
 
 /* Gimplification of expression trees.  */
 
+/* Return a call of IFN_SEH_FUNCLET that keeps the funclet FN of a
+   Microsoft __try statement at LOC.  */
+
+static tree
+build_seh_funclet_ref (location_t loc, tree fn)
+{
+  tree addr = build1_loc (loc, ADDR_EXPR, build_pointer_type (TREE_TYPE (fn)),
+			  fn);
+  /* Where the target allows, the address is a descriptor, so that no
+     trampoline is built.  */
+  FUNC_ADDR_BY_DESCRIPTOR (addr)
+    = targetm.calls.custom_function_descriptors > 0;
+  TREE_ADDRESSABLE (fn) = 1;
+  TREE_USED (fn) = 1;
+  return build_call_expr_internal_loc (loc, IFN_SEH_FUNCLET, void_type_node,
+				       1, addr);
+}
+
+/* Lower the Microsoft __try statement STMT to generic EH constructs.  An
+   __except becomes a catch whose type is the filter function, so that
+   the region may or may not catch an exception; its handler first takes
+   the exception code, which the SEH runtime passes as the exception
+   pointer.  A __finally block is called with a nonzero argument on the
+   exception path, which the SEH runtime takes, and with zero otherwise.  */
+
+static tree
+c_genericize_seh_try (tree stmt)
+{
+  location_t loc = EXPR_LOCATION (stmt);
+  tree list = NULL_TREE;
+  if (TREE_CODE (stmt) == SEH_TRY_EXCEPT)
+    {
+      tree filter = SEH_EXCEPT_FILTER (stmt);
+      tree code = SEH_EXCEPT_CODE (stmt);
+      tree eh = build_call_expr_loc (loc,
+				     builtin_decl_explicit (BUILT_IN_EH_POINTER),
+				     1, integer_zero_node);
+      tree handler = NULL_TREE;
+      append_to_statement_list (build2_loc (loc, MODIFY_EXPR, TREE_TYPE (code),
+					    code,
+					    fold_convert_loc (loc,
+							      TREE_TYPE (code),
+							      eh)),
+				&handler);
+      append_to_statement_list (SEH_EXCEPT_HANDLER (stmt), &handler);
+      append_to_statement_list (build_seh_funclet_ref (loc, filter), &list);
+      tree c = build2_loc (loc, CATCH_EXPR, void_type_node,
+			   tree_cons (NULL_TREE, filter, NULL_TREE), handler);
+      append_to_statement_list (build2_loc (loc, TRY_CATCH_EXPR,
+					    void_type_node, SEH_TRY_BODY (stmt),
+					    c),
+				&list);
+    }
+  else
+    {
+      tree fn = SEH_FINALLY_FN (stmt);
+      tree normal = build_call_expr_loc (loc, fn, 2,
+					 build_int_cst (unsigned_char_type_node,
+							0),
+					 null_pointer_node);
+      tree eh = build_call_expr_loc (loc, fn, 2,
+				     build_int_cst (unsigned_char_type_node, 1),
+				     null_pointer_node);
+      append_to_statement_list (build_seh_funclet_ref (loc, fn), &list);
+      append_to_statement_list (build2_loc (loc, TRY_FINALLY_EXPR,
+					    void_type_node, SEH_TRY_BODY (stmt),
+					    build2_loc (loc, EH_ELSE_EXPR,
+							void_type_node, normal,
+							eh)),
+				&list);
+    }
+  return list;
+}
+
 /* Do C-specific gimplification on *EXPR_P.  PRE_P and POST_P are as in
    gimplify_expr.  */
 
@@ -920,9 +995,7 @@ c_gimplify_expr (tree *expr_p, gimple_seq *pre_p ATTRIBUTE_UNUSED,
     {
     case SEH_TRY_EXCEPT:
     case SEH_TRY_FINALLY:
-      sorry_at (EXPR_LOCATION (*expr_p),
-		"structured exception handling is not yet implemented");
-      *expr_p = SEH_TRY_BODY (*expr_p);
+      *expr_p = c_genericize_seh_try (*expr_p);
       return GS_OK;
 
     case LSHIFT_EXPR:

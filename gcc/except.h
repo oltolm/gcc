@@ -177,6 +177,11 @@ struct GTY((chain_next("%h.next_peer"))) eh_region_d
   /* True if this region should use __cxa_end_cleanup instead
      of _Unwind_Resume.  */
   bool use_cxa_end_cleanup;
+
+  /* For a region of a Microsoft __try statement, the function that the
+     SEH runtime calls: the filter of a TRY region, or the __finally block
+     of a CLEANUP region.  */
+  tree seh_funclet;
 };
 
 typedef struct eh_landing_pad_d *eh_landing_pad;

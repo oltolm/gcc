@@ -4051,6 +4051,22 @@ build_external_ref (location_t loc, tree id, bool fun, tree *type)
     }
   if (decl)
     decl = c_effect_capture (decl);
+  /* The SEH runtime calls a filter or a __finally block where the
+     function that contains it may be stopped at any trapping
+     instruction, so the variables they share must be accessed as
+     volatile, as dataflow does not see these uses.  */
+  if (decl
+      && current_function_decl
+      && current_function_decl == c_seh_funclet
+      && (VAR_P (decl) || TREE_CODE (decl) == PARM_DECL)
+      && !TREE_STATIC (decl)
+      && !DECL_EXTERNAL (decl)
+      && decl_function_context (decl)
+      && decl_function_context (decl) != current_function_decl)
+    {
+      TREE_THIS_VOLATILE (decl) = 1;
+      TREE_SIDE_EFFECTS (decl) = 1;
+    }
   if (decl && decl != error_mark_node)
     {
       ref = decl;

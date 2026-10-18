@@ -4060,6 +4060,13 @@ expand_NOP (internal_fn, gcall *)
   /* Nothing.  But it shouldn't really prevail.  */
 }
 
+/* Expand SEH_FUNCLET: the funclet is reached through the unwind data.  */
+
+static void
+expand_SEH_FUNCLET (internal_fn, gcall *)
+{
+}
+
 /* Coroutines, all should have been processed at this stage.  */
 
 static void

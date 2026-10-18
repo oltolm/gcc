@@ -5812,12 +5812,13 @@ c_parser_effect_discard_statement (c_parser *parser)
 /* Start defining a filter or a __finally block (Microsoft extension) as
    a nested function returning RTYPE, called by the runtime with an
    argument of type PTYPE and the establisher frame.  The name, made from
-   PREFIX, is not an identifier, so that it cannot clash.  Return the
-   function, or NULL_TREE after an error.  */
+   PREFIX, is not an identifier, so that it cannot clash.  KIND is as for
+   c_seh_prepare_funclet.  Return the function, or NULL_TREE after an
+   error.  */
 
 static tree
 c_parser_seh_start_funclet (location_t loc, const char *prefix, tree rtype,
-			    tree ptype)
+			    tree ptype, const char *kind)
 {
   static unsigned int counter;
   char name[32];
@@ -5859,6 +5860,7 @@ c_parser_seh_start_funclet (location_t loc, const char *prefix, tree rtype,
     }
   store_parm_decls ();
   DECL_STRUCT_FUNCTION (current_function_decl)->function_start_locus = loc;
+  c_seh_prepare_funclet (current_function_decl, kind);
   return current_function_decl;
 }
 
@@ -5895,6 +5897,7 @@ c_parser_seh_try_statement (c_parser *parser)
   tree block = c_begin_compound_stmt (true);
 
   c_parser_consume_token (parser);
+  c_seh_prepare_function (current_function_decl);
   tree saved_leave = parser->seh_leave;
   parser->seh_leave = create_artificial_label (loc);
   tree body = c_begin_compound_stmt (true);
@@ -5916,7 +5919,7 @@ c_parser_seh_try_statement (c_parser *parser)
 	{
 	  filter = c_parser_seh_start_funclet (eloc, "__seh_filter",
 					       long_integer_type_node,
-					       ptr_type_node);
+					       ptr_type_node, NULL);
 	  if (filter)
 	    {
 	      parser->seh_filter = filter;
@@ -5967,7 +5970,8 @@ c_parser_seh_try_statement (c_parser *parser)
       c_parser_consume_token (parser);
       tree fn = c_parser_seh_start_funclet (floc, "__seh_finally",
 					    void_type_node,
-					    unsigned_char_type_node);
+					    unsigned_char_type_node,
+					    "seh finally");
       if (fn)
 	{
 	  parser->seh_filter = NULL_TREE;

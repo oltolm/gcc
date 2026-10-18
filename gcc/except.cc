@@ -422,6 +422,10 @@ gen_eh_region_catch (eh_region t, tree type_or_list)
       type_node = type_list;
       for (; type_node; type_node = TREE_CHAIN (type_node))
 	add_type_for_runtime (TREE_VALUE (type_node));
+
+      /* The type of the catch of a Microsoft __except is its filter.  */
+      if (TREE_CODE (TREE_VALUE (type_list)) == FUNCTION_DECL)
+	t->seh_funclet = TREE_VALUE (type_list);
     }
 
   c = ggc_cleared_alloc<eh_catch_d> ();
@@ -597,6 +601,7 @@ duplicate_eh_regions_1 (struct duplicate_eh_regions_data *data,
 
   /* Make sure to preserve the original use of __cxa_end_cleanup.  */
   new_r->use_cxa_end_cleanup = old_r->use_cxa_end_cleanup;
+  new_r->seh_funclet = old_r->seh_funclet;
 
   for (old_r = old_r->inner; old_r ; old_r = old_r->next_peer)
     duplicate_eh_regions_1 (data, old_r, new_r);
@@ -675,8 +680,10 @@ eh_region_outermost (struct function *ifun, eh_region region_a,
 void
 add_type_for_runtime (tree type)
 {
-  /* If TYPE is NOP_EXPR, it means that it already is a runtime type.  */
-  if (TREE_CODE (type) == NOP_EXPR)
+  /* If TYPE is NOP_EXPR, it means that it already is a runtime type.  The
+     filter of a Microsoft __except, a FUNCTION_DECL, is called by the SEH
+     runtime instead.  */
+  if (TREE_CODE (type) == NOP_EXPR || TREE_CODE (type) == FUNCTION_DECL)
     return;
 
   bool existed = false;
@@ -688,8 +695,9 @@ add_type_for_runtime (tree type)
 tree
 lookup_type_for_runtime (tree type)
 {
-  /* If TYPE is NOP_EXPR, it means that it already is a runtime type.  */
-  if (TREE_CODE (type) == NOP_EXPR)
+  /* If TYPE is NOP_EXPR, it means that it already is a runtime type.  See
+     add_type_for_runtime for FUNCTION_DECL.  */
+  if (TREE_CODE (type) == NOP_EXPR || TREE_CODE (type) == FUNCTION_DECL)
     return type;
 
   /* We should have always inserted the data earlier.  */
@@ -982,7 +990,16 @@ expand_dw2_landing_pad_for_region (eh_region region)
   if (region->filter_reg)
     {
       rtx filter_reg;
-      if (EH_RETURN_DATA_REGNO (1) != INVALID_REGNUM)
+      /* The SEH runtime transfers control to the landing pad of a
+	 Microsoft __except only if its filter accepts the exception, and
+	 sets no filter value.  */
+      if (region->type == ERT_TRY && region->seh_funclet)
+	{
+	  eh_catch c = region->u.eh_try.first_catch;
+	  filter_reg = gen_int_mode (tree_to_shwi (TREE_VALUE (c->filter_list)),
+				     targetm.eh_return_filter_mode ());
+	}
+      else if (EH_RETURN_DATA_REGNO (1) != INVALID_REGNUM)
 	filter_reg = gen_rtx_REG (targetm.eh_return_filter_mode (),
 				  EH_RETURN_DATA_REGNO (1));
       else
@@ -2995,7 +3012,9 @@ output_ttype (tree type, int tt_format, int tt_format_size)
   rtx value;
   bool is_public = true;
 
-  if (type == NULL_TREE)
+  /* The filter of a Microsoft __except is not a runtime type; the SEH
+     runtime calls it instead.  */
+  if (type == NULL_TREE || TREE_CODE (type) == FUNCTION_DECL)
     value = const0_rtx;
   else
     {
@@ -3398,6 +3417,11 @@ dump_eh_tree (FILE * out, struct function *fun)
 	  fprintf (out, " filter :%i types:", i->u.allowed.filter);
 	  print_generic_expr (out, i->u.allowed.type_list);
 	  break;
+	}
+      if (i->seh_funclet)
+	{
+	  fprintf (out, " seh:");
+	  print_generic_expr (out, i->seh_funclet);
 	}
       fputc ('\n', out);
 
