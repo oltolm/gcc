@@ -1163,17 +1163,92 @@ build_effect_address (location_t loc, tree effect)
 			   build_fold_addr_expr_loc (loc, effect));
 }
 
-/* Finish a _Try statement whose body is BODY and whose _Handle clauses
-   for EFFECT are the nested functions in the TREE_VALUEs of CLAUSES, for
-   the operations in their TREE_PURPOSEs.  The statements are added to
-   the current block: a handler record pointing to a table of the clauses
-   is pushed on the chain for the duration of BODY.  */
+/* The types _Handler (EFFECT), indexed by EFFECT, and the effects,
+   indexed by the types.  */
+static GTY(()) hash_map<tree, tree> *effect_handler_types;
+static GTY(()) hash_map<tree, tree> *effect_of_handler_types;
 
-void
-c_finish_effect_try (location_t loc, tree body, tree effect, tree clauses)
+/* Return the type _Handler (EFFECT), a pointer to an incomplete
+   structure, so that a handler can only be used to perform EFFECT.  */
+
+tree
+c_build_effect_handler_type (tree effect)
+{
+  if (!effect_handler_types)
+    {
+      effect_handler_types = hash_map<tree, tree>::create_ggc (16);
+      effect_of_handler_types = hash_map<tree, tree>::create_ggc (16);
+    }
+  if (tree *slot = effect_handler_types->get (effect))
+    return *slot;
+
+  tree type = make_node (RECORD_TYPE);
+  char *name = concat ("__gcc_handler_",
+		       IDENTIFIER_POINTER (DECL_NAME (effect)), NULL);
+  TYPE_NAME (type) = get_identifier (name);
+  free (name);
+  tree stub = build_decl (UNKNOWN_LOCATION, TYPE_DECL, NULL_TREE, type);
+  DECL_ARTIFICIAL (stub) = 1;
+  TYPE_STUB_DECL (type) = stub;
+  tree ptr = c_build_pointer_type (type);
+  effect_handler_types->put (effect, ptr);
+  effect_of_handler_types->put (ptr, effect);
+  return ptr;
+}
+
+/* Return the effect of the handler type TYPE, or NULL_TREE if TYPE is
+   not a handler type.  */
+
+tree
+c_effect_of_handler_type (tree type)
+{
+  if (!effect_of_handler_types)
+    return NULL_TREE;
+  tree *slot = effect_of_handler_types->get (TYPE_MAIN_VARIANT (type));
+  return slot ? *slot : NULL_TREE;
+}
+
+/* Begin a _Try statement: declare the handler record that it pushes on
+   the chain in the current block and return it.  */
+
+tree
+c_begin_effect_try (location_t loc)
 {
   init_effect_runtime ();
+  tree rec = build_effect_temp (loc, effect_handler_type, NULL_TREE);
+  TREE_ADDRESSABLE (rec) = 1;
+  return rec;
+}
 
+/* Declare NAME in the current scope as the handler of EFFECT whose
+   record is REC.  */
+
+void
+c_declare_effect_handler (location_t loc, tree effect, tree name, tree rec)
+{
+  tree type = c_build_qualified_type (c_build_effect_handler_type (effect),
+				      TYPE_QUAL_CONST);
+  tree decl = build_decl (loc, VAR_DECL, name, type);
+  DECL_CONTEXT (decl) = current_function_decl;
+  DECL_INITIAL (decl) = fold_convert_loc (loc, type,
+					  build_fold_addr_expr_loc (loc, rec));
+  TREE_READONLY (decl) = 1;
+  pushdecl (decl);
+  add_stmt (build_stmt (loc, DECL_EXPR, decl));
+}
+
+/* Finish a _Try statement whose record is REC, whose body is BODY and
+   whose _Handle clauses for EFFECT are the nested functions in the
+   TREE_VALUEs of CLAUSES, for the operations in their TREE_PURPOSEs.
+   The statements are added to the current block: REC, pointing to a
+   table of the clauses, is pushed on the chain for the duration of BODY.
+   If NAMED, the handler is performed only by name, so _Perform without
+   a name must not find REC.  */
+
+void
+c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
+		     tree clauses, bool named)
+{
   tree ops = build_effect_temp (loc, TYPE_MAIN_VARIANT (TREE_TYPE (effect)),
 				NULL_TREE);
   TREE_ADDRESSABLE (ops) = 1;
@@ -1195,15 +1270,14 @@ c_finish_effect_try (location_t loc, tree body, tree effect, tree clauses)
 			    addr));
     }
 
-  tree rec = build_effect_temp (loc, effect_handler_type, NULL_TREE);
-  TREE_ADDRESSABLE (rec) = 1;
   tree rec_addr = build_fold_addr_expr_loc (loc, rec);
   add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
 			effect_handler_field (rec, 0),
 			build_call_expr_loc (loc, effect_top_decl, 0)));
   add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
 			effect_handler_field (rec, 1),
-			build_effect_address (loc, effect)));
+			named ? null_pointer_node
+			: build_effect_address (loc, effect)));
   add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
 			effect_handler_field (rec, 2),
 			fold_convert_loc (loc, ptr_type_node,
@@ -1216,11 +1290,12 @@ c_finish_effect_try (location_t loc, tree body, tree effect, tree clauses)
 
 /* Build _Perform of the operation FIELD of EFFECT with arguments ARGS,
    whose locations are ARG_LOC.  The arguments are evaluated first; the
-   clause of the innermost handler for EFFECT is then called with that
-   handler and the ones inside it removed from the chain.  */
+   clause of HANDLER, or if it is NULL_TREE of the innermost handler for
+   EFFECT, is then called with that handler and the ones inside it
+   removed from the chain.  */
 
 tree
-c_build_effect_perform (location_t loc, tree effect, tree field,
+c_build_effect_perform (location_t loc, tree effect, tree handler, tree field,
 			vec<tree, va_gc> *args, const vec<location_t> &arg_loc)
 {
   init_effect_runtime ();
@@ -1232,9 +1307,11 @@ c_build_effect_perform (location_t loc, tree effect, tree field,
       (*args)[i] = build_effect_temp (loc, TREE_TYPE ((*args)[i]),
 				      c_fully_fold ((*args)[i], false, NULL));
   tree h = build_effect_temp (loc, ptr,
-			      build_call_expr_loc (loc, effect_find_decl, 1,
-						   build_effect_address
-						     (loc, effect)));
+			      handler
+			      ? fold_convert_loc (loc, ptr, handler)
+			      : build_call_expr_loc (loc, effect_find_decl, 1,
+						     build_effect_address
+						       (loc, effect)));
   tree saved = build_effect_temp (loc, ptr,
 				  build_call_expr_loc (loc, effect_top_decl,
 						       0));
