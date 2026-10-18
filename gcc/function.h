@@ -288,6 +288,11 @@ struct GTY(()) function {
      It will be initialized at the beginning of the function.  */
   tree static_chain_decl;
 
+  /* The variable that holds the variables of this function that its nested
+     functions use, which the static chains of their calls point to, or
+     NULL_TREE.  */
+  tree nonlocal_frame;
+
   /* An expression that contains the non-local goto save area.  The first
      word is the saved frame pointer and the second is the saved stack
      pointer.  */

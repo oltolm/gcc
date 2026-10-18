@@ -930,8 +930,9 @@ build_seh_funclet_ref (location_t loc, tree fn)
    __except becomes a catch whose type is the filter function, so that
    the region may or may not catch an exception; its handler first takes
    the exception code, which the SEH runtime passes as the exception
-   pointer.  A __finally block is called with a nonzero argument on the
-   exception path, which the SEH runtime takes, and with zero otherwise.  */
+   pointer.  A __finally block is called with zero on the normal path;
+   on the exception path, the SEH runtime calls it, so the cleanup of its
+   region is empty.  */
 
 static tree
 c_genericize_seh_try (tree stmt)
@@ -968,15 +969,12 @@ c_genericize_seh_try (tree stmt)
 					 build_int_cst (unsigned_char_type_node,
 							0),
 					 null_pointer_node);
-      tree eh = build_call_expr_loc (loc, fn, 2,
-				     build_int_cst (unsigned_char_type_node, 1),
-				     null_pointer_node);
       append_to_statement_list (build_seh_funclet_ref (loc, fn), &list);
       append_to_statement_list (build2_loc (loc, TRY_FINALLY_EXPR,
 					    void_type_node, SEH_TRY_BODY (stmt),
 					    build2_loc (loc, EH_ELSE_EXPR,
 							void_type_node, normal,
-							eh)),
+							build_empty_stmt (loc))),
 				&list);
     }
   return list;

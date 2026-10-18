@@ -228,6 +228,8 @@ struct GTY(()) eh_status
 extern void for_each_eh_label (void (*) (rtx));
 
 extern void init_eh_for_function (void);
+extern unsigned int eh_call_site_count (void);
+extern eh_region eh_call_site_region (unsigned int, char *, char *, rtx *);
 
 extern void remove_eh_landing_pad (eh_landing_pad);
 extern void remove_eh_handler (eh_region);

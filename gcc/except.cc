@@ -121,6 +121,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "memmodel.h"
 #include "tm_p.h"
 #include "stringpool.h"
+#include "attribs.h"
 #include "expmed.h"
 #include "optabs.h"
 #include "emit-rtl.h"
@@ -165,6 +166,8 @@ struct GTY(()) call_site_record_d
 {
   rtx landing_pad;
   int action;
+  /* The innermost region of the call site, or NULL.  */
+  eh_region region;
 };
 
 /* In the following structure and associated functions,
@@ -215,7 +218,7 @@ static bool get_eh_region_and_lp_from_rtx (const_rtx, eh_region *,
 static void dw2_build_landing_pads (void);
 
 static int collect_one_action_chain (action_hash_type *, eh_region);
-static int add_call_site (rtx, int, int);
+static int add_call_site (rtx, int, int, eh_region = NULL);
 
 static void push_uleb128 (vec<uchar, va_gc> **, unsigned int);
 static void push_sleb128 (vec<uchar, va_gc> **, int);
@@ -990,16 +993,7 @@ expand_dw2_landing_pad_for_region (eh_region region)
   if (region->filter_reg)
     {
       rtx filter_reg;
-      /* The SEH runtime transfers control to the landing pad of a
-	 Microsoft __except only if its filter accepts the exception, and
-	 sets no filter value.  */
-      if (region->type == ERT_TRY && region->seh_funclet)
-	{
-	  eh_catch c = region->u.eh_try.first_catch;
-	  filter_reg = gen_int_mode (tree_to_shwi (TREE_VALUE (c->filter_list)),
-				     targetm.eh_return_filter_mode ());
-	}
-      else if (EH_RETURN_DATA_REGNO (1) != INVALID_REGNUM)
+      if (EH_RETURN_DATA_REGNO (1) != INVALID_REGNUM)
 	filter_reg = gen_rtx_REG (targetm.eh_return_filter_mode (),
 				  EH_RETURN_DATA_REGNO (1));
       else
@@ -2505,22 +2499,38 @@ collect_one_action_chain (action_hash_type *ar_hash, eh_region region)
 }
 
 static int
-add_call_site (rtx landing_pad, int action, int section)
+add_call_site (rtx landing_pad, int action, int section, eh_region region)
 {
   call_site_record record;
 
   record = ggc_alloc<call_site_record_d> ();
   record->landing_pad = landing_pad;
   record->action = action;
+  record->region = region;
 
   vec_safe_push (crtl->eh.call_site_record_v[section], record);
 
   return call_site_base + crtl->eh.call_site_record_v[section]->length () - 1;
 }
 
+/* Return true if the current function contains a Microsoft __try
+   statement, whose exceptions the SEH runtime dispatches through a scope
+   table.  */
+
+static bool
+seh_function_p (void)
+{
+  return lookup_attribute ("seh function",
+			   DECL_ATTRIBUTES (current_function_decl));
+}
+
 static rtx_note *
 emit_note_eh_region_end (rtx_insn *insn)
 {
+  /* The SEH runtime looks up the return address of a call in the scope
+     table, so a call that ends a range must not end the range.  */
+  if (CALL_P (insn) && seh_function_p ())
+    insn = emit_insn_after (gen_nop (), insn);
   return emit_note_after (NOTE_INSN_EH_REGION_END, insn);
 }
 
@@ -2694,7 +2704,7 @@ convert_to_eh_region_ranges (void)
 	      {
 		call_site = add_call_site (this_landing_pad,
 					   this_action < 0 ? 0 : this_action,
-					   cur_sec);
+					   cur_sec, region);
 		note = emit_note_before (NOTE_INSN_EH_REGION_BEG, iter);
 		NOTE_EH_HANDLER (note) = call_site;
 	      }
@@ -2859,6 +2869,31 @@ sjlj_size_of_call_site_table (void)
     }
 
   return size;
+}
+
+/* Return the number of call sites of the current function, which is not
+   partitioned.  */
+
+unsigned int
+eh_call_site_count (void)
+{
+  return vec_safe_length (crtl->eh.call_site_record_v[0]);
+}
+
+/* Return the innermost region of call site I, or NULL if exceptions
+   propagate out of the function there.  Store the labels at the start and
+   the end of the call site in BEGIN and END, which have 32 bytes, and its
+   landing pad in *LANDING_PAD.  */
+
+eh_region
+eh_call_site_region (unsigned int i, char *begin, char *end,
+		     rtx *landing_pad)
+{
+  call_site_record cs = (*crtl->eh.call_site_record_v[0])[i];
+  ASM_GENERATE_INTERNAL_LABEL (begin, "LEHB", call_site_base + i);
+  ASM_GENERATE_INTERNAL_LABEL (end, "LEHE", call_site_base + i);
+  *landing_pad = cs->landing_pad;
+  return cs->region;
 }
 
 static void
@@ -3275,7 +3310,14 @@ output_function_exception_table (int section)
   targetm.asm_out.emit_except_table_label (asm_out_file);
 
   /* Do the real work.  */
-  output_one_function_exception_table (section);
+  if (seh_function_p () && targetm.asm_out.output_seh_scope_table)
+    {
+      gcc_assert (section == 0);
+      targetm.asm_out.output_seh_scope_table (asm_out_file);
+      call_site_base += vec_safe_length (crtl->eh.call_site_record_v[0]);
+    }
+  else
+    output_one_function_exception_table (section);
 
   switch_to_section (current_function_section ());
 }

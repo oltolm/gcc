@@ -10093,6 +10093,13 @@ used to emit a directive to install a personality hook into the unwind
 info.  This hook should not be used if dwarf2 unwind info is used.
 @end deftypefn
 
+@deftypefn {Target Hook} void TARGET_ASM_OUTPUT_SEH_SCOPE_TABLE (FILE *@var{stream})
+If the target supports Microsoft structured exception handling, this hook
+outputs the scope table of the current function, which contains a
+@code{__try} statement, in place of its language-specific data area.
+The table is output to @var{stream}, in the exception section.
+@end deftypefn
+
 @deftypefn {Target Hook} void TARGET_ASM_UNWIND_EMIT (FILE *@var{stream}, rtx_insn *@var{insn})
 This target hook emits assembly directives required to unwind the
 given instruction.  This is only used when @code{TARGET_EXCEPT_UNWIND_INFO}

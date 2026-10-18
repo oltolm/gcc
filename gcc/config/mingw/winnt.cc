@@ -37,6 +37,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "cgraph.h"
 #include "lto-streamer.h"
 #include "except.h"
+#include "lra.h"
 #include "output.h"
 #include "varasm.h"
 #include "lto-section-names.h"
@@ -1198,6 +1199,7 @@ seh_cfa_adjust_cfa (FILE *f, struct seh_frame_state *seh, rtx pat)
       fputs ("\t.seh_setframe\t", f);
       print_reg (seh->cfa_reg, 0, f);
       fprintf (f, ", " HOST_WIDE_INT_PRINT_DEC "\n", offset);
+      seh->setframe_offset = offset;
     }
   else
     gcc_unreachable ();
@@ -1399,6 +1401,199 @@ i386_pe_seh_unwind_emit (FILE *out_file, rtx_insn *insn)
   seh_frame_related_expr (out_file, seh, pat);
 }
 
+/* Return true if the current function contains a Microsoft __try
+   statement, so that __C_specific_handler dispatches its exceptions.  */
+
+static bool
+seh_function_p (void)
+{
+  return lookup_attribute ("seh function",
+			   DECL_ATTRIBUTES (current_function_decl));
+}
+
+/* A filter or __finally function of the current function, which
+   __C_specific_handler calls with the establisher frame of the function as
+   its second argument.  A stub at LABELNO sets the static chain of FN,
+   if it has one, to the frame object at CHAIN_OFFSET from the establisher
+   frame, and jumps to FN.  */
+
+struct seh_stub
+{
+  tree fn;
+  int labelno;
+  HOST_WIDE_INT chain_offset;
+};
+
+static vec<seh_stub> seh_stubs;
+static int seh_stub_labelno;
+
+/* Return the offset of the frame object of the current function from its
+   establisher frame, which is the stack pointer after the prologue or the
+   frame pointer minus the .seh_setframe offset.  */
+
+static HOST_WIDE_INT
+seh_frame_object_offset (void)
+{
+  tree frame = cfun->nonlocal_frame;
+  if (frame && DECL_RTL_SET_P (frame) && MEM_P (DECL_RTL (frame)))
+    {
+      rtx addr = lra_eliminate_regs (XEXP (DECL_RTL (frame), 0), VOIDmode,
+				     NULL_RTX);
+      HOST_WIDE_INT offset = 0;
+      if (GET_CODE (addr) == PLUS && CONST_INT_P (XEXP (addr, 1)))
+	{
+	  offset = INTVAL (XEXP (addr, 1));
+	  addr = XEXP (addr, 0);
+	}
+      if (addr == stack_pointer_rtx)
+	return offset;
+      if (addr == hard_frame_pointer_rtx)
+	return offset + cfun->machine->seh->setframe_offset;
+    }
+  sorry_at (DECL_SOURCE_LOCATION (current_function_decl),
+	    "cannot locate the variables used by a filter or %<__finally%> "
+	    "block");
+  return 0;
+}
+
+/* Return the label number of the stub for FN, creating it if needed.  */
+
+static int
+seh_stub_for (tree fn)
+{
+  for (const seh_stub &stub : seh_stubs)
+    if (stub.fn == fn)
+      return stub.labelno;
+  seh_stub stub;
+  stub.fn = fn;
+  stub.labelno = seh_stub_labelno++;
+  stub.chain_offset = DECL_STATIC_CHAIN (fn) ? seh_frame_object_offset () : 0;
+  seh_stubs.safe_push (stub);
+  return stub.labelno;
+}
+
+/* A jump target of an __except record of the current function: a stub at
+   LABELNO that sets the filter register to FILTER, the filter value of
+   the __except region, and jumps to LANDING_PAD, the landing pad of the
+   call site.  The SEH runtime enters it with the exception code in the
+   exception pointer register after unwinding to the function; the code
+   at the landing pad then dispatches to the handler of the region as it
+   would for a GCC exception.  */
+
+struct seh_target
+{
+  rtx landing_pad;
+  HOST_WIDE_INT filter;
+  int labelno;
+};
+
+static vec<seh_target> seh_targets;
+
+/* Return the label number of the jump target for the __except region R at
+   a call site with landing pad LANDING_PAD, creating it if needed.  */
+
+static int
+seh_target_for (eh_region r, rtx landing_pad)
+{
+  HOST_WIDE_INT filter
+    = tree_to_shwi (TREE_VALUE (r->u.eh_try.first_catch->filter_list));
+  for (const seh_target &target : seh_targets)
+    if (target.landing_pad == landing_pad && target.filter == filter)
+      return target.labelno;
+  seh_target target;
+  target.landing_pad = landing_pad;
+  target.filter = filter;
+  target.labelno = seh_stub_labelno++;
+  seh_targets.safe_push (target);
+  return target.labelno;
+}
+
+/* Output the scope table of the current function for __C_specific_handler.
+   Each call site gets a record for each region of a __try statement around
+   it, innermost first, which is the order in which the runtime calls the
+   filters and __finally blocks.  An __except record jumps to a stub that
+   enters the landing pad of the call site for its region; a __finally
+   record has no target.  */
+
+void
+mingw_pe_seh_output_scope_table (FILE *f)
+{
+  unsigned int n = eh_call_site_count ();
+  unsigned int count = 0;
+  char begin[32], end[32], label[32];
+  rtx landing_pad;
+
+  for (unsigned int i = 0; i < n; i++)
+    for (eh_region r = eh_call_site_region (i, begin, end, &landing_pad);
+	 r; r = r->outer)
+      if (!r->seh_funclet)
+	{
+	  sorry_at (DECL_SOURCE_LOCATION (current_function_decl),
+		    "cleanups in a function with %<__try%>");
+	  return;
+	}
+      else
+	count++;
+
+  fprintf (f, "\t.long\t%u\n", count);
+  for (unsigned int i = 0; i < n; i++)
+    for (eh_region r = eh_call_site_region (i, begin, end, &landing_pad);
+	 r; r = r->outer)
+      {
+	fputs ("\t.rva\t", f);
+	assemble_name (f, begin);
+	fputs ("\n\t.rva\t", f);
+	assemble_name (f, end);
+	ASM_GENERATE_INTERNAL_LABEL (label, "LSEH",
+				     seh_stub_for (r->seh_funclet));
+	fputs ("\n\t.rva\t", f);
+	assemble_name (f, label);
+	if (r->type == ERT_TRY)
+	  {
+	    ASM_GENERATE_INTERNAL_LABEL (label, "LSEH",
+					 seh_target_for (r, landing_pad));
+	    fputs ("\n\t.rva\t", f);
+	    assemble_name (f, label);
+	    fputc ('\n', f);
+	  }
+	else
+	  fputs ("\n\t.long\t0\n", f);
+      }
+}
+/* Output the stubs of the filter and __finally functions and the jump
+   targets of the current function, after its .seh_endproc: they leave the
+   stack alone and so need no unwind information.  */
+
+static void
+seh_output_stubs (FILE *f)
+{
+  char label[32];
+  for (const seh_stub &stub : seh_stubs)
+    {
+      ASM_GENERATE_INTERNAL_LABEL (label, "LSEH", stub.labelno);
+      ASM_OUTPUT_LABEL (f, label);
+      if (DECL_STATIC_CHAIN (stub.fn))
+	fprintf (f, "\tleaq\t" HOST_WIDE_INT_PRINT_DEC "(%%rdx), %%r10\n",
+		 stub.chain_offset);
+      fputs ("\tjmp\t", f);
+      assemble_name (f, XSTR (XEXP (DECL_RTL (stub.fn), 0), 0));
+      fputc ('\n', f);
+    }
+  seh_stubs.truncate (0);
+  for (const seh_target &target : seh_targets)
+    {
+      ASM_GENERATE_INTERNAL_LABEL (label, "LSEH", target.labelno);
+      ASM_OUTPUT_LABEL (f, label);
+      fprintf (f, "\tmovl\t$" HOST_WIDE_INT_PRINT_DEC ", %%edx\n\tjmp\t",
+	       target.filter);
+      ASM_GENERATE_INTERNAL_LABEL (label, "L",
+				   CODE_LABEL_NUMBER (target.landing_pad));
+      assemble_name (f, label);
+      fputc ('\n', f);
+    }
+  seh_targets.truncate (0);
+}
+
 void
 mingw_pe_seh_emit_except_personality (rtx personality)
 {
@@ -1408,7 +1603,10 @@ mingw_pe_seh_emit_except_personality (rtx personality)
     return;
 
   fputs ("\t.seh_handler\t", asm_out_file);
-  output_addr_const (asm_out_file, personality);
+  if (seh_function_p ())
+    fputs ("__C_specific_handler", asm_out_file);
+  else
+    output_addr_const (asm_out_file, personality);
 
 #if 0
   /* ??? The current implementation of _GCC_specific_handler requires
@@ -1456,6 +1654,7 @@ void
 mingw_pe_end_function (FILE *f, const char *, tree)
 {
   mingw_pe_seh_fini (f, false);
+  seh_output_stubs (f);
 }
 
 void

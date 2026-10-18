@@ -1018,8 +1018,8 @@ get_eh_else (gimple_seq finally)
 }
 
 /* A subroutine of lower_try_finally.  If FINALLY is the cleanup of a
-   Microsoft __finally block, return the function that the SEH runtime
-   calls on its exception path, which is the only statement there.  */
+   Microsoft __finally block, return its function, which the normal path
+   calls and the SEH runtime calls on the exception path.  */
 
 static tree
 seh_finally_funclet (gimple_seq finally)
@@ -1027,7 +1027,7 @@ seh_finally_funclet (gimple_seq finally)
   geh_else *eh_else = get_eh_else (finally);
   if (!eh_else)
     return NULL_TREE;
-  gimple_seq e = gimple_eh_else_e_body (eh_else);
+  gimple_seq e = gimple_eh_else_n_body (eh_else);
   if (!gimple_seq_singleton_p (e)
       || !is_gimple_call (gimple_seq_first_stmt (e)))
     return NULL_TREE;
@@ -4873,6 +4873,11 @@ infinite_empty_loop_p (edge e_first)
 static bool
 cleanup_empty_eh (eh_landing_pad lp)
 {
+  /* The cleanup of a Microsoft __finally block is empty because the SEH
+     runtime calls the block itself, but the region marks its extent.  */
+  if (lp->region->type == ERT_CLEANUP && lp->region->seh_funclet)
+    return false;
+
   basic_block bb = label_to_block (cfun, lp->post_landing_pad);
   gimple_stmt_iterator gsi;
   gimple *resx;
