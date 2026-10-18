@@ -19306,8 +19306,10 @@ functions compiled with this option.  Capturing a continuation through
 the frame of a function compiled without it is a run-time error, unless
 its nearest caller compiled with it has the @code{allow_foreign_capture}
 attribute
-(@pxref{Common Function Attributes}).  This option is currently
-supported only on 64-bit Windows targets.
+(@pxref{Common Function Attributes}).  It also enables
+@option{-fexceptions}, so that destroying a suspended continuation runs
+the cleanups of its frames.  This option is currently supported only
+on 64-bit Windows targets.
 
 @opindex fexceptions
 @opindex fno-exceptions

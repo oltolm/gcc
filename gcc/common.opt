@@ -1739,7 +1739,7 @@ Common Var(flag_effects) Optimization
 Allow effect handlers to capture continuations through the generated code.
 
 fexceptions
-Common Var(flag_exceptions) Optimization EnabledBy(fnon-call-exceptions)
+Common Var(flag_exceptions) Optimization EnabledBy(fnon-call-exceptions || feffects)
 Enable exception handling.
 
 fexpensive-optimizations

@@ -4049,6 +4049,14 @@ build_external_ref (location_t loc, tree id, bool fun, tree *type)
       error_at (loc, "effect %qD used as a value", decl);
       return error_mark_node;
     }
+  if (decl && VAR_P (decl) && C_DECL_CONTINUATION (decl))
+    {
+      sorry_at (loc, "use of continuation %qD other than in %<_Resume%> or "
+		"%<_Discard%>", decl);
+      return error_mark_node;
+    }
+  if (decl)
+    decl = c_effect_capture (decl);
   if (decl && decl != error_mark_node)
     {
       ref = decl;
