@@ -2480,6 +2480,10 @@ mark_exp_read (tree exp)
       if (TREE_OPERAND (exp, 2))
 	mark_exp_read (TREE_OPERAND (exp, 2));
       break;
+    case CALL_EXPR:
+      if (is_access_with_size_p (exp))
+	mark_exp_read (get_ref_from_access_with_size (exp));
+      break;
     default:
       break;
     }
