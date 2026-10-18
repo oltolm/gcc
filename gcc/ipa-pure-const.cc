@@ -634,6 +634,7 @@ check_call (funct_state local, gcall *call, bool ipa)
 	  {
 	  case BUILT_IN_LONGJMP:
 	  case BUILT_IN_NONLOCAL_GOTO:
+	  case BUILT_IN_NONLOCAL_GOTO_UNWIND:
 	    if (dump_file)
 	      fprintf (dump_file,
 		       "    longjmp and nonlocal goto is not const/pure\n");

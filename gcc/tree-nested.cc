@@ -48,6 +48,7 @@
 #include "symbol-summary.h"
 #include "symtab-thunks.h"
 #include "attribs.h"
+#include "common/common-target.h"
 
 /* Summary of nested functions.  */
 static function_summary <nested_function_info *>
@@ -766,6 +767,18 @@ lookup_descr_for_decl (struct nesting_info *info, tree decl,
   return field;
 }
 
+/* Return true if nonlocal gotos run the cleanups of the frames they
+   leave.  With -feffects they do, since a goto out of an effect clause
+   leaves the frames of the performer, whose cleanups restore the handler
+   chain.  */
+
+static bool
+nonlocal_goto_unwinds_p (void)
+{
+  return (flag_effects
+	  && targetm_common.except_unwind_info (&global_options) == UI_SEH);
+}
+
 /* Build or return the field within the non-local frame state that holds
    the non-local goto "jmp_buf".  The buffer itself is maintained by the
    rtl middle-end as dynamic stack space is allocated.  */
@@ -793,6 +806,12 @@ get_nl_goto_field (struct nesting_info *info)
       size = GET_MODE_SIZE (mode);
       size = size / GET_MODE_SIZE (Pmode);
       size = size + 1;
+
+      /* __gcc_nonlocal_goto_unwind keeps its struct _Unwind_Exception
+	 (64 bytes, aligned to 16) after these words, because the stack of
+	 the goto is unwound while it is in use.  */
+      if (nonlocal_goto_unwinds_p ())
+	size += (64 + 8) / GET_MODE_SIZE (Pmode);
 
       type = build_array_type
 	(type, build_index_type (size_int (size)));
@@ -2717,7 +2736,10 @@ convert_nl_goto_reference (gimple_stmt_iterator *gsi, bool *handled_ops_p,
   x = get_frame_field (info, target_context, field, gsi);
   x = build_addr (x);
   x = gsi_gimplify_val (info, x, gsi);
-  call = gimple_build_call (builtin_decl_implicit (BUILT_IN_NONLOCAL_GOTO),
+  call = gimple_build_call (builtin_decl_implicit
+			      (nonlocal_goto_unwinds_p ()
+			       ? BUILT_IN_NONLOCAL_GOTO_UNWIND
+			       : BUILT_IN_NONLOCAL_GOTO),
 			    2, build_addr (new_label), x);
   gsi_replace (gsi, call, false);
 
