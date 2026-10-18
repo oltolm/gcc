@@ -197,13 +197,13 @@ c_parse_init (void)
     }
 }
 
-/* A return statement in the body of a for statement over an effect
-   operation.  The body is a nested function, so the statement stores its
-   value in VAR and jumps to LABEL, after the loop, where the return
-   statement is finished at LOC with VAR, VOID_NODE for a value of void
-   type, or no value, and the original type ORIGTYPE.  */
+/* A return statement in a nested function that stands for statements of
+   the function containing it.  The statement stores its value in VAR and
+   jumps to LABEL in the containing function, where the return statement
+   is finished at LOC with VAR, VOID_NODE for a value of void type, or no
+   value, and the original type ORIGTYPE.  */
 
-struct c_effect_for_return
+struct c_effect_return
 {
   tree label;
   tree var;
@@ -212,14 +212,16 @@ struct c_effect_for_return
   location_t loc;
 };
 
-/* A for statement over an effect operation whose body is being parsed.  */
+/* The body of a for statement over an effect operation or of a _Try that
+   runs as a coroutine, being parsed: a nested function whose return
+   statements return from the function containing it.  */
 
-struct c_effect_for
+struct c_effect_returns
 {
   /* The function of the body.  */
   tree fn;
-  auto_vec<c_effect_for_return> returns;
-  c_effect_for *outer;
+  auto_vec<c_effect_return> returns;
+  c_effect_returns *outer;
 };
 
 /* A parser structure recording information about the state and
@@ -332,9 +334,9 @@ struct GTY(()) c_parser {
   /* The function of the coroutine body being parsed, or NULL_TREE.  */
   tree effect_body;
 
-  /* The for statement over an effect operation whose body is being
-     parsed, or NULL.  */
-  struct c_effect_for * GTY((skip)) effect_for;
+  /* The innermost body whose return statements return from the function
+     containing it, or NULL.  */
+  struct c_effect_returns * GTY((skip)) effect_returns;
 
   /* While a saved compound statement is replayed, the first of its tokens
      whose identifier has not been classified in the scope it is parsed
@@ -1964,6 +1966,8 @@ static bool c_parser_effect_for_p (c_parser *);
 static void c_parser_effect_for_statement (c_parser *, location_t, tree);
 static tree c_parser_finish_return (c_parser *, location_t, tree, tree,
 				    bool);
+static void c_parser_finish_effect_returns (c_parser *, location_t,
+					    c_effect_returns *);
 static void c_parser_seh_try_statement (c_parser *);
 static tree c_parser_seh_leave_statement (c_parser *);
 static bool c_parser_seh_intrinsic_p (c_parser *);
@@ -5441,7 +5445,7 @@ static tree
 c_parser_effect_fiber_body (c_parser *parser, location_t loc, tree effect,
 			    tree name, location_t name_loc,
 			    auto_vec<c_token> &tokens, tree *cap_type,
-			    tree *captures)
+			    tree *captures, c_effect_returns *returns)
 {
   *cap_type = NULL_TREE;
   *captures = NULL_TREE;
@@ -5489,6 +5493,9 @@ c_parser_effect_fiber_body (c_parser *parser, location_t loc, tree effect,
   parser->effect_clause = NULL_TREE;
   parser->effect_continuation = NULL_TREE;
   parser->effect_body = fn;
+  returns->fn = fn;
+  returns->outer = parser->effect_returns;
+  parser->effect_returns = returns;
   tree scope = c_begin_compound_stmt (true);
   if (name)
     c_declare_effect_handler (name_loc, effect, name,
@@ -5498,6 +5505,7 @@ c_parser_effect_fiber_body (c_parser *parser, location_t loc, tree effect,
   parser->effect_clause = saved_clause;
   parser->effect_continuation = saved_continuation;
   parser->effect_body = saved_body;
+  parser->effect_returns = returns->outer;
   *cap_type = c_finish_effect_body (loc, DECL_ARGUMENTS (fn), captures);
   add_stmt (body);
   add_stmt (c_end_compound_stmt (loc, scope, true));
@@ -5731,16 +5739,21 @@ c_parser_effect_try_statement (c_parser *parser)
   else if (kclauses)
     {
       tree cap_type, captures;
+      c_effect_returns returns;
+      returns.fn = NULL_TREE;
       c_begin_effect_clauses ();
       tree body_fn = c_parser_effect_fiber_body (parser, loc, effect,
 						 named_effect ? name : NULL_TREE,
 						 name_loc, tokens, &cap_type,
-						 &captures);
+						 &captures, &returns);
       jumps = chainon (jumps, c_end_effect_clauses ());
       if (body_fn)
-	c_finish_effect_fiber_try (loc, body_fn, cap_type, captures, effect,
-				   clauses, kclauses, action, coro, named,
-				   jumps);
+	{
+	  c_finish_effect_fiber_try (loc, body_fn, cap_type, captures, effect,
+				     clauses, kclauses, action, coro, named,
+				     jumps);
+	  c_parser_finish_effect_returns (parser, loc, &returns);
+	}
     }
   else
     {
@@ -5845,13 +5858,13 @@ c_parser_effect_for_statement (c_parser *parser, location_t loc,
   tree save_clause = parser->effect_clause;
   tree save_continuation = parser->effect_continuation;
   tree save_body = parser->effect_body;
-  c_effect_for loop;
+  c_effect_returns loop;
   loop.fn = fn;
-  loop.outer = parser->effect_for;
+  loop.outer = parser->effect_returns;
   parser->effect_clause = NULL_TREE;
   parser->effect_continuation = NULL_TREE;
   parser->effect_body = NULL_TREE;
-  parser->effect_for = &loop;
+  parser->effect_returns = &loop;
   /* As for an Objective-C foreach statement, break and continue are
      gotos.  */
   in_statement = IN_OBJC_FOREACH;
@@ -5884,7 +5897,7 @@ c_parser_effect_for_statement (c_parser *parser, location_t loc,
   parser->effect_clause = save_clause;
   parser->effect_continuation = save_continuation;
   parser->effect_body = save_body;
-  parser->effect_for = loop.outer;
+  parser->effect_returns = loop.outer;
 
   if (fn)
     {
@@ -5896,41 +5909,51 @@ c_parser_effect_for_statement (c_parser *parser, location_t loc,
     {
       c_finish_effect_try (loc, rec, body, effect, build_tree_list (field, fn),
 			   false, jumps);
-      if (!loop.returns.is_empty ())
-	{
-	  add_stmt (build1 (GOTO_EXPR, void_type_node, break_label));
-	  for (c_effect_for_return &r : loop.returns)
-	    {
-	      if (r.var)
-		pushdecl (r.var);
-	      add_stmt (build1 (LABEL_EXPR, void_type_node, r.label));
-	      c_parser_finish_return (parser, r.loc, r.value, r.origtype,
-				      false);
-	    }
-	}
+      c_parser_finish_effect_returns (parser, loc, &loop);
       add_stmt (build1 (LABEL_EXPR, void_type_node, break_label));
     }
   add_stmt (c_end_compound_stmt (loc, block, true));
   c_parser_maybe_reclassify_token (parser);
 }
 
+/* Finish the return statements of the body BODY at the current point of
+   the function containing it, which control reaches only through them.  */
+
+static void
+c_parser_finish_effect_returns (c_parser *parser, location_t loc,
+				c_effect_returns *body)
+{
+  if (body->returns.is_empty ())
+    return;
+  tree skip = create_artificial_label (loc);
+  add_stmt (build1 (GOTO_EXPR, void_type_node, skip));
+  for (c_effect_return &r : body->returns)
+    {
+      if (r.var)
+	pushdecl (r.var);
+      add_stmt (build1 (LABEL_EXPR, void_type_node, r.label));
+      c_parser_finish_return (parser, r.loc, r.value, r.origtype, false);
+    }
+  add_stmt (build1 (LABEL_EXPR, void_type_node, skip));
+}
+
 /* Finish a return statement at LOC with the value VALUE, or none if it is
    NULL_TREE, of original type ORIGTYPE, as c_finish_return does.  In the
-   body of a for statement over an effect operation, return from the
-   function containing the loop instead of from the body.  */
+   body of a for statement over an effect operation or of a _Try that runs
+   as a coroutine, return from the function containing the body.  */
 
 static tree
 c_parser_finish_return (c_parser *parser, location_t loc, tree value,
 			tree origtype, bool musttail_p)
 {
-  c_effect_for *f = parser->effect_for;
+  c_effect_returns *f = parser->effect_returns;
   if (!f || f->fn != current_function_decl)
     return c_finish_return (loc, value, origtype, musttail_p);
 
   /* The value is checked against the return type when the statement is
-     finished after the loop, in the function containing it.  */
+     finished in the function containing the body.  */
   tree outer_fn = decl_function_context (f->fn);
-  c_effect_for_return r;
+  c_effect_return r;
   r.label = create_artificial_label (loc);
   DECL_CONTEXT (r.label) = outer_fn;
   r.var = NULL_TREE;
@@ -10142,15 +10165,6 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	  goto expect_semicolon;
 	case RID_RETURN:
 	  c_parser_consume_token (parser);
-	  if (parser->effect_body
-	      && parser->effect_body == current_function_decl)
-	    {
-	      error_at (loc, "%<return%> in the body of a %<_Try%> that runs "
-			"as a coroutine");
-	      if (c_parser_next_token_is_not (parser, CPP_SEMICOLON))
-		c_parser_expression (parser);
-	      goto expect_semicolon;
-	    }
 	  if ((parser->seh_filter
 	       && parser->seh_filter == current_function_decl)
 	      || (parser->seh_finally
