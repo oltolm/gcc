@@ -699,8 +699,13 @@ extern tree check_for_loop_decls (location_t, bool);
 extern void mark_forward_parm_decls (void);
 extern void declare_parm_level (void);
 extern tree declare_effect (location_t, tree, tree);
-extern void c_finish_effect_try (location_t, tree, tree, tree);
-extern tree c_build_effect_perform (location_t, tree, tree, vec<tree, va_gc> *,
+extern tree c_build_effect_handler_type (tree);
+extern tree c_effect_of_handler_type (tree);
+extern tree c_begin_effect_try (location_t);
+extern void c_declare_effect_handler (location_t, tree, tree, tree);
+extern void c_finish_effect_try (location_t, tree, tree, tree, tree, bool);
+extern tree c_build_effect_perform (location_t, tree, tree, tree,
+				    vec<tree, va_gc> *,
 				    const vec<location_t> &);
 extern void undeclared_variable (location_t, tree);
 extern tree lookup_label_for_goto (location_t, tree);
