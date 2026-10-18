@@ -14327,7 +14327,10 @@ A @code{_Try} handles one effect and has exactly one @code{_Handle}
 clause for each of its operations, whose parameters have the types of
 the operation's parameters.  The body and the clauses must be compound
 statements.  A clause can use the variables of the function that
-contains the @code{_Try}.
+contains the @code{_Try}.  A @code{goto} from a clause to a label of that
+function, declared with @code{__label__} (@pxref{Local Labels}), ends
+the @code{_Try} and runs the cleanups of the frames in between, such as
+those of the @code{cleanup} variable attribute.
 
 @code{_Perform} uses the innermost active handler for the effect; it is
 a run-time error if there is none.  While a clause runs, its handler and
@@ -14350,6 +14353,44 @@ A named handler is used only through its name: @code{_Perform
 @var{effect}.@var{op}} does not find it.  A handler can be passed to
 functions.  Handlers of different effects have incompatible types, and
 nothing can be done with a handler other than performing through it.
+
+@subsubheading Loops over an Operation
+
+A @code{for} statement can run a statement each time an expression
+performs an operation:
+
+@smallexample
+_Effect gen @{ void yield (int); @};
+
+static void
+numbers (int n)
+@{
+  for (int i = 0; i < n; i++)
+    _Perform gen.yield (i);
+@}
+
+int
+sum_until (int limit)
+@{
+  int sum = 0;
+  for (gen.yield (int v) : numbers (100))
+    @{
+      if (v > limit)
+        break;
+      sum += v;
+    @}
+  return sum;
+@}
+@end smallexample
+
+@code{for (@var{effect}.@var{op} (@var{params}) : @var{expr})
+@var{statement}} is a @code{_Try} whose body evaluates @var{expr} and
+whose clause for @var{op} has the parameters @var{params}, runs
+@var{statement} and resumes.  The effect must have no other operation,
+and @var{op} must return @code{void}.  @code{continue} resumes
+@var{expr}.  @code{break}, like a @code{goto} out of @var{statement},
+ends the @code{_Try} and runs the cleanups of the frames of @var{expr}.
+@var{statement} cannot contain @code{return} or @code{_Resume}.
 
 @subsubheading Continuations
 @findex _Continuation
