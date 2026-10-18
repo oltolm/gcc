@@ -14160,6 +14160,7 @@ c_finish_bc_stmt (location_t loc, tree label, bool is_break, tree name)
       /* The foreach expander produces low-level code using gotos instead
 	 of a structured loop construct.  */
       gcc_assert (label);
+      label = c_effect_redirect_goto (loc, label);
       return add_stmt (build_stmt (loc, GOTO_EXPR, label));
     }
   else if (name && C_DECL_LOOP_NAME (name) && C_DECL_SWITCH_NAME (name))
@@ -14167,6 +14168,7 @@ c_finish_bc_stmt (location_t loc, tree label, bool is_break, tree name)
       label = DECL_CHAIN (name);
       if (!is_break)
 	label = DECL_CHAIN (label);
+      label = c_effect_redirect_goto (loc, label);
       /* Foreach expander from some outer level.  */
       return add_stmt (build_stmt (loc, GOTO_EXPR, label));
     }
