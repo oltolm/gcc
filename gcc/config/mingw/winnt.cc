@@ -1523,42 +1523,42 @@ mingw_pe_seh_output_scope_table (FILE *f)
   char begin[32], end[32], label[32];
   rtx landing_pad;
 
+  /* The front end turns the cleanups of the program into __finally
+     blocks.  The other cleanups, which end the lifetime of variables or
+     restore the stack pointer, matter only while the function runs, and
+     its landing pads run them when one of its __except handlers is
+     entered.  */
   for (unsigned int i = 0; i < n; i++)
     for (eh_region r = eh_call_site_region (i, begin, end, &landing_pad);
 	 r; r = r->outer)
-      if (!r->seh_funclet)
-	{
-	  sorry_at (DECL_SOURCE_LOCATION (current_function_decl),
-		    "cleanups in a function with %<__try%>");
-	  return;
-	}
-      else
+      if (r->seh_funclet)
 	count++;
 
   fprintf (f, "\t.long\t%u\n", count);
   for (unsigned int i = 0; i < n; i++)
     for (eh_region r = eh_call_site_region (i, begin, end, &landing_pad);
 	 r; r = r->outer)
-      {
-	fputs ("\t.rva\t", f);
-	assemble_name (f, begin);
-	fputs ("\n\t.rva\t", f);
-	assemble_name (f, end);
-	ASM_GENERATE_INTERNAL_LABEL (label, "LSEH",
-				     seh_stub_for (r->seh_funclet));
-	fputs ("\n\t.rva\t", f);
-	assemble_name (f, label);
-	if (r->type == ERT_TRY)
-	  {
-	    ASM_GENERATE_INTERNAL_LABEL (label, "LSEH",
-					 seh_target_for (r, landing_pad));
-	    fputs ("\n\t.rva\t", f);
-	    assemble_name (f, label);
-	    fputc ('\n', f);
-	  }
-	else
-	  fputs ("\n\t.long\t0\n", f);
-      }
+      if (r->seh_funclet)
+	{
+	  fputs ("\t.rva\t", f);
+	  assemble_name (f, begin);
+	  fputs ("\n\t.rva\t", f);
+	  assemble_name (f, end);
+	  ASM_GENERATE_INTERNAL_LABEL (label, "LSEH",
+				       seh_stub_for (r->seh_funclet));
+	  fputs ("\n\t.rva\t", f);
+	  assemble_name (f, label);
+	  if (r->type == ERT_TRY)
+	    {
+	      ASM_GENERATE_INTERNAL_LABEL (label, "LSEH",
+					   seh_target_for (r, landing_pad));
+	      fputs ("\n\t.rva\t", f);
+	      assemble_name (f, label);
+	      fputc ('\n', f);
+	    }
+	  else
+	    fputs ("\n\t.long\t0\n", f);
+	}
 }
 /* Output the stubs of the filter and __finally functions and the jump
    targets of the current function, after its .seh_endproc: they leave the

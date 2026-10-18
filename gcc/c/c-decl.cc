@@ -1303,6 +1303,110 @@ c_seh_prepare_funclet (tree fn, const char *kind)
 				      DECL_ATTRIBUTES (fn));
 }
 
+/* Walk callback for c_seh_outline_cleanups.  The automatic variables that
+   a cleanup uses must be accessed as volatile, as for a __finally
+   block.  */
+
+static tree
+c_seh_mark_volatile_r (tree *tp, int *, void *)
+{
+  tree t = *tp;
+  if ((VAR_P (t) || TREE_CODE (t) == PARM_DECL)
+      && !TREE_STATIC (t)
+      && !DECL_EXTERNAL (t)
+      && decl_function_context (t))
+    {
+      TREE_THIS_VOLATILE (t) = 1;
+      TREE_SIDE_EFFECTS (t) = 1;
+    }
+  return NULL_TREE;
+}
+
+/* Return a __finally function nested in PARENT, at LOC, whose body is
+   CLEANUP.  */
+
+static tree
+c_seh_build_cleanup_funclet (location_t loc, tree parent, tree cleanup)
+{
+  static unsigned int counter;
+  char name[32];
+  snprintf (name, sizeof name, "__seh_cleanup.%u", counter++);
+
+  tree type = build_function_type_list (void_type_node,
+					unsigned_char_type_node,
+					ptr_type_node, NULL_TREE);
+  tree fn = build_decl (loc, FUNCTION_DECL, get_identifier (name), type);
+  DECL_CONTEXT (fn) = parent;
+  DECL_ARTIFICIAL (fn) = 1;
+  TREE_STATIC (fn) = 1;
+  TREE_USED (fn) = 1;
+  /* As for other nested functions, assume a static chain until
+     lower_nested_functions computes whether one is needed.  */
+  DECL_STATIC_CHAIN (fn) = 1;
+
+  tree result = build_decl (loc, RESULT_DECL, NULL_TREE, void_type_node);
+  DECL_CONTEXT (result) = fn;
+  DECL_ARTIFICIAL (result) = 1;
+  DECL_IGNORED_P (result) = 1;
+  DECL_RESULT (fn) = result;
+
+  tree abnormal = build_decl (loc, PARM_DECL, NULL_TREE,
+			      unsigned_char_type_node);
+  DECL_CHAIN (abnormal) = build_decl (loc, PARM_DECL, NULL_TREE,
+				      ptr_type_node);
+  for (tree parm = abnormal; parm; parm = DECL_CHAIN (parm))
+    {
+      DECL_ARG_TYPE (parm) = TREE_TYPE (parm);
+      DECL_CONTEXT (parm) = fn;
+      DECL_ARTIFICIAL (parm) = 1;
+    }
+  DECL_ARGUMENTS (fn) = abnormal;
+
+  tree block = make_node (BLOCK);
+  BLOCK_SUPERCONTEXT (block) = fn;
+  DECL_INITIAL (fn) = block;
+  DECL_SAVED_TREE (fn) = build3_loc (loc, BIND_EXPR, void_type_node,
+				     NULL_TREE, cleanup, block);
+  TREE_SIDE_EFFECTS (DECL_SAVED_TREE (fn)) = 1;
+  push_struct_function (fn);
+  cfun->function_end_locus = loc;
+  pop_cfun ();
+  c_seh_prepare_funclet (fn, "seh finally");
+  cgraph_node::get_create (fn);
+  return fn;
+}
+
+/* Walk callback for c_seh_outline_cleanups, with DATA the function.  */
+
+static tree
+c_seh_outline_cleanup_r (tree *tp, int *, void *data)
+{
+  tree t = *tp;
+  if (TREE_CODE (t) != TRY_FINALLY_EXPR)
+    return NULL_TREE;
+  tree parent = (tree) data;
+  location_t loc = EXPR_LOC_OR_LOC (t, DECL_SOURCE_LOCATION (parent));
+  tree cleanup = TREE_OPERAND (t, 1);
+  walk_tree_without_duplicates (&cleanup, c_seh_mark_volatile_r, NULL);
+  tree fn = c_seh_build_cleanup_funclet (loc, parent, cleanup);
+  *tp = build2_loc (loc, SEH_TRY_FINALLY, void_type_node,
+		    TREE_OPERAND (t, 0), fn);
+  TREE_SIDE_EFFECTS (*tp) = 1;
+  return NULL_TREE;
+}
+
+/* Turn the cleanups in FN, a function that contains a Microsoft __try
+   statement, into __finally blocks.  __C_specific_handler dispatches the
+   exceptions of FN and does not enter its landing pads when an exception
+   leaves it, so a cleanup must be a function that the runtime calls.  */
+
+static void
+c_seh_outline_cleanups (tree fn)
+{
+  walk_tree_without_duplicates (&DECL_SAVED_TREE (fn),
+				c_seh_outline_cleanup_r, fn);
+}
+
 /* The types _Handler (EFFECT), indexed by EFFECT, and the effects,
    indexed by the types.  */
 static GTY(()) hash_map<tree, tree> *effect_handler_types;
@@ -12739,6 +12843,9 @@ finish_function (location_t end_loc)
 
   /* Tie off the statement tree for this function.  */
   DECL_SAVED_TREE (fndecl) = pop_stmt_list (DECL_SAVED_TREE (fndecl));
+
+  if (lookup_attribute ("seh function", DECL_ATTRIBUTES (fndecl)))
+    c_seh_outline_cleanups (fndecl);
 
   finish_fname_decls ();
 
