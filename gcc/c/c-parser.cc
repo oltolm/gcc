@@ -277,6 +277,12 @@ struct GTY(()) c_parser {
      Managed by c_parser_omp_metadirective.  */
   struct omp_metadirective_parse_data * GTY((skip))
     omp_metadirective_state;
+
+  /* The function of the _Handle clause being parsed, or NULL_TREE.  */
+  tree effect_clause;
+
+  /* The return statement of the last _Resume parsed in EFFECT_CLAUSE.  */
+  tree effect_resume;
 };
 
 /* Holds data needed to restore the token stream to its previous state
@@ -396,6 +402,12 @@ c_lex_one_token (c_parser *parser, c_token *token, bool raw = false)
 		token->keyword = rid_code;
 		break;
 	      }
+	    else if (rid_code >= RID_FIRST_EFFECT
+		     && rid_code <= RID_LAST_EFFECT
+		     && in_system_header_at (token->location))
+	      /* System headers use these reserved names as identifiers,
+		 for example as parameter names.  */
+	      ;
 	    else if (c_dialect_objc () && OBJC_IS_PQ_KEYWORD (rid_code))
 	      {
 		/* We found an Objective-C "pq" keyword (in, out,
@@ -1821,6 +1833,9 @@ static struct c_typespec c_parser_enum_specifier (c_parser *);
 static struct c_typespec c_parser_struct_or_union_specifier (c_parser *);
 static tree c_parser_struct_declaration (c_parser *, tree *);
 static void c_parser_effect_declaration (c_parser *);
+static tree c_parser_effect_operation_name (c_parser *, tree *);
+static void c_parser_effect_try_statement (c_parser *);
+static tree c_parser_effect_resume_statement (c_parser *);
 static struct c_typespec c_parser_typeof_specifier (c_parser *);
 static tree c_parser_alignas_specifier (c_parser *);
 static struct c_declarator *c_parser_direct_declarator (c_parser *, bool,
@@ -4904,6 +4919,218 @@ c_parser_effect_declaration (c_parser *parser)
   c_parser_skip_until_found (parser, CPP_SEMICOLON, "expected %<;%>");
   if (file_scope_p)
     declare_effect (name_loc, name, type);
+}
+
+/* Parse the name of an effect operation (GNU extension), set *EFFECT to
+   the effect and return the field of the operation, or NULL_TREE after
+   an error.
+
+   effect-operation-name:
+     identifier . identifier  */
+
+static tree
+c_parser_effect_operation_name (c_parser *parser, tree *effect)
+{
+  if (c_parser_next_token_is_not (parser, CPP_NAME))
+    {
+      c_parser_error (parser, "expected identifier");
+      return NULL_TREE;
+    }
+  c_token *tok = c_parser_peek_token (parser);
+  tree decl = lookup_name (tok->value);
+  if (!decl || !VAR_P (decl) || !C_DECL_EFFECT (decl))
+    {
+      error_at (tok->location, "%qE is not an effect", tok->value);
+      c_parser_consume_token (parser);
+      return NULL_TREE;
+    }
+  c_parser_consume_token (parser);
+  if (!c_parser_require (parser, CPP_DOT, "expected %<.%>"))
+    return NULL_TREE;
+  if (c_parser_next_token_is_not (parser, CPP_NAME))
+    {
+      c_parser_error (parser, "expected identifier");
+      return NULL_TREE;
+    }
+  tok = c_parser_peek_token (parser);
+  tree field;
+  for (field = TYPE_FIELDS (TREE_TYPE (decl)); field;
+       field = DECL_CHAIN (field))
+    if (DECL_NAME (field) == tok->value)
+      break;
+  if (!field)
+    error_at (tok->location, "effect %qD has no operation %qE", decl,
+	      tok->value);
+  c_parser_consume_token (parser);
+  *effect = decl;
+  return field;
+}
+
+/* Parse a _Handle clause (GNU extension), set *EFFECT and *FIELD to the
+   effect and operation it handles and return the nested function that
+   implements it, or NULL_TREE after an error.
+
+   handle-clause:
+     _Handle ( effect-operation-name ( parameter-type-list[opt] ) )
+       compound-statement
+
+   The clause is a nested function with the type of the operation; its
+   _Resume statements return from it.  */
+
+static tree
+c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field)
+{
+  location_t loc = c_parser_peek_token (parser)->location;
+  struct c_arg_info *args = NULL;
+
+  c_parser_consume_token (parser);
+  *field = NULL_TREE;
+  matching_parens parens;
+  if (parens.require_open (parser))
+    {
+      *field = c_parser_effect_operation_name (parser, effect);
+      if (c_parser_require (parser, CPP_OPEN_PAREN, "expected %<(%>"))
+	args = c_parser_parms_declarator (parser, false, NULL_TREE, false);
+      parens.skip_until_found_close (parser);
+    }
+  if (!*field || !args)
+    {
+      c_parser_compound_statement (parser);
+      return NULL_TREE;
+    }
+
+  tree optype = TREE_TYPE (TREE_TYPE (*field));
+  char *name = concat (IDENTIFIER_POINTER (DECL_NAME (*effect)), ".",
+		       IDENTIFIER_POINTER (DECL_NAME (*field)), NULL);
+  struct c_declarator *declarator
+    = build_function_declarator (args,
+				 build_id_declarator (get_identifier (name)));
+  free (name);
+  struct c_declspecs *specs = build_null_declspecs ();
+  struct c_typespec ts;
+  ts.kind = ctsk_typeof;
+  ts.spec = TREE_TYPE (optype);
+  ts.expr = NULL_TREE;
+  ts.expr_const_operands = true;
+  ts.has_enum_type_specifier = false;
+  declspecs_add_type (loc, specs, ts);
+  finish_declspecs (specs);
+
+  c_push_function_context ();
+  if (!start_function (specs, declarator, NULL_TREE))
+    {
+      c_pop_function_context ();
+      c_parser_compound_statement (parser);
+      return NULL_TREE;
+    }
+  tree fn = current_function_decl;
+  bool ok = comptypes (TREE_TYPE (fn), optype);
+  if (!ok)
+    error_at (loc, "parameters of %<_Handle%> clause do not match "
+	      "operation %qD", *field);
+  store_parm_decls ();
+  location_t endloc = c_parser_peek_token (parser)->location;
+  DECL_STRUCT_FUNCTION (fn)->function_start_locus = endloc;
+
+  tree saved_clause = parser->effect_clause;
+  tree saved_resume = parser->effect_resume;
+  parser->effect_clause = fn;
+  parser->effect_resume = NULL_TREE;
+  tree body = c_parser_compound_statement (parser, &endloc);
+  tree last = expr_last (TREE_CODE (body) == BIND_EXPR
+			 ? BIND_EXPR_BODY (body) : body);
+  if (body != error_mark_node
+      && (!parser->effect_resume || last != parser->effect_resume))
+    sorry_at (loc, "%<_Handle%> clause that does not end in %<_Resume%>");
+  parser->effect_clause = saved_clause;
+  parser->effect_resume = saved_resume;
+
+  /* As for other nested functions, assume a static chain until
+     lower_nested_functions computes whether one is needed.  */
+  DECL_STATIC_CHAIN (fn) = 1;
+  add_stmt (body);
+  finish_function (endloc);
+  c_pop_function_context ();
+  add_stmt (build_stmt (DECL_SOURCE_LOCATION (fn), DECL_EXPR, fn));
+  return ok ? fn : NULL_TREE;
+}
+
+/* Parse a _Try statement (GNU extension).
+
+   effect-try-statement:
+     _Try compound-statement handle-clause-seq
+
+   handle-clause-seq:
+     handle-clause
+     handle-clause-seq handle-clause  */
+
+static void
+c_parser_effect_try_statement (c_parser *parser)
+{
+  location_t loc = c_parser_peek_token (parser)->location;
+  tree block = c_begin_compound_stmt (true);
+  tree effect = NULL_TREE;
+  tree clauses = NULL_TREE;
+
+  c_parser_consume_token (parser);
+  tree body = c_parser_compound_statement (parser);
+  if (!c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
+    c_parser_error (parser, "expected %<_Handle%>");
+  while (c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
+    {
+      location_t clause_loc = c_parser_peek_token (parser)->location;
+      tree clause_effect = NULL_TREE, field = NULL_TREE;
+      tree fn = c_parser_effect_handle_clause (parser, &clause_effect, &field);
+      if (!fn)
+	continue;
+      if (effect && clause_effect != effect)
+	{
+	  sorry_at (clause_loc, "handling more than one effect in a "
+		    "%<_Try%> statement");
+	  continue;
+	}
+      effect = clause_effect;
+      clauses = tree_cons (field, fn, clauses);
+    }
+  if (effect)
+    c_finish_effect_try (loc, body, effect, clauses);
+  else
+    add_stmt (body);
+  add_stmt (c_end_compound_stmt (loc, block, true));
+}
+
+/* Parse a _Resume statement without the trailing semicolon (GNU
+   extension).
+
+   effect-resume-statement:
+     _Resume ( expression[opt] )  */
+
+static tree
+c_parser_effect_resume_statement (c_parser *parser)
+{
+  location_t loc = c_parser_peek_token (parser)->location;
+  tree value = NULL_TREE;
+  tree origtype = NULL_TREE;
+
+  c_parser_consume_token (parser);
+  matching_parens parens;
+  if (!parens.require_open (parser))
+    return NULL_TREE;
+  if (c_parser_next_token_is_not (parser, CPP_CLOSE_PAREN))
+    {
+      struct c_expr expr = c_parser_expression_conv (parser);
+      value = expr.value;
+      origtype = expr.original_type;
+    }
+  parens.skip_until_found_close (parser);
+  if (parser->effect_clause != current_function_decl
+      || !parser->effect_clause)
+    {
+      error_at (loc, "%<_Resume%> not within a %<_Handle%> clause");
+      return NULL_TREE;
+    }
+  parser->effect_resume = c_finish_return (loc, value, origtype);
+  return parser->effect_resume;
 }
 
 /* Parse a typeof specifier (a GNU extension adopted in C23).
@@ -8609,6 +8836,12 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	case RID_EFFECT:
 	  c_parser_effect_declaration (parser);
 	  break;
+	case RID_EFFECT_TRY:
+	  c_parser_effect_try_statement (parser);
+	  break;
+	case RID_EFFECT_RESUME:
+	  stmt = c_parser_effect_resume_statement (parser);
+	  goto expect_semicolon;
 	case RID_AT_THROW:
 	  gcc_assert (c_dialect_objc ());
 	  c_parser_consume_token (parser);
@@ -12130,6 +12363,40 @@ c_parser_postfix_expression (c_parser *parser)
 	case RID_PRETTY_FUNCTION_NAME:
 	case RID_C99_FUNCTION_NAME:
 	  expr = c_parser_predefined_identifier (parser);
+	  break;
+	case RID_EFFECT_PERFORM:
+	  {
+	    c_parser_consume_token (parser);
+	    tree effect = NULL_TREE;
+	    tree field = c_parser_effect_operation_name (parser, &effect);
+	    vec<tree, va_gc> *args = NULL;
+	    auto_vec<location_t> arg_loc;
+	    matching_parens parens;
+	    if (!parens.require_open (parser))
+	      {
+		expr.set_error ();
+		break;
+	      }
+	    if (c_parser_next_token_is_not (parser, CPP_CLOSE_PAREN))
+	      args = c_parser_expr_list (parser, true, false, NULL, NULL, NULL,
+					 &arg_loc, NULL);
+	    location_t end_loc = c_parser_peek_token (parser)->get_finish ();
+	    parens.skip_until_found_close (parser);
+	    if (!field)
+	      expr.set_error ();
+	    else if (!current_function_decl)
+	      {
+		error_at (loc, "%<_Perform%> outside of a function");
+		expr.set_error ();
+	      }
+	    else
+	      {
+		expr.value = c_build_effect_perform (loc, effect, field, args,
+						     arg_loc);
+		set_c_expr_source_range (&expr, loc, end_loc);
+	      }
+	    release_tree_vector (args);
+	  }
 	  break;
 	case RID_VA_ARG:
 	  {
