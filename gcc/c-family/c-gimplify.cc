@@ -930,9 +930,9 @@ build_seh_funclet_ref (location_t loc, tree fn)
    __except becomes a catch whose type is the filter function, so that
    the region may or may not catch an exception; its handler first takes
    the exception code, which the SEH runtime passes as the exception
-   pointer.  A __finally block is called with zero on the normal path;
-   on the exception path, the SEH runtime calls it, so the cleanup of its
-   region is empty.  */
+   pointer.  A __finally block is called on the normal path; on the
+   exception path, the SEH runtime calls it, so the cleanup of its region
+   is empty.  */
 
 static tree
 c_genericize_seh_try (tree stmt)
@@ -964,14 +964,27 @@ c_genericize_seh_try (tree stmt)
     }
   else
     {
+      /* As with the Microsoft compiler, the termination is abnormal
+	 unless the body ends, by falling through or by __leave.  */
       tree fn = SEH_FINALLY_FN (stmt);
-      tree normal = build_call_expr_loc (loc, fn, 2,
-					 build_int_cst (unsigned_char_type_node,
-							0),
+      tree abnormal = create_tmp_var (unsigned_char_type_node, "abnormal");
+      tree normal = build_call_expr_loc (loc, fn, 2, abnormal,
 					 null_pointer_node);
+      tree body = NULL_TREE;
+      append_to_statement_list (SEH_TRY_BODY (stmt), &body);
+      append_to_statement_list (build2_loc (loc, MODIFY_EXPR, void_type_node,
+					    abnormal,
+					    build_int_cst
+					      (unsigned_char_type_node, 0)),
+				&body);
       append_to_statement_list (build_seh_funclet_ref (loc, fn), &list);
+      append_to_statement_list (build2_loc (loc, MODIFY_EXPR, void_type_node,
+					    abnormal,
+					    build_int_cst
+					      (unsigned_char_type_node, 1)),
+				&list);
       append_to_statement_list (build2_loc (loc, TRY_FINALLY_EXPR,
-					    void_type_node, SEH_TRY_BODY (stmt),
+					    void_type_node, body,
 					    build2_loc (loc, EH_ELSE_EXPR,
 							void_type_node, normal,
 							build_empty_stmt (loc))),
