@@ -1902,6 +1902,7 @@ static void c_parser_effect_declaration (c_parser *);
 static tree c_parser_effect_operation_name (c_parser *, tree *, tree *);
 static struct c_typespec c_parser_effect_handler_specifier (c_parser *);
 static struct c_typespec c_parser_effect_continuation_specifier (c_parser *);
+static bool c_parser_save_compound_statement (c_parser *, auto_vec<c_token> &);
 static void c_parser_effect_try_statement (c_parser *);
 static tree c_parser_effect_resume_statement (c_parser *);
 static struct c_typespec c_parser_typeof_specifier (c_parser *);
@@ -5133,7 +5134,8 @@ c_parser_effect_operation_name (c_parser *parser, tree *effect,
 /* Parse a _Handle clause (GNU extension), set *EFFECT and *FIELD to the
    effect and operation it handles and return the nested function that
    implements it, or NULL_TREE after an error.  Set *KCLAUSE if the
-   clause takes a continuation.
+   clause takes a continuation.  CLAUSES and KCLAUSES are the clauses of
+   the _Try parsed so far, as TREE_LISTs of operations and functions.
 
    handle-clause:
      _Handle ( effect-operation-name ( parameter-type-list[opt] )
@@ -5148,7 +5150,7 @@ c_parser_effect_operation_name (c_parser *parser, tree *effect,
 
 static tree
 c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field,
-			       bool *kclause)
+			       bool *kclause, tree clauses, tree kclauses)
 {
   location_t loc = c_parser_peek_token (parser)->location;
   struct c_arg_info *args = NULL;
@@ -5178,9 +5180,19 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field,
 	}
       parens.skip_until_found_close (parser);
     }
+  if (*field && args
+      && (purpose_member (*field, clauses)
+	  || purpose_member (*field, kclauses)))
+    {
+      error_at (loc, "duplicate %<_Handle%> clause for operation %qD",
+		*field);
+      args = NULL;
+    }
   if (!*field || !args)
     {
-      c_parser_compound_statement (parser);
+      /* The body cannot be parsed without the clause's parameters.  */
+      auto_vec<c_token> tokens;
+      c_parser_save_compound_statement (parser, tokens);
       return NULL_TREE;
     }
 
@@ -5533,6 +5545,7 @@ c_parser_effect_try_statement (c_parser *parser)
   tree block = c_begin_compound_stmt (true);
   tree effect = NULL_TREE;
   tree clauses = NULL_TREE, kclauses = NULL_TREE;
+  bool clause_error = false;
   bool named = false;
   tree name = NULL_TREE;
   location_t name_loc = UNKNOWN_LOCATION;
@@ -5578,19 +5591,24 @@ c_parser_effect_try_statement (c_parser *parser)
       tree clause_effect = NULL_TREE, field = NULL_TREE;
       bool kclause;
       tree fn = c_parser_effect_handle_clause (parser, &clause_effect, &field,
-					       &kclause);
+					       &kclause, clauses, kclauses);
       if (!fn)
-	continue;
+	{
+	  clause_error = true;
+	  continue;
+	}
       if (named_effect && clause_effect != named_effect)
 	{
 	  error_at (clause_loc, "%<_Try%> for a handler of effect %qD does "
 		    "not handle effect %qD", named_effect, clause_effect);
+	  clause_error = true;
 	  continue;
 	}
       if (effect && clause_effect != effect)
 	{
 	  sorry_at (clause_loc, "handling more than one effect in a "
 		    "%<_Try%> statement");
+	  clause_error = true;
 	  continue;
 	}
       effect = clause_effect;
@@ -5599,6 +5617,13 @@ c_parser_effect_try_statement (c_parser *parser)
       else
 	clauses = tree_cons (field, fn, clauses);
     }
+  /* Every operation needs a clause, since a _Perform calls whatever its
+     entry in the operation table holds.  */
+  if (effect && !clause_error)
+    for (tree f = TYPE_FIELDS (TREE_TYPE (effect)); f; f = DECL_CHAIN (f))
+      if (!purpose_member (f, clauses) && !purpose_member (f, kclauses))
+	error_at (loc, "%<_Try%> does not handle operation %qD of effect %qD",
+		  f, effect);
   if (rehandle && !parser->effect_action)
     c_build_effect_state (loc, &parser->effect_action, &parser->effect_coro);
   tree action = parser->effect_action;
@@ -10817,7 +10842,8 @@ c_parser_asm_goto_operands (c_parser *parser)
 	  name = tok->value;
 	  label = lookup_label_for_goto (tok->location, name);
 	  c_parser_consume_token (parser);
-	  TREE_USED (label) = 1;
+	  if (label)
+	    TREE_USED (label) = 1;
 	}
       else
 	{
@@ -10827,7 +10853,8 @@ c_parser_asm_goto_operands (c_parser *parser)
 
       name = build_string (IDENTIFIER_LENGTH (name),
 			   IDENTIFIER_POINTER (name));
-      list = tree_cons (name, label, list);
+      if (label)
+	list = tree_cons (name, label, list);
       if (c_parser_next_token_is (parser, CPP_COMMA))
 	c_parser_consume_token (parser);
       else
