@@ -13771,6 +13771,7 @@ C and/or C++ standards, while others remain specific to GNU C.
 * Labels as Values::    Getting pointers to labels, and computed gotos.
 * Nested Functions::    Nested functions in GNU C.
 * Effect Handlers::     Operations whose callers decide how they are done.
+* Dynamic Variables::   Variables whose callers can rebind them.
 * Structured Exception Handling:: Microsoft @code{__try} statements.
 * Typeof::              @code{typeof}: referring to the type of an expression.
 * _Countof::            Determining the number of elements of arrays
@@ -14473,6 +14474,69 @@ function attribute (@pxref{Common Function Attributes}).  A coroutine
 must be resumed on the thread that created it.  Effect handlers are
 currently supported only on 64-bit Windows targets.  In system headers,
 the keywords of effect handlers are ordinary identifiers.
+
+@node Dynamic Variables
+@subsection Dynamic Variables
+@cindex dynamic variables
+@cindex dynamic scope
+@findex _Dynamic
+@findex _Let
+
+With @option{-feffects}, GNU C supports dynamically scoped variables,
+like the special variables of Common Lisp.  A @code{_Let} statement
+gives such a variable a new value for the duration of its body: the
+body and every function it calls see the new value, and the previous
+value comes back when the body ends.
+
+@smallexample
+_Dynamic int indent = 0;
+
+static void
+print_line (const char *s)
+@{
+  printf ("%*s%s\n", indent, "", s);
+@}
+
+void
+print_tree (struct node *n)
+@{
+  print_line (n->name);
+  _Let (indent = indent + 2)
+    @{
+      for (struct node *c = n->children; c; c = c->next)
+        print_tree (c);
+    @}
+@}
+@end smallexample
+
+@code{_Dynamic} is a storage-class specifier that can be used alone or
+with @code{extern} or @code{static}, in a declaration of a file-scope
+object that is not an array.  Its initializer gives the variable's
+global value.  All the declarations of the variable, in every
+translation unit, must specify @code{_Dynamic}.
+
+The statement @code{_Let (@var{var} = @var{expr}, @dots{})
+@var{compound-statement}} binds each @var{var}, which must be a
+@code{_Dynamic} variable, to a new object initialized with @var{expr}.
+All the expressions are evaluated before any of the bindings takes
+effect, so they see the previous values.  The bindings end however the
+body is left, including by @code{break}, @code{return}, @code{goto},
+or the unwinding of @code{_Discard}; leaving the body with
+@code{longjmp} is undefined.  Jumping into the body is an error.
+
+A use of a @code{_Dynamic} variable refers to its innermost binding on
+the current thread, or to its global value outside any binding, and an
+assignment changes that object.  The global value is shared by all
+threads.  Since the object changes from binding to binding, the address
+of a @code{_Dynamic} variable or of a part of it cannot be taken.
+
+Bindings follow the same rules as effect handlers (@pxref{Effect
+Handlers}): while a clause of a @code{_Try} runs, it sees the bindings
+outside the @code{_Try}; the body of a @code{_Try} that runs as a
+coroutine sees the bindings where it was last resumed together with its
+own, and its own are not seen outside it while it is suspended.  Each
+use of a @code{_Dynamic} variable searches the active handlers and
+bindings of the current thread.
 
 @node Structured Exception Handling
 @subsection Structured Exception Handling

@@ -19301,7 +19301,8 @@ the (implicit) use of @code{-fwrapv-pointer} is discouraged.
 @opindex feffects
 @opindex fno-effects
 @item -feffects
-Enable effect handlers (@pxref{Effect Handlers}), and allow them to
+Enable effect handlers (@pxref{Effect Handlers}) and dynamic variables
+(@pxref{Dynamic Variables}), and allow effect handlers to
 capture continuations whose frames include functions compiled with this
 option.  Capturing a continuation through
 the frame of a function compiled without it is a run-time error, unless
