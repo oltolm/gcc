@@ -14453,10 +14453,10 @@ The body of such a @code{_Try} uses copies of the automatic variables
 of the enclosing functions, made when the @code{_Try} starts, so that
 it does not depend on their frames.  Assignments to these variables in
 the body are not seen outside it; to pass results out, use pointers or
-the clauses.  The body cannot @code{return} from the enclosing function.
-A @code{goto} out of the body, or out of a clause without a
-continuation, which runs on the stack of the body, destroys the body
-and jumps to its label.
+the clauses.  A @code{goto} out of the body, or out of a clause without
+a continuation, which runs on the stack of the body, destroys the body
+and jumps to its label; so does @code{return} in the body, which returns
+from the function containing the @code{_Try}.
 
 A continuation has the type @code{_Continuation (@var{effect}.@var{op})}
 and can be stored.  A @code{_Try} whose body is only
