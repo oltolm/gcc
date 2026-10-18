@@ -1070,6 +1070,198 @@ declare_effect (location_t loc, tree name, tree type)
   return decl;
 }
 
+/* The runtime's handler record, struct __gcc_effect_handler, and the
+   runtime functions that maintain the per-thread chain of records.  */
+
+static GTY(()) tree effect_handler_type;
+static GTY(()) tree effect_find_decl;
+static GTY(()) tree effect_top_decl;
+static GTY(()) tree effect_set_top_decl;
+
+static tree
+build_effect_runtime_fn (const char *name, tree type)
+{
+  tree decl = build_decl (BUILTINS_LOCATION, FUNCTION_DECL,
+			  get_identifier (name), type);
+  DECL_EXTERNAL (decl) = 1;
+  TREE_PUBLIC (decl) = 1;
+  DECL_ARTIFICIAL (decl) = 1;
+  TREE_NOTHROW (decl) = 1;
+  return decl;
+}
+
+static void
+init_effect_runtime (void)
+{
+  if (effect_handler_type)
+    return;
+
+  tree type = make_node (RECORD_TYPE);
+  tree ptr = build_pointer_type (type);
+  tree fields = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+			    get_identifier ("next"), ptr);
+  tree f = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+		       get_identifier ("effect"), const_ptr_type_node);
+  DECL_CHAIN (f) = fields;
+  fields = f;
+  f = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier ("ops"),
+		  ptr_type_node);
+  DECL_CHAIN (f) = fields;
+  fields = f;
+  finish_builtin_struct (type, "__gcc_effect_handler", fields, NULL_TREE);
+  effect_handler_type = type;
+
+  effect_find_decl
+    = build_effect_runtime_fn ("__gcc_effect_find",
+			       build_function_type_list (ptr,
+							 const_ptr_type_node,
+							 NULL_TREE));
+  effect_top_decl
+    = build_effect_runtime_fn ("__gcc_effect_top",
+			       build_function_type_list (ptr, NULL_TREE));
+  effect_set_top_decl
+    = build_effect_runtime_fn ("__gcc_effect_set_top",
+			       build_function_type_list (void_type_node, ptr,
+							 NULL_TREE));
+}
+
+/* Return field number N of the handler record that REC refers to.  */
+
+static tree
+effect_handler_field (tree rec, int n)
+{
+  tree field = TYPE_FIELDS (effect_handler_type);
+  while (n--)
+    field = DECL_CHAIN (field);
+  return build3 (COMPONENT_REF, TREE_TYPE (field), rec, field, NULL_TREE);
+}
+
+/* Declare an artificial local variable of TYPE initialized to INIT in
+   the current block and return it.  */
+
+static tree
+build_effect_temp (location_t loc, tree type, tree init)
+{
+  tree decl = build_decl (loc, VAR_DECL, NULL_TREE, type);
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  DECL_CONTEXT (decl) = current_function_decl;
+  DECL_INITIAL (decl) = init;
+  pushdecl (decl);
+  add_stmt (build_stmt (loc, DECL_EXPR, decl));
+  return decl;
+}
+
+/* Return the address of the effect descriptor EFFECT.  */
+
+static tree
+build_effect_address (location_t loc, tree effect)
+{
+  TREE_USED (effect) = 1;
+  TREE_ADDRESSABLE (effect) = 1;
+  return fold_convert_loc (loc, const_ptr_type_node,
+			   build_fold_addr_expr_loc (loc, effect));
+}
+
+/* Finish a _Try statement whose body is BODY and whose _Handle clauses
+   for EFFECT are the nested functions in the TREE_VALUEs of CLAUSES, for
+   the operations in their TREE_PURPOSEs.  The statements are added to
+   the current block: a handler record pointing to a table of the clauses
+   is pushed on the chain for the duration of BODY.  */
+
+void
+c_finish_effect_try (location_t loc, tree body, tree effect, tree clauses)
+{
+  init_effect_runtime ();
+
+  tree ops = build_effect_temp (loc, TYPE_MAIN_VARIANT (TREE_TYPE (effect)),
+				NULL_TREE);
+  TREE_ADDRESSABLE (ops) = 1;
+  for (tree c = clauses; c; c = TREE_CHAIN (c))
+    {
+      tree field = TREE_PURPOSE (c);
+      tree fn = TREE_VALUE (c);
+      /* Where the target allows, take the clause's address as a
+	 descriptor, which holds its static chain, so that no trampoline
+	 is needed.  */
+      tree addr = build1_loc (loc, ADDR_EXPR, TREE_TYPE (field), fn);
+      FUNC_ADDR_BY_DESCRIPTOR (addr)
+	= targetm.calls.custom_function_descriptors > 0;
+      TREE_ADDRESSABLE (fn) = 1;
+      TREE_USED (fn) = 1;
+      add_stmt (build2_loc (loc, MODIFY_EXPR, TREE_TYPE (field),
+			    build3 (COMPONENT_REF, TREE_TYPE (field), ops,
+				    field, NULL_TREE),
+			    addr));
+    }
+
+  tree rec = build_effect_temp (loc, effect_handler_type, NULL_TREE);
+  TREE_ADDRESSABLE (rec) = 1;
+  tree rec_addr = build_fold_addr_expr_loc (loc, rec);
+  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			effect_handler_field (rec, 0),
+			build_call_expr_loc (loc, effect_top_decl, 0)));
+  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			effect_handler_field (rec, 1),
+			build_effect_address (loc, effect)));
+  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			effect_handler_field (rec, 2),
+			fold_convert_loc (loc, ptr_type_node,
+					  build_fold_addr_expr_loc (loc, ops))));
+  add_stmt (build_call_expr_loc (loc, effect_set_top_decl, 1, rec_addr));
+  add_stmt (build2_loc (loc, TRY_FINALLY_EXPR, void_type_node, body,
+			build_call_expr_loc (loc, effect_set_top_decl, 1,
+					     effect_handler_field (rec, 0))));
+}
+
+/* Build _Perform of the operation FIELD of EFFECT with arguments ARGS,
+   whose locations are ARG_LOC.  The arguments are evaluated first; the
+   clause of the innermost handler for EFFECT is then called with that
+   handler and the ones inside it removed from the chain.  */
+
+tree
+c_build_effect_perform (location_t loc, tree effect, tree field,
+			vec<tree, va_gc> *args, const vec<location_t> &arg_loc)
+{
+  init_effect_runtime ();
+
+  tree ptr = build_pointer_type (effect_handler_type);
+  tree stmt = c_begin_stmt_expr ();
+  for (unsigned i = 0; i < vec_safe_length (args); i++)
+    if ((*args)[i] != error_mark_node)
+      (*args)[i] = build_effect_temp (loc, TREE_TYPE ((*args)[i]),
+				      c_fully_fold ((*args)[i], false, NULL));
+  tree h = build_effect_temp (loc, ptr,
+			      build_call_expr_loc (loc, effect_find_decl, 1,
+						   build_effect_address
+						     (loc, effect)));
+  tree saved = build_effect_temp (loc, ptr,
+				  build_call_expr_loc (loc, effect_top_decl,
+						       0));
+  tree hrec = build_indirect_ref (loc, h, RO_NULL);
+  add_stmt (build_call_expr_loc (loc, effect_set_top_decl, 1,
+				 effect_handler_field (hrec, 0)));
+  push_cleanup (saved, build_call_expr_loc (loc, effect_set_top_decl, 1,
+					    saved), false);
+
+  tree ops = build_indirect_ref
+	       (loc, fold_convert_loc (loc,
+				       build_pointer_type (TREE_TYPE (effect)),
+				       effect_handler_field (hrec, 2)),
+		RO_NULL);
+  tree fn = build3 (COMPONENT_REF, TREE_TYPE (field), ops, field, NULL_TREE);
+  tree call = c_fully_fold (build_function_call_vec (loc, arg_loc, fn, args,
+						     NULL),
+			    false, NULL);
+  tree inner = call;
+  STRIP_NOPS (inner);
+  if (TREE_CODE (inner) == CALL_EXPR)
+    CALL_EXPR_BY_DESCRIPTOR (inner)
+      = targetm.calls.custom_function_descriptors > 0;
+  add_stmt (call);
+  return c_finish_stmt_expr (loc, stmt);
+}
+
 /* Return true if we are in the global binding level.  */
 
 bool
