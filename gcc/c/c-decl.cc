@@ -1089,6 +1089,8 @@ static GTY(()) tree effect_coro_destroy_decl;
 static GTY(()) tree effect_coro_message_decl;
 static GTY(()) tree effect_coro_handler_decl;
 static GTY(()) tree effect_suspend_decl;
+static GTY(()) tree effect_coro_suspensions_decl;
+static GTY(()) tree effect_coro_check_decl;
 
 /* Build the declaration of the runtime function NAME of TYPE.  It throws
    only if THROWS: a resumption that destroys the coroutine unwinds the
@@ -1190,6 +1192,17 @@ init_effect_runtime (void)
 							 ptr_type_node,
 							 NULL_TREE),
 			       true);
+  effect_coro_suspensions_decl
+    = build_effect_runtime_fn ("__gcc_coro_suspensions",
+			       build_function_type_list (size_type_node,
+							 ptr_type_node,
+							 NULL_TREE));
+  effect_coro_check_decl
+    = build_effect_runtime_fn ("__gcc_coro_check",
+			       build_function_type_list (void_type_node,
+							 ptr_type_node,
+							 size_type_node,
+							 NULL_TREE));
 }
 
 /* Return field number N of the message that MSG refers to.  */
@@ -1326,13 +1339,15 @@ c_effect_body_handler (location_t loc)
   return build_call_expr_loc (loc, effect_top_decl, 0);
 }
 
-/* Declare and return the variable that a _Handle clause with a
-   continuation sets to nonzero when it resumes the continuation.  */
+/* Declare the variables of a _Try whose clauses take a continuation:
+   *ACTION, which holds an enum c_effect_action, and *CORO, which holds
+   the coroutine.  */
 
-tree
-c_build_effect_action (location_t loc)
+void
+c_build_effect_state (location_t loc, tree *action, tree *coro)
 {
-  return build_effect_temp (loc, integer_type_node, integer_zero_node);
+  *action = build_effect_temp (loc, integer_type_node, integer_zero_node);
+  *coro = build_effect_temp (loc, ptr_type_node, null_pointer_node);
 }
 
 /* Declare and return the operation table of a handler of EFFECT whose
@@ -1537,74 +1552,157 @@ effect_operation_index (tree effect, tree field)
   return n;
 }
 
-/* Finish a _Try statement whose body is the nested function BODY_FN,
-   started as a coroutine, and whose _Handle clauses for EFFECT are the
-   nested functions in the TREE_VALUEs of CLAUSES and KCLAUSES, for the
-   operations in their TREE_PURPOSEs.  The clauses in KCLAUSES take a
-   continuation and run on the stack of the _Try whenever the body
-   performs their operation; they set ACTION when they resume it.
-   CAP_TYPE and CAPTURES are as returned by c_finish_effect_body.  NAMED
-   is as for c_finish_effect_try.  */
+/* The types _Continuation (EFFECT.OP), indexed by the field of OP, and
+   TREE_LISTs of the effect and the field, indexed by the types.  */
+static GTY(()) hash_map<tree, tree> *effect_continuation_types;
+static GTY(()) hash_map<tree, tree> *effect_of_continuation_types;
 
-void
-c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
-			   tree captures, tree effect, tree clauses,
-			   tree kclauses, tree action, bool named)
+/* Return the type _Continuation (EFFECT.OP), where FIELD is the field of
+   OP: a structure holding the coroutine and the number of times it had
+   suspended when the continuation was taken.  */
+
+tree
+c_build_effect_continuation_type (tree effect, tree field)
+{
+  if (!effect_continuation_types)
+    {
+      effect_continuation_types = hash_map<tree, tree>::create_ggc (16);
+      effect_of_continuation_types = hash_map<tree, tree>::create_ggc (16);
+    }
+  if (tree *slot = effect_continuation_types->get (field))
+    return *slot;
+
+  tree type = make_node (RECORD_TYPE);
+  tree fields = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+			    get_identifier ("__coro"), ptr_type_node);
+  tree f = build_decl (BUILTINS_LOCATION, FIELD_DECL,
+		       get_identifier ("__suspensions"), size_type_node);
+  DECL_CHAIN (f) = fields;
+  fields = f;
+  char *name = concat ("__gcc_continuation_",
+		       IDENTIFIER_POINTER (DECL_NAME (effect)), "_",
+		       IDENTIFIER_POINTER (DECL_NAME (field)), NULL);
+  finish_builtin_struct (type, name, fields, NULL_TREE);
+  free (name);
+  effect_continuation_types->put (field, type);
+  effect_of_continuation_types->put (type, tree_cons (effect, field,
+						     NULL_TREE));
+  return type;
+}
+
+/* If TYPE is a continuation type, set *EFFECT and *FIELD to its effect
+   and operation and return true.  */
+
+bool
+c_effect_continuation_type_p (tree type, tree *effect, tree *field)
+{
+  if (!effect_of_continuation_types)
+    return false;
+  tree *slot = effect_of_continuation_types->get (TYPE_MAIN_VARIANT (type));
+  if (!slot)
+    return false;
+  *effect = TREE_PURPOSE (*slot);
+  *field = TREE_VALUE (*slot);
+  return true;
+}
+
+/* Return field number N of the continuation CONT.  */
+
+static tree
+effect_continuation_field (tree cont, int n)
+{
+  tree field = TYPE_FIELDS (TREE_TYPE (cont));
+  while (n--)
+    field = DECL_CHAIN (field);
+  return build3 (COMPONENT_REF, TREE_TYPE (field), cont, field, NULL_TREE);
+}
+
+/* Declare NAME in the current scope as the continuation of a _Handle
+   clause for the operation FIELD of EFFECT, whose _Try runs the
+   coroutine CORO.  */
+
+tree
+c_declare_effect_continuation (location_t loc, tree name, tree effect,
+			       tree field, tree coro)
 {
   init_effect_runtime ();
-  tree ops = build_effect_ops (loc, effect, clauses, kclauses);
+  tree type = c_build_effect_continuation_type (effect, field);
+  tree decl = build_decl (loc, VAR_DECL, name,
+			  c_build_qualified_type (type, TYPE_QUAL_CONST));
+  DECL_CONTEXT (decl) = current_function_decl;
+  TREE_READONLY (decl) = 1;
+  tree count = build_call_expr_loc (loc, effect_coro_suspensions_decl, 1,
+				    coro);
+  DECL_INITIAL (decl) = build_constructor_va (type, 2,
+					      TYPE_FIELDS (type), coro,
+					      DECL_CHAIN (TYPE_FIELDS (type)),
+					      count);
+  pushdecl (decl);
+  add_stmt (build_stmt (loc, DECL_EXPR, decl));
+  return decl;
+}
 
-  tree cap_addr = null_pointer_node;
-  if (cap_type)
+/* Abort at run time unless the continuation CONT, evaluated once into a
+   variable, can still be resumed, and return its coroutine.  */
+
+static tree
+build_effect_continuation_check (location_t loc, tree cont)
+{
+  tree c = build_effect_temp (loc, TREE_TYPE (cont), cont);
+  tree coro = effect_continuation_field (c, 0);
+  add_stmt (build_call_expr_loc (loc, effect_coro_check_decl, 2, coro,
+				 effect_continuation_field (c, 1)));
+  return coro;
+}
+
+/* Build _Discard of the continuation CONT, other than the one of the
+   clause it appears in: destroy its coroutine.  */
+
+tree
+c_build_effect_discard (location_t loc, tree cont)
+{
+  tree effect, field;
+  if (cont == error_mark_node)
+    return NULL_TREE;
+  if (!c_effect_continuation_type_p (TREE_TYPE (cont), &effect, &field))
     {
-      tree cap = build_effect_temp (loc, cap_type, NULL_TREE);
-      TREE_ADDRESSABLE (cap) = 1;
-      for (tree c = captures; c; c = TREE_CHAIN (c))
-	{
-	  tree f = TREE_VALUE (c);
-	  tree v = c_effect_capture (TREE_PURPOSE (c));
-	  TREE_USED (v) = 1;
-	  mark_exp_read (v);
-	  add_stmt (build2_loc (loc, MODIFY_EXPR, TREE_TYPE (f),
-				build3 (COMPONENT_REF, TREE_TYPE (f), cap, f,
-					NULL_TREE),
-				v));
-	}
-      cap_addr = build_fold_addr_expr_loc (loc, cap);
+      error_at (loc, "operand of %<_Discard%> is not a continuation");
+      return NULL_TREE;
     }
+  init_effect_runtime ();
+  tree stmt = c_begin_compound_stmt (true);
+  tree coro = build_effect_continuation_check (loc, cont);
+  add_stmt (build_call_expr_loc (loc, effect_coro_destroy_decl, 1, coro));
+  stmt = c_end_compound_stmt (loc, stmt, true);
+  add_stmt (stmt);
+  return stmt;
+}
 
-  TREE_USED (body_fn) = 1;
-  tree coro = build_effect_temp (loc, ptr_type_node,
-				 build_call_expr_loc
-				   (loc, effect_coro_create_decl, 3,
-				    build_fold_addr_expr_loc (loc, body_fn),
-				    fold_convert_loc (loc, ptr_type_node,
-						      cap_addr),
-				    size_zero_node));
-  add_stmt (build3_loc (loc, COND_EXPR, void_type_node,
-			build2 (EQ_EXPR, boolean_type_node, coro,
-				null_pointer_node),
-			build_call_expr_loc (loc,
-					     builtin_decl_explicit
-					       (BUILT_IN_ABORT), 0),
-			NULL_TREE));
+/* Add the loop of a _Try that runs the coroutine CORO with the handler
+   operations OPS of EFFECT: resume it until it finishes, running the
+   clause in KCLAUSES of each operation it suspends in, until a clause
+   does not resume it.  ACTION holds the state of the loop; the coroutine
+   is destroyed at the end unless a clause kept its continuation.  */
+
+static void
+build_effect_resume_loop (location_t loc, tree coro, tree effect, tree ops,
+			  tree kclauses, tree action)
+{
   tree ptr = build_pointer_type (effect_handler_type);
   tree h = build_effect_temp (loc, ptr,
 			      build_call_expr_loc (loc,
 						   effect_coro_handler_decl,
 						   1, coro));
-  tree hrec = build_indirect_ref (loc, h, RO_NULL);
   add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
-			effect_handler_field (hrec, 1),
-			named ? null_pointer_node
-			: build_effect_address (loc, effect)));
-  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
-			effect_handler_field (hrec, 2),
+			effect_handler_field (build_indirect_ref (loc, h,
+								  RO_NULL),
+					      2),
 			fold_convert_loc (loc, ptr_type_node,
 					  build_fold_addr_expr_loc (loc, ops))));
+  add_stmt (build2_loc (loc, MODIFY_EXPR, integer_type_node, action,
+			build_int_cst (integer_type_node,
+				       EFFECT_ACTION_RESUME)));
 
-  /* Resume the body until it finishes, running the clause of each
-     operation it suspends in, or until a clause does not resume it.  */
   tree loop = push_stmt_list ();
   add_stmt (build1_loc (loc, EXIT_EXPR, void_type_node,
 			build2 (EQ_EXPR, boolean_type_node,
@@ -1621,7 +1719,8 @@ c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
 						      1, coro)));
   tree msg = build_indirect_ref (loc, m, RO_NULL);
   add_stmt (build2_loc (loc, MODIFY_EXPR, integer_type_node, action,
-			integer_zero_node));
+			build_int_cst (integer_type_node,
+				       EFFECT_ACTION_CLAUSE)));
   for (tree c = kclauses; c; c = TREE_CHAIN (c))
     {
       tree field = TREE_PURPOSE (c);
@@ -1660,14 +1759,133 @@ c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
 						     (effect, field))),
 			    call, NULL_TREE));
     }
-  add_stmt (build1_loc (loc, EXIT_EXPR, void_type_node,
+  /* A clause that returns without resuming or discarding its
+     continuation keeps it.  */
+  add_stmt (build3_loc (loc, COND_EXPR, void_type_node,
 			build2 (EQ_EXPR, boolean_type_node, action,
-				integer_zero_node)));
+				build_int_cst (integer_type_node,
+					       EFFECT_ACTION_CLAUSE)),
+			build2_loc (loc, MODIFY_EXPR, integer_type_node,
+				    action,
+				    build_int_cst (integer_type_node,
+						   EFFECT_ACTION_KEEP)),
+			NULL_TREE));
+  add_stmt (build1_loc (loc, EXIT_EXPR, void_type_node,
+			build2 (NE_EXPR, boolean_type_node, action,
+				build_int_cst (integer_type_node,
+					       EFFECT_ACTION_RESUME))));
   loop = pop_stmt_list (loop);
   add_stmt (build2_loc (loc, TRY_FINALLY_EXPR, void_type_node,
 			build1_loc (loc, LOOP_EXPR, void_type_node, loop),
-			build_call_expr_loc (loc, effect_coro_destroy_decl, 1,
-					     coro)));
+			build3_loc (loc, COND_EXPR, void_type_node,
+				    build2 (NE_EXPR, boolean_type_node, action,
+					    build_int_cst (integer_type_node,
+							   EFFECT_ACTION_KEEP)),
+				    build_call_expr_loc
+				      (loc, effect_coro_destroy_decl, 1, coro),
+				    NULL_TREE)));
+}
+
+/* Finish a _Try statement whose body is the nested function BODY_FN,
+   started as a coroutine, and whose _Handle clauses for EFFECT are the
+   nested functions in the TREE_VALUEs of CLAUSES and KCLAUSES, for the
+   operations in their TREE_PURPOSEs.  The clauses in KCLAUSES take a
+   continuation and run on the stack of the _Try whenever the body
+   performs their operation.  ACTION and CORO are the variables from
+   c_build_effect_state.  CAP_TYPE and CAPTURES are as returned by
+   c_finish_effect_body.  NAMED is as for c_finish_effect_try.  */
+
+void
+c_finish_effect_fiber_try (location_t loc, tree body_fn, tree cap_type,
+			   tree captures, tree effect, tree clauses,
+			   tree kclauses, tree action, tree coro, bool named)
+{
+  init_effect_runtime ();
+  tree ops = build_effect_ops (loc, effect, clauses, kclauses);
+
+  tree cap_addr = null_pointer_node;
+  if (cap_type)
+    {
+      tree cap = build_effect_temp (loc, cap_type, NULL_TREE);
+      TREE_ADDRESSABLE (cap) = 1;
+      for (tree c = captures; c; c = TREE_CHAIN (c))
+	{
+	  tree f = TREE_VALUE (c);
+	  tree v = c_effect_capture (TREE_PURPOSE (c));
+	  TREE_USED (v) = 1;
+	  mark_exp_read (v);
+	  add_stmt (build2_loc (loc, MODIFY_EXPR, TREE_TYPE (f),
+				build3 (COMPONENT_REF, TREE_TYPE (f), cap, f,
+					NULL_TREE),
+				v));
+	}
+      cap_addr = build_fold_addr_expr_loc (loc, cap);
+    }
+
+  TREE_USED (body_fn) = 1;
+  add_stmt (build2_loc (loc, MODIFY_EXPR, ptr_type_node, coro,
+			build_call_expr_loc
+			  (loc, effect_coro_create_decl, 3,
+			   build_fold_addr_expr_loc (loc, body_fn),
+			   fold_convert_loc (loc, ptr_type_node, cap_addr),
+			   size_zero_node)));
+  add_stmt (build3_loc (loc, COND_EXPR, void_type_node,
+			build2 (EQ_EXPR, boolean_type_node, coro,
+				null_pointer_node),
+			build_call_expr_loc (loc,
+					     builtin_decl_explicit
+					       (BUILT_IN_ABORT), 0),
+			NULL_TREE));
+  tree ptr = build_pointer_type (effect_handler_type);
+  tree h = build_effect_temp (loc, ptr,
+			      build_call_expr_loc (loc,
+						   effect_coro_handler_decl,
+						   1, coro));
+  add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			effect_handler_field (build_indirect_ref (loc, h,
+								  RO_NULL),
+					      1),
+			named ? null_pointer_node
+			: build_effect_address (loc, effect)));
+  build_effect_resume_loop (loc, coro, effect, ops, kclauses, action);
+}
+
+/* Finish a _Try statement whose body is _Resume (CONT, VALUE), where
+   VALUE is NULL_TREE for an operation without a result and has location
+   VALUE_LOC and original type ORIGTYPE, and whose clauses are as for
+   c_finish_effect_fiber_try.  The coroutine of CONT continues under
+   these clauses, with VALUE as the value of the _Perform it is suspended
+   in.  */
+
+void
+c_finish_effect_rehandle (location_t loc, tree cont, tree value,
+			  location_t value_loc, tree origtype, tree effect,
+			  tree clauses, tree kclauses, tree action, tree coro)
+{
+  init_effect_runtime ();
+  tree ops = build_effect_ops (loc, effect, clauses, kclauses);
+  add_stmt (build2_loc (loc, MODIFY_EXPR, ptr_type_node, coro,
+			build_effect_continuation_check (loc, cont)));
+  if (value)
+    {
+      tree ceffect, field;
+      c_effect_continuation_type_p (TREE_TYPE (cont), &ceffect, &field);
+      tree rtype = TREE_TYPE (TREE_TYPE (TREE_TYPE (field)));
+      tree mptr = build_pointer_type (effect_message_type);
+      tree msg = build_indirect_ref
+		   (loc, fold_convert_loc
+			   (loc, mptr,
+			    build_call_expr_loc (loc, effect_coro_message_decl,
+						 1, coro)),
+		    RO_NULL);
+      tree result = build_indirect_ref
+		      (loc, fold_convert_loc (loc, build_pointer_type (rtype),
+					      effect_message_field (msg, 2)),
+		       RO_NULL);
+      add_stmt (build_modify_expr (loc, result, NULL_TREE, NOP_EXPR,
+				   value_loc, value, origtype));
+    }
+  build_effect_resume_loop (loc, coro, effect, ops, kclauses, action);
 }
 
 /* Build _Perform of the operation FIELD of EFFECT with arguments ARGS,

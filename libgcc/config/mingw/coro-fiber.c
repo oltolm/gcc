@@ -70,6 +70,9 @@ struct __gcc_coro
      coroutine it runs that suspended it through __gcc_effect_suspend.  */
   struct __gcc_coro *top;
   void *message;
+  /* The number of times the computation has suspended, which identifies
+     its current continuation.  */
+  size_t suspensions;
   /* The computation's chain while it is not running.  Its records end in
      BASE, the record of the handler the coroutine runs under, which is
      relinked on every switch in to the chain of the fiber switching in;
@@ -92,6 +95,8 @@ int __gcc_coro_resume (struct __gcc_coro *);
 void __gcc_coro_yield (void);
 void __gcc_coro_destroy (struct __gcc_coro *);
 void *__gcc_coro_message (struct __gcc_coro *);
+size_t __gcc_coro_suspensions (struct __gcc_coro *);
+void __gcc_coro_check (struct __gcc_coro *, size_t);
 struct __gcc_effect_handler *__gcc_coro_handler (struct __gcc_coro *);
 void __gcc_effect_suspend (struct __gcc_effect_handler *, void *);
 struct __gcc_effect_handler *__gcc_effect_top (void);
@@ -311,6 +316,7 @@ __gcc_coro_yield (void)
 
   c->top = c;
   c->state = CORO_SUSPENDED;
+  c->suspensions++;
   SwitchToFiber (c->resumer);
   if (c->state == CORO_DESTROYING)
     unwind (c);
@@ -334,6 +340,23 @@ void *
 __gcc_coro_message (struct __gcc_coro *c)
 {
   return c->message;
+}
+
+size_t
+__gcc_coro_suspensions (struct __gcc_coro *c)
+{
+  return c->suspensions;
+}
+
+/* Abort unless C is suspended at the continuation taken after its
+   SUSPENSIONSth suspension, so that each continuation is resumed or
+   discarded at most once.  */
+
+void
+__gcc_coro_check (struct __gcc_coro *c, size_t suspensions)
+{
+  if (c->state != CORO_SUSPENDED || c->suspensions != suspensions)
+    abort ();
 }
 
 struct __gcc_effect_handler *
@@ -367,6 +390,7 @@ __gcc_effect_suspend (struct __gcc_effect_handler *h, void *message)
   c->top = self;
   c->message = message;
   c->state = CORO_SUSPENDED;
+  c->suspensions++;
   SwitchToFiber (c->resumer);
   if (c->state == CORO_DESTROYING)
     unwind (self);
