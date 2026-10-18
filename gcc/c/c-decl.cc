@@ -3734,6 +3734,19 @@ diagnose_mismatched_decls (tree newdecl, tree olddecl,
     }
   else if (VAR_P (newdecl))
     {
+      if (C_DECL_DYNAMIC (newdecl) != C_DECL_DYNAMIC (olddecl))
+	{
+	  auto_diagnostic_group d;
+	  if (C_DECL_DYNAMIC (newdecl))
+	    error ("%<_Dynamic%> declaration of %q+D follows "
+		   "non-%<_Dynamic%> declaration", newdecl);
+	  else
+	    error ("non-%<_Dynamic%> declaration of %q+D follows "
+		   "%<_Dynamic%> declaration", newdecl);
+	  locate_old_decl (olddecl);
+	  return false;
+	}
+
       /* Only variables can be thread-local, and all declarations must
 	 agree on this property.  */
       if (C_DECL_THREADPRIVATE_P (olddecl) && !DECL_THREAD_LOCAL_P (newdecl))
@@ -6556,6 +6569,12 @@ shadow_tag_warned (const struct c_declspecs *declspecs, int warned)
       warned = 2;
     }
 
+  if (!warned && declspecs->dynamic_p)
+    {
+      warning (0, "useless %<_Dynamic%> in empty declaration");
+      warned = 2;
+    }
+
   if (!warned
       && !in_system_header_at (input_location)
       && (declspecs->const_p
@@ -8096,6 +8115,7 @@ grokdeclarator (const struct c_declarator *declarator,
 {
   tree type = declspecs->type;
   bool threadp = declspecs->thread_p;
+  bool dynamicp = declspecs->dynamic_p;
   bool constexprp = declspecs->constexpr_p;
   enum c_storage_class storage_class = declspecs->storage_class;
   int constp;
@@ -8369,6 +8389,7 @@ grokdeclarator (const struct c_declarator *declarator,
     }
   else if (decl_context != NORMAL && (storage_class != csc_none
 				      || threadp
+				      || dynamicp
 				      || constexprp
 				      || declspecs->c23_auto_p))
     {
@@ -8401,6 +8422,7 @@ grokdeclarator (const struct c_declarator *declarator,
 	    }
 	  storage_class = csc_none;
 	  threadp = false;
+	  dynamicp = false;
 	  constexprp = false;
 	}
     }
@@ -9436,7 +9458,8 @@ grokdeclarator (const struct c_declarator *declarator,
       }
     else if (TREE_CODE (type) == FUNCTION_TYPE)
       {
-	if (storage_class == csc_register || threadp || constexprp)
+	if (storage_class == csc_register || threadp || dynamicp
+	    || constexprp)
 	  {
 	    error_at (loc, "invalid storage class for function %qE", name);
 	  }
@@ -9611,6 +9634,15 @@ grokdeclarator (const struct c_declarator *declarator,
 	  C_DECL_VARIABLE_SIZE (decl) = 1;
 	if (constexprp)
 	  C_DECL_DECLARED_CONSTEXPR (decl) = 1;
+	if (dynamicp)
+	  {
+	    if (current_scope != file_scope)
+	      error_at (loc, "block-scope declaration of %qE specifies "
+			"%<_Dynamic%>", name);
+	    else if (TREE_CODE (type) == ARRAY_TYPE)
+	      error_at (loc, "%<_Dynamic%> variable %qE has array type", name);
+	    C_DECL_DYNAMIC (decl) = 1;
+	  }
 
 	if (declspecs->inline_p)
 	  pedwarn (loc, 0, "variable %q+D declared %<inline%>", decl);
@@ -13464,6 +13496,8 @@ declspecs_add_type (location_t loc, struct c_declspecs *specs,
       else if (specs->thread_p)
 	error ("%qs used with %<auto%>",
 	       specs->thread_gnu_p ? "__thread" : "_Thread_local");
+      else if (specs->dynamic_p)
+	error ("%<_Dynamic%> used with %<auto%>");
       else if (specs->constexpr_p)
 	/* auto may only be used with another storage class specifier,
 	   such as constexpr, if the type is inferred.  */
@@ -14479,6 +14513,8 @@ declspecs_add_scspec (location_t loc,
 	error ("%qE used with %<typedef%>", scspec);
       else if (specs->constexpr_p)
 	error ("%qE used with %<constexpr%>", scspec);
+      else if (specs->dynamic_p)
+	error ("%<_Dynamic%> used with %qE", scspec);
       else
 	{
 	  specs->thread_p = true;
@@ -14553,8 +14589,27 @@ declspecs_add_scspec (location_t loc,
       else if (specs->thread_p)
 	error ("%qE used with %qs", scspec,
 	       specs->thread_gnu_p ? "__thread" : "_Thread_local");
+      else if (specs->dynamic_p)
+	error ("%<_Dynamic%> used with %qE", scspec);
       else
 	specs->constexpr_p = true;
+      break;
+    case RID_EFFECT_DYNAMIC:
+      dupe = specs->dynamic_p;
+      if (specs->storage_class == csc_auto
+	  || specs->storage_class == csc_register
+	  || specs->storage_class == csc_typedef)
+	error ("%qE used with %qs", scspec,
+	       specs->storage_class == csc_auto ? "auto"
+	       : specs->storage_class == csc_register ? "register"
+	       : "typedef");
+      else if (specs->thread_p)
+	error ("%qE used with %qs", scspec,
+	       specs->thread_gnu_p ? "__thread" : "_Thread_local");
+      else if (specs->constexpr_p)
+	error ("%qE used with %<constexpr%>", scspec);
+      else
+	specs->dynamic_p = true;
       break;
     default:
       gcc_unreachable ();
@@ -14584,6 +14639,11 @@ declspecs_add_scspec (location_t loc,
 		     specs->thread_gnu_p ? "__thread" : "_Thread_local",
 		     scspec);
 	      specs->thread_p = false;
+	    }
+	  if (n != csc_extern && n != csc_static && specs->dynamic_p)
+	    {
+	      error ("%<_Dynamic%> used with %qE", scspec);
+	      specs->dynamic_p = false;
 	    }
 	  if (n != csc_auto && n != csc_register && n != csc_static
 	      && specs->constexpr_p)
