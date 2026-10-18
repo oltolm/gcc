@@ -132,6 +132,9 @@ along with GCC; see the file COPYING3.  If not see
    #pragma omp threadprivate.  */
 #define C_DECL_THREADPRIVATE_P(DECL) DECL_LANG_FLAG_3 (VAR_DECL_CHECK (DECL))
 
+/* Set on VAR_DECLs declared _Dynamic.  */
+#define C_DECL_DYNAMIC(DECL) DECL_LANG_FLAG_1 (VAR_DECL_CHECK (DECL))
+
 /* Set on VAR_DECLs that declare an effect.  */
 #define C_DECL_EFFECT(DECL) DECL_LANG_FLAG_6 (VAR_DECL_CHECK (DECL))
 
@@ -478,6 +481,8 @@ struct c_declspecs {
   bool thread_p : 1;
   /* Whether "__thread" rather than "_Thread_local" was specified.  */
   bool thread_gnu_p : 1;
+  /* Whether "_Dynamic" was specified.  */
+  bool dynamic_p : 1;
   /* Whether "const" was specified.  */
   bool const_p : 1;
   /* Whether "volatile" was specified.  */

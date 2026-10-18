@@ -920,6 +920,7 @@ c_token_starts_declspecs (c_token *token)
 	case RID_NORETURN:
 	case RID_AUTO:
 	case RID_THREAD:
+	case RID_EFFECT_DYNAMIC:
 	case RID_UNSIGNED:
 	case RID_LONG:
 	case RID_SHORT:
@@ -3946,6 +3947,7 @@ c_parser_declspecs (c_parser *parser, struct c_declspecs *specs,
 	case RID_NORETURN:
 	case RID_AUTO:
 	case RID_THREAD:
+	case RID_EFFECT_DYNAMIC:
 	case RID_CONSTEXPR:
 	  if (!scspec_ok)
 	    goto out;

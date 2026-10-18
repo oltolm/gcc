@@ -502,6 +502,8 @@ const struct c_common_resword c_common_reswords[] =
   { "_Handler",		RID_EFFECT_HANDLER, D_CONLY | D_EFFECTS },
   { "_Continuation",	RID_EFFECT_CONTINUATION, D_CONLY | D_EFFECTS },
   { "_Discard",		RID_EFFECT_DISCARD, D_CONLY | D_EFFECTS },
+  { "_Dynamic",		RID_EFFECT_DYNAMIC, D_CONLY | D_EFFECTS },
+  { "_Let",		RID_EFFECT_LET,	D_CONLY | D_EFFECTS },
   { "__try",		RID_SEH_TRY,	D_CONLY | D_SEH },
   { "__except",		RID_SEH_EXCEPT,	D_CONLY | D_SEH },
   { "__finally",	RID_SEH_FINALLY, D_CONLY | D_SEH },
