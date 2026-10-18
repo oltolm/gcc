@@ -724,6 +724,30 @@ add_stmt (tree t)
 
 
 
+/* Mark DECL, a local of the _Try or _Let statement KEYWORD declared
+   before its body, so that jumps into the body are rejected: they would
+   skip pushing the statement's record on the handler chain.  */
+
+static void
+mark_effect_scope (tree decl, const char *keyword)
+{
+  DECL_ATTRIBUTES (decl) = tree_cons (get_identifier ("effect scope"),
+				      get_identifier (keyword),
+				      DECL_ATTRIBUTES (decl));
+}
+
+/* Return the keyword of the statement whose body DECL guards, or NULL if
+   DECL was not marked by mark_effect_scope.  */
+
+static const char *
+effect_scope_keyword (tree decl)
+{
+  if (!VAR_P (decl))
+    return NULL;
+  tree attr = lookup_attribute ("effect scope", DECL_ATTRIBUTES (decl));
+  return attr ? IDENTIFIER_POINTER (TREE_VALUE (attr)) : NULL;
+}
+
 /* Return true if we will want to say something if a goto statement
    crosses DECL.  */
 
@@ -732,6 +756,9 @@ decl_jump_unsafe (tree decl)
 {
   if (error_operand_p (decl))
     return false;
+
+  if (effect_scope_keyword (decl))
+    return true;
 
   /* Don't warn for compound literals.  If a goto statement crosses
      their initialization, it should cross also all the places where
@@ -1468,6 +1495,8 @@ c_begin_effect_try (location_t loc)
   init_effect_runtime ();
   tree rec = build_effect_temp (loc, effect_handler_type, NULL_TREE);
   TREE_ADDRESSABLE (rec) = 1;
+  mark_effect_scope (rec, "_Try");
+  c_mark_decl_jump_unsafe_in_current_scope ();
   return rec;
 }
 
@@ -1620,11 +1649,12 @@ c_dynamic_ref_var (tree ref)
 
 /* Declare and return the storage of a binding of the _Dynamic variable
    VAR by _Let, initialized to INIT, of original type ORIGTYPE, or return
-   NULL_TREE after an error.  */
+   NULL_TREE after an error.  FIRST is true for the first binding, which
+   guards the body against jumps into it.  */
 
 tree
 c_build_dynamic_binding (location_t loc, tree var, location_t init_loc,
-			 tree init, tree origtype)
+			 tree init, tree origtype, bool first)
 {
   if (!COMPLETE_TYPE_P (TREE_TYPE (var)))
     {
@@ -1636,6 +1666,8 @@ c_build_dynamic_binding (location_t loc, tree var, location_t init_loc,
   DECL_IGNORED_P (decl) = 1;
   DECL_CONTEXT (decl) = current_function_decl;
   TREE_ADDRESSABLE (decl) = 1;
+  if (first)
+    mark_effect_scope (decl, "_Let");
   store_init_value (init_loc, decl, init, origtype);
   pushdecl (decl);
   add_stmt (build_stmt (loc, DECL_EXPR, decl));
@@ -5487,6 +5519,12 @@ static void
 warn_about_goto (location_t goto_loc, tree label, tree decl)
 {
   auto_diagnostic_group d;
+  if (const char *keyword = effect_scope_keyword (decl))
+    {
+      error_at (goto_loc, "jump into the body of %qs", keyword);
+      inform (DECL_SOURCE_LOCATION (label), "label %qD defined here", label);
+      return;
+    }
   if (c_type_variably_modified_p (TREE_TYPE (decl)))
     error_at (goto_loc,
 	      "jump into scope of identifier with variably modified type");
@@ -5780,6 +5818,14 @@ c_check_switch_jump_warnings (struct c_spot_bindings *switch_bindings,
 	    {
 	      auto_diagnostic_group d;
 	      bool emitted;
+	      if (const char *keyword = effect_scope_keyword (b->decl))
+		{
+		  saw_error = true;
+		  error_at (case_loc, "switch jumps into the body of %qs",
+			    keyword);
+		  inform (switch_loc, "switch starts here");
+		  continue;
+		}
 	      if (c_type_variably_modified_p (TREE_TYPE (b->decl)))
 		{
 		  saw_error = true;

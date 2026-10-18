@@ -5753,7 +5753,8 @@ c_parser_let_statement (c_parser *parser)
 	  if (var && init.value != error_mark_node)
 	    if (tree storage = c_build_dynamic_binding (id_loc, var, init_loc,
 							init.value,
-							init.original_type))
+							init.original_type,
+							!bindings))
 	      bindings = tree_cons (var, storage, bindings);
 	  if (c_parser_next_token_is_not (parser, CPP_COMMA))
 	    break;
