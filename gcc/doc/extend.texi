@@ -13771,6 +13771,7 @@ C and/or C++ standards, while others remain specific to GNU C.
 * Labels as Values::    Getting pointers to labels, and computed gotos.
 * Nested Functions::    Nested functions in GNU C.
 * Effect Handlers::     Operations whose callers decide how they are done.
+* Structured Exception Handling:: Microsoft @code{__try} statements.
 * Typeof::              @code{typeof}: referring to the type of an expression.
 * _Countof::            Determining the number of elements of arrays
 * _Maxof and _Minof::   The maximum and minimum representable values of a type.
@@ -14472,6 +14473,103 @@ function attribute (@pxref{Common Function Attributes}).  A coroutine
 must be resumed on the thread that created it.  Effect handlers are
 currently supported only on 64-bit Windows targets.  In system headers,
 the keywords of effect handlers are ordinary identifiers.
+
+@node Structured Exception Handling
+@subsection Structured Exception Handling
+@cindex structured exception handling
+@cindex SEH
+@findex __try
+@findex __except
+@findex __finally
+@findex __leave
+
+On 64-bit Windows targets, GNU C supports the Microsoft statements for
+structured exception handling.  They handle the exceptions of the
+operating system, such as access violations and those raised by
+@code{RaiseException}, and are compatible with the Microsoft compiler:
+the runtime function @code{__C_specific_handler} dispatches them.  The
+keywords are not available in C++.
+
+@smallexample
+__try
+  @var{compound-statement}
+__except (@var{filter})
+  @var{compound-statement}
+
+__try
+  @var{compound-statement}
+__finally
+  @var{compound-statement}
+@end smallexample
+
+When an exception is raised in the body of a @code{__try} with
+@code{__except}, the filter, an expression of integer type, decides what
+happens.  If it is @code{EXCEPTION_EXECUTE_HANDLER} (1), the inner
+@code{__finally} blocks run, and then the @code{__except} block.  If it
+is @code{EXCEPTION_CONTINUE_SEARCH} (0), the search goes on to the
+enclosing handlers.  If it is @code{EXCEPTION_CONTINUE_EXECUTION} (@minus{}1),
+execution resumes where the exception was raised.  The filters run
+before any @code{__finally} block, from the innermost @code{__try} out
+to the one whose filter handles the exception.
+
+A @code{__finally} block runs whenever the body of its @code{__try} is
+left, whether normally, by a jump, or because an exception unwinds the
+stack past it.  @code{__leave} jumps to the end of the body of the
+innermost @code{__try}.
+
+@smallexample
+#include <windows.h>
+
+int
+read_int (volatile int *p)
+@{
+  int value = 0;
+  __try
+    @{
+      value = *p;
+    @}
+  __except (GetExceptionCode () == EXCEPTION_ACCESS_VIOLATION
+            ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+    @{
+      value = -1;
+    @}
+  return value;
+@}
+@end smallexample
+
+These intrinsics give access to the exception:
+
+@table @code
+@item _exception_code ()
+@itemx GetExceptionCode ()
+The exception code.  Valid in a filter and in an @code{__except} block.
+
+@item _exception_info ()
+@itemx GetExceptionInformation ()
+A pointer to the @code{EXCEPTION_POINTERS} of the exception.  Valid only
+in a filter.
+
+@item _abnormal_termination ()
+@itemx AbnormalTermination ()
+Zero if the body of the @code{__try} ended, by falling through or by
+@code{__leave}, and nonzero if an exception or a @code{return},
+@code{goto}, @code{break} or @code{continue} left it.  Valid only in a
+@code{__finally} block.
+@end table
+
+@noindent
+The second name of each is a macro of @file{<excpt.h>}.  The first can
+also be spelled with two leading underscores.
+
+The runtime calls the filters and the @code{__finally} blocks while the
+function that contains them is stopped, so GCC compiles them as nested
+functions (@pxref{Nested Functions}).  They cannot return from that
+function or jump out of themselves, and the local variables they use are
+accessed as volatile.  Any instruction of a function with @code{__try}
+that can trap can raise an exception, as with
+@option{-fnon-call-exceptions}, and the function is not inlined.  Its
+cleanups, such as those of the @code{cleanup} attribute, run as
+@code{__finally} blocks.
 
 @node Typeof
 @subsection Referring to a Type with @code{typeof}
