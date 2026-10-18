@@ -2006,6 +2006,12 @@ instantiate_decls (tree fndecl)
   if (decl && DECL_HAS_VALUE_EXPR_P (decl))
     instantiate_decl_rtl (DECL_RTL (DECL_VALUE_EXPR (decl)));
 
+  /* The SEH scope table locates the frame object of nested functions at
+     final, and it may be in neither the blocks nor the local decls.  */
+  decl = DECL_STRUCT_FUNCTION (fndecl)->nonlocal_frame;
+  if (decl && DECL_RTL_SET_P (decl))
+    instantiate_decl_rtl (DECL_RTL (decl));
+
   /* Now process all variables defined in the function or its subblocks.  */
   if (DECL_INITIAL (fndecl))
     instantiate_decls_1 (DECL_INITIAL (fndecl));
