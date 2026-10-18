@@ -5696,6 +5696,81 @@ c_parser_effect_try_statement (c_parser *parser)
   add_stmt (c_end_compound_stmt (loc, block, true));
 }
 
+/* Parse a _Let statement (GNU extension).
+
+   let-statement:
+     _Let ( let-binding-list ) compound-statement
+
+   let-binding-list:
+     let-binding
+     let-binding-list , let-binding
+
+   let-binding:
+     identifier = assignment-expression
+
+   Each identifier names a _Dynamic variable.  All the expressions are
+   evaluated before any of the bindings takes effect.  */
+
+static void
+c_parser_let_statement (c_parser *parser)
+{
+  location_t loc = c_parser_peek_token (parser)->location;
+  tree block = c_begin_compound_stmt (true);
+  tree bindings = NULL_TREE;
+
+  c_parser_consume_token (parser);
+  matching_parens parens;
+  if (parens.require_open (parser))
+    {
+      for (;;)
+	{
+	  if (c_parser_next_token_is_not (parser, CPP_NAME))
+	    {
+	      c_parser_error (parser, "expected identifier");
+	      break;
+	    }
+	  tree id = c_parser_peek_token (parser)->value;
+	  location_t id_loc = c_parser_peek_token (parser)->location;
+	  c_parser_consume_token (parser);
+	  tree var = lookup_name (id);
+	  if (!var)
+	    undeclared_variable (id_loc, id);
+	  else if (!VAR_P (var) || !C_DECL_DYNAMIC (var))
+	    {
+	      error_at (id_loc, "%qE is not a %<_Dynamic%> variable", id);
+	      var = NULL_TREE;
+	    }
+	  else if (purpose_member (var, bindings))
+	    {
+	      error_at (id_loc, "%qD bound more than once in %<_Let%>", var);
+	      var = NULL_TREE;
+	    }
+	  if (!c_parser_require (parser, CPP_EQ, "expected %<=%>"))
+	    break;
+	  location_t init_loc = c_parser_peek_token (parser)->location;
+	  struct c_expr init = c_parser_expr_no_commas (parser, NULL);
+	  init = convert_lvalue_to_rvalue (init_loc, init, true, true);
+	  if (var && init.value != error_mark_node)
+	    if (tree storage = c_build_dynamic_binding (id_loc, var, init_loc,
+							init.value,
+							init.original_type))
+	      bindings = tree_cons (var, storage, bindings);
+	  if (c_parser_next_token_is_not (parser, CPP_COMMA))
+	    break;
+	  c_parser_consume_token (parser);
+	}
+      parens.skip_until_found_close (parser);
+    }
+  if (c_parser_next_token_is_not (parser, CPP_OPEN_BRACE))
+    c_parser_error (parser, "expected %<{%>");
+  else
+    {
+      tree body = c_parser_compound_statement (parser);
+      c_finish_dynamic_let (loc, nreverse (bindings), body);
+    }
+  add_stmt (c_end_compound_stmt (loc, block, true));
+}
+
 /* Parse a _Resume statement without the trailing semicolon (GNU
    extension).
 
@@ -9853,6 +9928,9 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	case RID_EFFECT_TRY:
 	  c_parser_effect_try_statement (parser);
 	  break;
+	case RID_EFFECT_LET:
+	  c_parser_let_statement (parser);
+	  break;
 	case RID_EFFECT_RESUME:
 	  stmt = c_parser_effect_resume_statement (parser);
 	  goto expect_semicolon;
@@ -12170,6 +12248,19 @@ c_parser_unary_expression (c_parser *parser)
       c_parser_consume_token (parser);
       op = c_parser_cast_expression (parser, NULL);
       mark_exp_read (op.value);
+      {
+	/* The storage of a binding ends with its _Let.  */
+	tree base = op.value;
+	while (handled_component_p (base))
+	  base = TREE_OPERAND (base, 0);
+	if (tree var = c_dynamic_ref_var (base))
+	  {
+	    error_at (op_loc, "taking the address of %<_Dynamic%> variable "
+		      "%qD", var);
+	    op.set_error ();
+	    return op;
+	  }
+      }
       return parser_build_unary_op (op_loc, ADDR_EXPR, op);
     case CPP_MULT:
       {

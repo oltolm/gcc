@@ -12,6 +12,7 @@ extern _Dynamic int width;
 static _Dynamic const int depth = 2;
 _Dynamic struct { int a, b; } pair = { 1, 2 };
 _Dynamic int *ptr;
+static int target = 2;
 
 int
 main (void)
@@ -21,7 +22,7 @@ main (void)
   width = 60;
   width++;
   pair.a += 2;
-  ptr = &pair.b;
+  ptr = &target;
   if (width != 61 || pair.a != 3 || *ptr != 2)
     abort ();
   return 0;

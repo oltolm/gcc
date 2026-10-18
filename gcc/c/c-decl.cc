@@ -1077,6 +1077,7 @@ static GTY(()) tree effect_handler_type;
 static GTY(()) tree effect_find_decl;
 static GTY(()) tree effect_top_decl;
 static GTY(()) tree effect_set_top_decl;
+static GTY(()) tree dynamic_find_decl;
 
 /* The message a _Perform passes to the clause of a coroutine's handler,
    struct __gcc_effect_message, and the runtime functions for
@@ -1141,6 +1142,12 @@ init_effect_runtime (void)
     = build_effect_runtime_fn ("__gcc_effect_set_top",
 			       build_function_type_list (void_type_node, ptr,
 							 NULL_TREE));
+  dynamic_find_decl
+    = build_effect_runtime_fn ("__gcc_dynamic_find",
+			       build_function_type_list (ptr_type_node,
+							 ptr_type_node,
+							 NULL_TREE));
+  DECL_PURE_P (dynamic_find_decl) = 1;
 
   type = make_node (RECORD_TYPE);
   fields = build_decl (BUILTINS_LOCATION, FIELD_DECL, get_identifier ("op"),
@@ -1572,6 +1579,108 @@ c_finish_effect_try (location_t loc, tree rec, tree body, tree effect,
   add_stmt (build2_loc (loc, TRY_FINALLY_EXPR, void_type_node, body,
 			build_call_expr_loc (loc, effect_set_top_decl, 1,
 					     effect_handler_field (rec, 0))));
+}
+
+/* Return a reference to the innermost binding of the _Dynamic variable
+   VAR, which is VAR itself outside any binding.  */
+
+tree
+c_build_dynamic_ref (location_t loc, tree var)
+{
+  init_effect_runtime ();
+  TREE_ADDRESSABLE (var) = 1;
+  tree addr = fold_convert_loc (loc, ptr_type_node,
+				build_fold_addr_expr_loc (loc, var));
+  tree call = build_call_expr_loc (loc, dynamic_find_decl, 1, addr);
+  return build_indirect_ref (loc,
+			     fold_convert_loc (loc,
+					       c_build_pointer_type
+						 (TREE_TYPE (var)),
+					       call),
+			     RO_NULL);
+}
+
+/* Return the _Dynamic variable that REF, built by c_build_dynamic_ref,
+   refers to, or NULL_TREE if REF is not such a reference.  */
+
+tree
+c_dynamic_ref_var (tree ref)
+{
+  if (!dynamic_find_decl || TREE_CODE (ref) != INDIRECT_REF)
+    return NULL_TREE;
+  tree call = TREE_OPERAND (ref, 0);
+  STRIP_NOPS (call);
+  if (TREE_CODE (call) != CALL_EXPR
+      || get_callee_fndecl (call) != dynamic_find_decl)
+    return NULL_TREE;
+  tree addr = CALL_EXPR_ARG (call, 0);
+  STRIP_NOPS (addr);
+  return TREE_OPERAND (addr, 0);
+}
+
+/* Declare and return the storage of a binding of the _Dynamic variable
+   VAR by _Let, initialized to INIT, of original type ORIGTYPE, or return
+   NULL_TREE after an error.  */
+
+tree
+c_build_dynamic_binding (location_t loc, tree var, location_t init_loc,
+			 tree init, tree origtype)
+{
+  if (!COMPLETE_TYPE_P (TREE_TYPE (var)))
+    {
+      error_at (loc, "binding %qD of incomplete type", var);
+      return NULL_TREE;
+    }
+  tree decl = build_decl (loc, VAR_DECL, NULL_TREE, TREE_TYPE (var));
+  DECL_ARTIFICIAL (decl) = 1;
+  DECL_IGNORED_P (decl) = 1;
+  DECL_CONTEXT (decl) = current_function_decl;
+  TREE_ADDRESSABLE (decl) = 1;
+  store_init_value (init_loc, decl, init, origtype);
+  pushdecl (decl);
+  add_stmt (build_stmt (loc, DECL_EXPR, decl));
+  return decl;
+}
+
+/* Finish a _Let statement whose body is BODY and which binds the
+   _Dynamic variables in the TREE_PURPOSEs of BINDINGS to the storage in
+   their TREE_VALUEs.  The statements are added to the current block: a
+   record for each binding is pushed on the chain for the duration of
+   BODY.  */
+
+void
+c_finish_dynamic_let (location_t loc, tree bindings, tree body)
+{
+  init_effect_runtime ();
+  tree first = NULL_TREE;
+  for (tree b = bindings; b; b = TREE_CHAIN (b))
+    {
+      tree rec = build_effect_temp (loc, effect_handler_type, NULL_TREE);
+      TREE_ADDRESSABLE (rec) = 1;
+      add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			    effect_handler_field (rec, 0),
+			    build_call_expr_loc (loc, effect_top_decl, 0)));
+      add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			    effect_handler_field (rec, 1),
+			    build_effect_address (loc, TREE_PURPOSE (b))));
+      add_stmt (build2_loc (loc, MODIFY_EXPR, void_type_node,
+			    effect_handler_field (rec, 2),
+			    fold_convert_loc (loc, ptr_type_node,
+					      build_fold_addr_expr_loc
+						(loc, TREE_VALUE (b)))));
+      add_stmt (build_call_expr_loc (loc, effect_set_top_decl, 1,
+				     build_fold_addr_expr_loc (loc, rec)));
+      if (!first)
+	first = rec;
+    }
+  if (!first)
+    {
+      add_stmt (body);
+      return;
+    }
+  add_stmt (build2_loc (loc, TRY_FINALLY_EXPR, void_type_node, body,
+			build_call_expr_loc (loc, effect_set_top_decl, 1,
+					     effect_handler_field (first, 0))));
 }
 
 /* The body of a _Try that runs as a coroutine, while it is parsed.  The
