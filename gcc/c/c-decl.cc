@@ -1254,6 +1254,11 @@ build_effect_address (location_t loc, tree effect)
 			   build_fold_addr_expr_loc (loc, effect));
 }
 
+/* The function of the filter or __finally block being parsed, or
+   NULL_TREE.  */
+
+tree c_seh_funclet;
+
 /* The types _Handler (EFFECT), indexed by EFFECT, and the effects,
    indexed by the types.  */
 static GTY(()) hash_map<tree, tree> *effect_handler_types;
@@ -5253,6 +5258,14 @@ lookup_label_for_goto (location_t loc, tree name)
 	{
 	  error_at (loc, "jump out of the body of a %<_Try%> that runs as a "
 		    "coroutine");
+	  return NULL_TREE;
+	}
+      /* The runtime calls a filter or a __finally block during dispatch
+	 or unwinding, which a nonlocal goto would abandon.  */
+      if (current_function_decl == c_seh_funclet)
+	{
+	  error_at (loc, "jump out of a %<__finally%> block or filter "
+		    "expression");
 	  return NULL_TREE;
 	}
       return label;

@@ -154,6 +154,9 @@ enum rid
   RID_EFFECT_RESUME, RID_EFFECT_HANDLER, RID_EFFECT_CONTINUATION,
   RID_EFFECT_DISCARD,
 
+  /* Microsoft structured exception handling */
+  RID_SEH_TRY, RID_SEH_EXCEPT, RID_SEH_FINALLY, RID_SEH_LEAVE,
+
   /* Too many ways of getting the name of a function as a string */
   RID_FUNCTION_NAME, RID_PRETTY_FUNCTION_NAME, RID_C99_FUNCTION_NAME,
 
@@ -463,6 +466,7 @@ extern machine_mode c_default_pointer_mode;
 #define D_CXX_MODULES	0x20000  /* In C++, only with modules.  */
 #define D_CXX26         0x40000	/* In C++, C++26 only.  */
 #define D_EFFECTS	0x80000	/* In C, only with -feffects.  */
+#define D_SEH		0x100000 /* In C, only for SEH targets.  */
 
 #define D_CXX_CONCEPTS_FLAGS D_CXXONLY | D_CXX_CONCEPTS
 #define D_CXX_CHAR8_T_FLAGS D_CXXONLY | D_CXX_CHAR8_T
@@ -1602,6 +1606,14 @@ extern tree build_userdef_literal (tree suffix_id, tree value,
 /* True if the body of a switch stmt contains no BREAK_STMTs.  */
 #define SWITCH_STMT_NO_BREAK_P(NODE) \
   TREE_LANG_FLAG_2 (SWITCH_STMT_CHECK (NODE))
+
+/* SEH_TRY_EXCEPT and SEH_TRY_FINALLY accessors.  */
+#define SEH_TRY_BODY(NODE) \
+  TREE_OPERAND (TREE_RANGE_CHECK (NODE, SEH_TRY_EXCEPT, SEH_TRY_FINALLY), 0)
+#define SEH_EXCEPT_FILTER(NODE)	TREE_OPERAND (SEH_TRY_EXCEPT_CHECK (NODE), 1)
+#define SEH_EXCEPT_HANDLER(NODE) TREE_OPERAND (SEH_TRY_EXCEPT_CHECK (NODE), 2)
+#define SEH_EXCEPT_CODE(NODE)	TREE_OPERAND (SEH_TRY_EXCEPT_CHECK (NODE), 3)
+#define SEH_FINALLY_FN(NODE)	TREE_OPERAND (SEH_TRY_FINALLY_CHECK (NODE), 1)
 
 
 /* Nonzero if NODE is the target for genericization of 'break' stmts.  */

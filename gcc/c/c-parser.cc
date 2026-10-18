@@ -76,6 +76,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "toplev.h"
 #include "asan.h"
 #include "c-family/c-ubsan.h"
+#include "common/common-target.h"
 #include "gcc-urlifier.h"
 
 /* We need to walk over decls with incomplete struct/union/enum types
@@ -107,6 +108,11 @@ set_c_expr_source_range (c_expr *expr,
 }
 
 
+/* Whether the target uses SEH, and so supports the Microsoft __try
+   statement.  */
+
+static bool c_parser_seh_enabled;
+
 /* Initialization routine for this file.  */
 
 void
@@ -139,6 +145,10 @@ c_parse_init (void)
     mask |= D_OBJC | D_CXX_OBJC;
   if (!flag_effects)
     mask |= D_EFFECTS;
+  c_parser_seh_enabled
+    = targetm_common.except_unwind_info (&global_options) == UI_SEH;
+  if (!c_parser_seh_enabled)
+    mask |= D_SEH;
 
   ridpointers = ggc_cleared_vec_alloc<tree> ((int) RID_MAX);
   for (i = 0; i < num_c_common_reswords; i++)
@@ -301,6 +311,19 @@ struct GTY(()) c_parser {
      whose identifier has not been classified in the scope it is parsed
      in; otherwise NULL.  */
   c_token * GTY((skip)) replay_unclassified;
+
+  /* The label at the end of the innermost __try block, or NULL_TREE.  */
+  tree seh_leave;
+
+  /* The function of the filter being parsed, or NULL_TREE.  */
+  tree seh_filter;
+
+  /* The function of the __finally block being parsed, or NULL_TREE.  */
+  tree seh_finally;
+
+  /* The variable holding the exception code in the __except block being
+     parsed, or NULL_TREE.  */
+  tree seh_code;
 };
 
 /* Holds data needed to restore the token stream to its previous state
@@ -1904,6 +1927,10 @@ static struct c_typespec c_parser_effect_handler_specifier (c_parser *);
 static struct c_typespec c_parser_effect_continuation_specifier (c_parser *);
 static bool c_parser_save_compound_statement (c_parser *, auto_vec<c_token> &);
 static void c_parser_effect_try_statement (c_parser *);
+static void c_parser_seh_try_statement (c_parser *);
+static tree c_parser_seh_leave_statement (c_parser *);
+static bool c_parser_seh_intrinsic_p (c_parser *);
+static struct c_expr c_parser_seh_intrinsic (c_parser *);
 static tree c_parser_effect_resume_statement (c_parser *);
 static struct c_typespec c_parser_typeof_specifier (c_parser *);
 static tree c_parser_alignas_specifier (c_parser *);
@@ -5782,6 +5809,316 @@ c_parser_effect_discard_statement (c_parser *parser)
   return c_build_effect_discard (loc, expr.value);
 }
 
+/* Start defining a filter or a __finally block (Microsoft extension) as
+   a nested function returning RTYPE, called by the runtime with an
+   argument of type PTYPE and the establisher frame.  The name, made from
+   PREFIX, is not an identifier, so that it cannot clash.  Return the
+   function, or NULL_TREE after an error.  */
+
+static tree
+c_parser_seh_start_funclet (location_t loc, const char *prefix, tree rtype,
+			    tree ptype)
+{
+  static unsigned int counter;
+  char name[32];
+  snprintf (name, sizeof name, "%s.%u", prefix, counter++);
+
+  struct c_arg_info *args = build_arg_info ();
+  tree parm = build_decl (loc, PARM_DECL, get_identifier ("__seh_arg"), ptype);
+  DECL_ARG_TYPE (parm) = ptype;
+  DECL_ARTIFICIAL (parm) = 1;
+  TREE_USED (parm) = 1;
+  tree frame = build_decl (loc, PARM_DECL, get_identifier ("__seh_frame"),
+			   ptr_type_node);
+  DECL_ARG_TYPE (frame) = ptr_type_node;
+  DECL_ARTIFICIAL (frame) = 1;
+  TREE_USED (frame) = 1;
+  DECL_CHAIN (parm) = frame;
+  args->parms = parm;
+  args->types = tree_cons (NULL_TREE, ptype,
+			   tree_cons (NULL_TREE, ptr_type_node,
+				      void_list_node));
+  struct c_declarator *declarator
+    = build_function_declarator (args,
+				 build_id_declarator (get_identifier (name)));
+  struct c_declspecs *specs = build_null_declspecs ();
+  struct c_typespec ts;
+  ts.kind = ctsk_typeof;
+  ts.spec = rtype;
+  ts.expr = NULL_TREE;
+  ts.expr_const_operands = true;
+  ts.has_enum_type_specifier = false;
+  declspecs_add_type (loc, specs, ts);
+  finish_declspecs (specs);
+
+  c_push_function_context ();
+  if (!start_function (specs, declarator, NULL_TREE))
+    {
+      c_pop_function_context ();
+      return NULL_TREE;
+    }
+  store_parm_decls ();
+  DECL_STRUCT_FUNCTION (current_function_decl)->function_start_locus = loc;
+  return current_function_decl;
+}
+
+/* Finish the filter or __finally block FN started by
+   c_parser_seh_start_funclet, whose body is BODY, ending at ENDLOC.  */
+
+static void
+c_parser_seh_finish_funclet (tree fn, tree body, location_t endloc)
+{
+  add_stmt (body);
+  /* As for other nested functions, assume a static chain until
+     lower_nested_functions computes whether one is needed.  */
+  DECL_STATIC_CHAIN (fn) = 1;
+  finish_function (endloc);
+  c_pop_function_context ();
+  add_stmt (build_stmt (DECL_SOURCE_LOCATION (fn), DECL_EXPR, fn));
+}
+
+/* Parse a __try statement (Microsoft extension).
+
+   seh-try-statement:
+     __try compound-statement __except ( expression ) compound-statement
+     __try compound-statement __finally compound-statement
+
+   The expression of __except is the filter, which decides whether the
+   compound statement after it handles an exception raised in the body.
+   It and the __finally block are called by the runtime, so they are
+   nested functions.  */
+
+static void
+c_parser_seh_try_statement (c_parser *parser)
+{
+  location_t loc = c_parser_peek_token (parser)->location;
+  tree block = c_begin_compound_stmt (true);
+
+  c_parser_consume_token (parser);
+  tree saved_leave = parser->seh_leave;
+  parser->seh_leave = create_artificial_label (loc);
+  tree body = c_begin_compound_stmt (true);
+  add_stmt (c_parser_compound_statement (parser));
+  add_stmt (build1_loc (loc, LABEL_EXPR, void_type_node, parser->seh_leave));
+  body = c_end_compound_stmt (loc, body, true);
+  parser->seh_leave = saved_leave;
+
+  tree saved_filter = parser->seh_filter;
+  tree saved_finally = parser->seh_finally;
+  tree saved_funclet = c_seh_funclet;
+  if (c_parser_next_token_is_keyword (parser, RID_SEH_EXCEPT))
+    {
+      location_t eloc = c_parser_peek_token (parser)->location;
+      c_parser_consume_token (parser);
+      matching_parens parens;
+      tree filter = NULL_TREE;
+      if (parens.require_open (parser))
+	{
+	  filter = c_parser_seh_start_funclet (eloc, "__seh_filter",
+					       long_integer_type_node,
+					       ptr_type_node);
+	  if (filter)
+	    {
+	      parser->seh_filter = filter;
+	      parser->seh_finally = NULL_TREE;
+	      c_seh_funclet = filter;
+	      tree stmt = c_begin_compound_stmt (true);
+	      location_t xloc = c_parser_peek_token (parser)->location;
+	      struct c_expr expr = c_parser_expression_conv (parser);
+	      if (expr.value != error_mark_node
+		  && !INTEGRAL_TYPE_P (TREE_TYPE (expr.value)))
+		error_at (xloc, "filter expression must have integer type");
+	      else
+		c_finish_return (xloc, expr.value, expr.original_type);
+	      stmt = c_end_compound_stmt (xloc, stmt, true);
+	      parser->seh_filter = saved_filter;
+	      parser->seh_finally = saved_finally;
+	      c_seh_funclet = saved_funclet;
+	      c_parser_seh_finish_funclet (filter, stmt,
+					   c_parser_peek_token (parser)
+					     ->location);
+	    }
+	  else
+	    c_parser_expression (parser);
+	  parens.skip_until_found_close (parser);
+	}
+      tree code = build_decl (eloc, VAR_DECL, NULL_TREE,
+			      long_unsigned_type_node);
+      DECL_ARTIFICIAL (code) = 1;
+      DECL_CONTEXT (code) = current_function_decl;
+      pushdecl (code);
+      tree saved_code = parser->seh_code;
+      parser->seh_code = code;
+      tree handler = c_parser_compound_statement (parser);
+      parser->seh_code = saved_code;
+      if (filter)
+	{
+	  tree stmt = build4_loc (loc, SEH_TRY_EXCEPT, void_type_node, body,
+				  filter, handler, code);
+	  TREE_SIDE_EFFECTS (stmt) = 1;
+	  add_stmt (stmt);
+	}
+      else
+	add_stmt (body);
+    }
+  else if (c_parser_next_token_is_keyword (parser, RID_SEH_FINALLY))
+    {
+      location_t floc = c_parser_peek_token (parser)->location;
+      c_parser_consume_token (parser);
+      tree fn = c_parser_seh_start_funclet (floc, "__seh_finally",
+					    void_type_node,
+					    unsigned_char_type_node);
+      if (fn)
+	{
+	  parser->seh_filter = NULL_TREE;
+	  parser->seh_finally = fn;
+	  c_seh_funclet = fn;
+	  location_t endloc = floc;
+	  tree fbody = c_parser_compound_statement (parser, &endloc);
+	  parser->seh_filter = saved_filter;
+	  parser->seh_finally = saved_finally;
+	  c_seh_funclet = saved_funclet;
+	  c_parser_seh_finish_funclet (fn, fbody, endloc);
+	  tree stmt = build2_loc (loc, SEH_TRY_FINALLY, void_type_node, body,
+				  fn);
+	  TREE_SIDE_EFFECTS (stmt) = 1;
+	  add_stmt (stmt);
+	}
+      else
+	{
+	  c_parser_compound_statement (parser);
+	  add_stmt (body);
+	}
+    }
+  else
+    {
+      c_parser_error (parser, "expected %<__except%> or %<__finally%>");
+      add_stmt (body);
+    }
+  add_stmt (c_end_compound_stmt (loc, block, true));
+}
+
+/* Parse a __leave statement without the trailing semicolon (Microsoft
+   extension), which leaves the innermost enclosing __try block.  */
+
+static tree
+c_parser_seh_leave_statement (c_parser *parser)
+{
+  location_t loc = c_parser_peek_token (parser)->location;
+  c_parser_consume_token (parser);
+  if (!parser->seh_leave
+      || DECL_CONTEXT (parser->seh_leave) != current_function_decl)
+    {
+      error_at (loc, "%<__leave%> not within a %<__try%> block");
+      return NULL_TREE;
+    }
+  TREE_USED (parser->seh_leave) = 1;
+  return add_stmt (build1_loc (loc, GOTO_EXPR, void_type_node,
+			       parser->seh_leave));
+}
+
+/* Return true if the next tokens are a call without arguments of one of
+   the exception intrinsics _exception_code, _exception_info and
+   _abnormal_termination (Microsoft extension), with one or two leading
+   underscores.  */
+
+static bool
+c_parser_seh_intrinsic_p (c_parser *parser)
+{
+  if (!c_parser_seh_enabled
+      || c_parser_peek_token (parser)->type != CPP_NAME)
+    return false;
+  const char *name = IDENTIFIER_POINTER (c_parser_peek_token (parser)->value);
+  if (name[0] == '_' && name[1] == '_')
+    name++;
+  return ((!strcmp (name, "_exception_code")
+	   || !strcmp (name, "_exception_info")
+	   || !strcmp (name, "_abnormal_termination"))
+	  && c_parser_peek_2nd_token (parser)->type == CPP_OPEN_PAREN
+	  && c_parser_peek_nth_token (parser, 3)->type == CPP_CLOSE_PAREN);
+}
+
+/* Parse a call of an exception intrinsic, as recognized by
+   c_parser_seh_intrinsic_p.  In a filter, the exception comes from the
+   EXCEPTION_POINTERS argument of its function; in an __except block, the
+   code is the one SEH_EXCEPT_CODE holds; in a __finally block, the
+   abnormal termination flag is the argument of its function.  */
+
+static struct c_expr
+c_parser_seh_intrinsic (c_parser *parser)
+{
+  struct c_expr expr;
+  c_token *tok = c_parser_peek_token (parser);
+  location_t loc = tok->location;
+  tree id = tok->value;
+  const char *name = IDENTIFIER_POINTER (id);
+  if (name[0] == '_' && name[1] == '_')
+    name++;
+  c_parser_consume_token (parser);
+  c_parser_consume_token (parser);
+  location_t end = c_parser_peek_token (parser)->get_finish ();
+  c_parser_consume_token (parser);
+
+  bool in_filter = (parser->seh_filter
+		    && parser->seh_filter == current_function_decl);
+  tree value = NULL_TREE;
+  if (!strcmp (name, "_exception_code"))
+    {
+      if (in_filter)
+	{
+	  /* ExceptionRecord is the first member of EXCEPTION_POINTERS, and
+	     ExceptionCode the first of EXCEPTION_RECORD.  */
+	  tree ptrs = DECL_ARGUMENTS (current_function_decl);
+	  tree rec = build_indirect_ref
+		       (loc, fold_convert_loc
+			       (loc, build_pointer_type (ptr_type_node), ptrs),
+			RO_NULL);
+	  value = build_indirect_ref
+		    (loc, fold_convert_loc
+			    (loc, build_pointer_type (long_unsigned_type_node),
+			     rec),
+		     RO_NULL);
+	}
+      else if (parser->seh_code
+	       && DECL_CONTEXT (parser->seh_code) == current_function_decl)
+	{
+	  TREE_USED (parser->seh_code) = 1;
+	  value = parser->seh_code;
+	}
+      else
+	error_at (loc, "%qE is only valid in a filter or an %<__except%> "
+		  "block", id);
+    }
+  else if (!strcmp (name, "_exception_info"))
+    {
+      if (in_filter)
+	value = DECL_ARGUMENTS (current_function_decl);
+      else
+	error_at (loc, "%qE is only valid in a filter", id);
+    }
+  else
+    {
+      if (parser->seh_finally
+	  && parser->seh_finally == current_function_decl)
+	value = fold_convert_loc (loc, integer_type_node,
+				  DECL_ARGUMENTS (current_function_decl));
+      else
+	error_at (loc, "%qE is only valid in a %<__finally%> block", id);
+    }
+
+  if (value)
+    {
+      expr.value = value;
+      expr.original_code = ERROR_MARK;
+      expr.original_type = NULL;
+      expr.m_decimal = 0;
+      set_c_expr_source_range (&expr, loc, end);
+    }
+  else
+    expr.set_error ();
+  return expr;
+}
+
 /* Parse a typeof specifier (a GNU extension adopted in C23).
 
    typeof-specifier:
@@ -9463,6 +9800,19 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 		c_parser_expression (parser);
 	      goto expect_semicolon;
 	    }
+	  if ((parser->seh_filter
+	       && parser->seh_filter == current_function_decl)
+	      || (parser->seh_finally
+		  && parser->seh_finally == current_function_decl))
+	    {
+	      if (parser->seh_filter == current_function_decl)
+		error_at (loc, "%<return%> in a filter expression");
+	      else
+		error_at (loc, "%<return%> in a %<__finally%> block");
+	      if (c_parser_next_token_is_not (parser, CPP_SEMICOLON))
+		c_parser_expression (parser);
+	      goto expect_semicolon;
+	    }
 	  if (c_parser_next_token_is (parser, CPP_SEMICOLON))
 	    {
 	      stmt = c_finish_return (loc, NULL_TREE, NULL_TREE,
@@ -9502,6 +9852,12 @@ c_parser_statement_after_labels (c_parser *parser, bool *if_p,
 	  goto expect_semicolon;
 	case RID_EFFECT_DISCARD:
 	  stmt = c_parser_effect_discard_statement (parser);
+	  goto expect_semicolon;
+	case RID_SEH_TRY:
+	  c_parser_seh_try_statement (parser);
+	  break;
+	case RID_SEH_LEAVE:
+	  stmt = c_parser_seh_leave_statement (parser);
 	  goto expect_semicolon;
 	case RID_AT_THROW:
 	  gcc_assert (c_dialect_objc ());
@@ -12913,6 +13269,11 @@ c_parser_postfix_expression (c_parser *parser)
       c_parser_consume_token (parser);
       break;
     case CPP_NAME:
+      if (c_parser_seh_intrinsic_p (parser))
+	{
+	  expr = c_parser_seh_intrinsic (parser);
+	  break;
+	}
       switch (c_parser_peek_token (parser)->id_kind)
 	{
 	case C_ID_ID:

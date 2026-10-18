@@ -502,6 +502,10 @@ const struct c_common_resword c_common_reswords[] =
   { "_Handler",		RID_EFFECT_HANDLER, D_CONLY | D_EFFECTS },
   { "_Continuation",	RID_EFFECT_CONTINUATION, D_CONLY | D_EFFECTS },
   { "_Discard",		RID_EFFECT_DISCARD, D_CONLY | D_EFFECTS },
+  { "__try",		RID_SEH_TRY,	D_CONLY | D_SEH },
+  { "__except",		RID_SEH_EXCEPT,	D_CONLY | D_SEH },
+  { "__finally",	RID_SEH_FINALLY, D_CONLY | D_SEH },
+  { "__leave",		RID_SEH_LEAVE,	D_CONLY | D_SEH },
   { "__typeof",		RID_TYPEOF,	0 },
   { "__typeof__",	RID_TYPEOF,	0 },
   { "__typeof_unqual",	RID_TYPEOF_UNQUAL, D_CONLY },
@@ -9477,6 +9481,8 @@ c_common_init_ts (void)
   MARK_TS_EXP (FOR_STMT);
   MARK_TS_EXP (SWITCH_STMT);
   MARK_TS_EXP (WHILE_STMT);
+  MARK_TS_EXP (SEH_TRY_EXCEPT);
+  MARK_TS_EXP (SEH_TRY_FINALLY);
 
   MARK_TS_DECL_COMMON (CONCEPT_DECL);
 }
