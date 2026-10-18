@@ -14456,7 +14456,9 @@ the body are not seen outside it; to pass results out, use pointers or
 the clauses.  A @code{goto} out of the body, or out of a clause without
 a continuation, which runs on the stack of the body, destroys the body
 and jumps to its label; so does @code{return} in the body, which returns
-from the function containing the @code{_Try}.
+from the function containing the @code{_Try}.  Doing so after that
+function has returned, in a body resumed through a stored continuation,
+is a run-time error.
 
 A continuation has the type @code{_Continuation (@var{effect}.@var{op})}
 and can be stored.  A @code{_Try} whose body is only
