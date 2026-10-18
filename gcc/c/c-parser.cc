@@ -291,6 +291,9 @@ struct GTY(()) c_parser {
      parsed set when they resume it, or NULL_TREE if it has none.  */
   tree effect_action;
 
+  /* The variable that holds the coroutine of that _Try.  */
+  tree effect_coro;
+
   /* The function of the coroutine body being parsed, or NULL_TREE.  */
   tree effect_body;
 
@@ -709,6 +712,7 @@ c_keyword_starts_typename (enum rid keyword)
     case RID_TYPEOF:
     case RID_TYPEOF_UNQUAL:
     case RID_EFFECT_HANDLER:
+    case RID_EFFECT_CONTINUATION:
     case RID_CONST:
     case RID_ATOMIC:
     case RID_VOLATILE:
@@ -916,6 +920,7 @@ c_token_starts_declspecs (c_token *token)
 	case RID_TYPEOF:
 	case RID_TYPEOF_UNQUAL:
 	case RID_EFFECT_HANDLER:
+	case RID_EFFECT_CONTINUATION:
 	case RID_CONST:
 	case RID_VOLATILE:
 	case RID_RESTRICT:
@@ -1896,6 +1901,7 @@ static tree c_parser_struct_declaration (c_parser *, tree *);
 static void c_parser_effect_declaration (c_parser *);
 static tree c_parser_effect_operation_name (c_parser *, tree *, tree *);
 static struct c_typespec c_parser_effect_handler_specifier (c_parser *);
+static struct c_typespec c_parser_effect_continuation_specifier (c_parser *);
 static void c_parser_effect_try_statement (c_parser *);
 static tree c_parser_effect_resume_statement (c_parser *);
 static struct c_typespec c_parser_typeof_specifier (c_parser *);
@@ -4003,6 +4009,14 @@ c_parser_declspecs (c_parser *parser, struct c_declspecs *specs,
 	  t = c_parser_effect_handler_specifier (parser);
 	  declspecs_add_type (loc, specs, t);
 	  break;
+	case RID_EFFECT_CONTINUATION:
+	  if (!typespec_ok || seen_type)
+	    goto out;
+	  attrs_ok = true;
+	  seen_type = true;
+	  t = c_parser_effect_continuation_specifier (parser);
+	  declspecs_add_type (loc, specs, t);
+	  break;
 	case RID_BITINT:
 	  if (!typespec_ok)
 	    goto out;
@@ -5017,6 +5031,33 @@ c_parser_effect_handler_specifier (c_parser *parser)
   return ret;
 }
 
+/* Parse a continuation type specifier (GNU extension).
+
+   continuation-type-specifier:
+     _Continuation ( effect-operation-name )  */
+
+static struct c_typespec
+c_parser_effect_continuation_specifier (c_parser *parser)
+{
+  struct c_typespec ret;
+  ret.kind = ctsk_typeof;
+  ret.spec = error_mark_node;
+  ret.expr = NULL_TREE;
+  ret.expr_const_operands = true;
+  ret.has_enum_type_specifier = false;
+
+  c_parser_consume_token (parser);
+  matching_parens parens;
+  if (!parens.require_open (parser))
+    return ret;
+  tree effect = NULL_TREE;
+  tree field = c_parser_effect_operation_name (parser, &effect, NULL);
+  parens.skip_until_found_close (parser);
+  if (field)
+    ret.spec = c_build_effect_continuation_type (effect, field);
+  return ret;
+}
+
 /* Parse the name of an effect operation (GNU extension), set *EFFECT to
    the effect and return the field of the operation, or NULL_TREE after
    an error.  If HANDLER is not NULL, the operation may instead be named
@@ -5160,10 +5201,10 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field,
   declspecs_add_type (loc, specs, ts);
   finish_declspecs (specs);
 
-  /* The variable the clause sets when it resumes the continuation is
-     declared in the block of the _Try.  */
+  /* The variables of the loop that runs the clause are declared in the
+     block of the _Try.  */
   if (kname && !parser->effect_action)
-    parser->effect_action = c_build_effect_action (loc);
+    c_build_effect_state (loc, &parser->effect_action, &parser->effect_coro);
 
   c_push_function_context ();
   if (!start_function (specs, declarator, NULL_TREE))
@@ -5185,11 +5226,9 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field,
   tree k = NULL_TREE;
   if (kname)
     {
-      k = build_decl (kloc, VAR_DECL, kname, ptr_type_node);
-      DECL_CONTEXT (k) = fn;
-      C_DECL_CONTINUATION (k) = 1;
+      k = c_declare_effect_continuation (kloc, kname, *effect, *field,
+					 parser->effect_coro);
       TREE_USED (k) = 1;
-      pushdecl (k);
     }
 
   tree saved_clause = parser->effect_clause;
@@ -5205,15 +5244,9 @@ c_parser_effect_handle_clause (c_parser *parser, tree *effect, tree *field,
 			 ? BIND_EXPR_BODY (body) : body);
   if (body != error_mark_node
       && parser->effect_resume != error_mark_node
-      && (!parser->effect_resume || last != parser->effect_resume))
-    {
-      if (k)
-	sorry_at (loc, "%<_Handle%> clause with a continuation that does "
-		  "not end in %<_Resume%> or %<_Discard%>");
-      else
-	sorry_at (loc, "%<_Handle%> clause that does not end in "
-		  "%<_Resume%>");
-    }
+      && (!parser->effect_resume || last != parser->effect_resume)
+      && !k)
+    sorry_at (loc, "%<_Handle%> clause that does not end in %<_Resume%>");
   parser->effect_clause = saved_clause;
   parser->effect_resume = saved_resume;
   parser->effect_continuation = saved_continuation;
@@ -5372,6 +5405,108 @@ c_parser_effect_fiber_body (c_parser *parser, location_t loc, tree effect,
   return fn;
 }
 
+/* Return true if TOKENS, saved by c_parser_save_compound_statement, are
+   { _Resume ( ... ) ; }: the body of a _Try that resumes a stored
+   continuation.  */
+
+static bool
+c_parser_effect_rehandle_p (auto_vec<c_token> &tokens)
+{
+  unsigned n = tokens.length () - 2;
+  if (n < 6
+      || tokens[0].type != CPP_OPEN_BRACE
+      || tokens[1].type != CPP_KEYWORD
+      || tokens[1].keyword != RID_EFFECT_RESUME
+      || tokens[2].type != CPP_OPEN_PAREN)
+    return false;
+  unsigned depth = 0, i;
+  for (i = 2; i < n; i++)
+    if (tokens[i].type == CPP_OPEN_PAREN)
+      depth++;
+    else if (tokens[i].type == CPP_CLOSE_PAREN && --depth == 0)
+      break;
+  return (i + 3 == n
+	  && tokens[i + 1].type == CPP_SEMICOLON
+	  && tokens[i + 2].type == CPP_CLOSE_BRACE);
+}
+
+/* Parse the body _Resume ( assignment-expression [, expression] ), saved
+   in TOKENS, of a _Try at LOC that resumes a stored continuation, and
+   finish the _Try with the clauses for EFFECT and the variables ACTION
+   and CORO, as for c_finish_effect_rehandle.  */
+
+static void
+c_parser_effect_rehandle (c_parser *parser, location_t loc,
+			  auto_vec<c_token> &tokens, tree effect, tree clauses,
+			  tree kclauses, tree action, tree coro)
+{
+  c_token *saved_tokens = parser->tokens;
+  unsigned int saved_avail = parser->tokens_avail;
+  c_token *saved_unclassified = parser->replay_unclassified;
+  parser->tokens = tokens.address ();
+  parser->tokens_avail = tokens.length ();
+  parser->replay_unclassified = parser->tokens;
+
+  c_parser_consume_token (parser);
+  location_t rloc = c_parser_peek_token (parser)->location;
+  c_parser_consume_token (parser);
+  matching_parens parens;
+  parens.consume_open (parser);
+  location_t kloc = c_parser_peek_token (parser)->location;
+  struct c_expr k = c_parser_expr_no_commas (parser, NULL);
+  k = convert_lvalue_to_rvalue (kloc, k, true, true);
+  mark_exp_read (k.value);
+  tree value = NULL_TREE, origtype = NULL_TREE;
+  location_t vloc = UNKNOWN_LOCATION;
+  if (c_parser_next_token_is (parser, CPP_COMMA))
+    {
+      c_parser_consume_token (parser);
+      vloc = c_parser_peek_token (parser)->location;
+      struct c_expr v = c_parser_expression_conv (parser);
+      value = v.value;
+      origtype = v.original_type;
+    }
+  parens.skip_until_found_close (parser);
+  c_parser_require (parser, CPP_SEMICOLON, "expected %<;%>");
+  c_parser_require (parser, CPP_CLOSE_BRACE, "expected %<}%>");
+
+  parser->tokens = saved_tokens;
+  parser->tokens_avail = saved_avail;
+  parser->replay_unclassified = saved_unclassified;
+
+  tree ceffect, field;
+  if (k.value == error_mark_node || value == error_mark_node)
+    return;
+  if (!c_effect_continuation_type_p (TREE_TYPE (k.value), &ceffect, &field))
+    {
+      error_at (kloc, "operand of %<_Resume%> is not a continuation");
+      return;
+    }
+  if (!effect)
+    return;
+  if (ceffect != effect)
+    {
+      error_at (rloc, "%<_Try%> does not handle effect %qD of the "
+		"continuation", ceffect);
+      return;
+    }
+  tree rtype = TREE_TYPE (TREE_TYPE (TREE_TYPE (field)));
+  if (VOID_TYPE_P (rtype) && value)
+    {
+      error_at (vloc, "%<_Resume%> with a value for operation %qD, which "
+		"has no result", field);
+      return;
+    }
+  if (!VOID_TYPE_P (rtype) && !value)
+    {
+      error_at (rloc, "%<_Resume%> without a value for operation %qD",
+		field);
+      return;
+    }
+  c_finish_effect_rehandle (loc, k.value, value, vloc, origtype, effect,
+			    clauses, kclauses, action, coro);
+}
+
 /* Parse a _Try statement (GNU extension).
 
    effect-try-statement:
@@ -5387,7 +5522,9 @@ c_parser_effect_fiber_body (c_parser *parser, location_t loc, tree effect,
    A handler declaration names the effect and declares the handler,
    which is in scope in the compound statement.  If a clause takes a
    continuation, the compound statement runs as a coroutine, so it is
-   parsed after the clauses.  */
+   parsed after the clauses.  A compound statement that is just
+   _Resume ( continuation [, value] ) ; continues the coroutine of that
+   continuation under the clauses.  */
 
 static void
 c_parser_effect_try_statement (c_parser *parser)
@@ -5424,9 +5561,15 @@ c_parser_effect_try_statement (c_parser *parser)
       add_stmt (c_end_compound_stmt (loc, block, true));
       return;
     }
+  bool rehandle = c_parser_effect_rehandle_p (tokens);
+  if (rehandle && named)
+    error_at (loc, "handler name in a %<_Try%> that resumes a "
+	      "continuation");
 
   tree saved_action = parser->effect_action;
+  tree saved_coro = parser->effect_coro;
   parser->effect_action = NULL_TREE;
+  parser->effect_coro = NULL_TREE;
   if (!c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
     c_parser_error (parser, "expected %<_Handle%>");
   while (c_parser_next_token_is_keyword (parser, RID_EFFECT_HANDLE))
@@ -5456,10 +5599,17 @@ c_parser_effect_try_statement (c_parser *parser)
       else
 	clauses = tree_cons (field, fn, clauses);
     }
+  if (rehandle && !parser->effect_action)
+    c_build_effect_state (loc, &parser->effect_action, &parser->effect_coro);
   tree action = parser->effect_action;
+  tree coro = parser->effect_coro;
   parser->effect_action = saved_action;
+  parser->effect_coro = saved_coro;
 
-  if (kclauses)
+  if (rehandle)
+    c_parser_effect_rehandle (parser, loc, tokens, effect, clauses, kclauses,
+			      action, coro);
+  else if (kclauses)
     {
       tree cap_type, captures;
       tree body_fn = c_parser_effect_fiber_body (parser, loc, effect,
@@ -5468,7 +5618,7 @@ c_parser_effect_try_statement (c_parser *parser)
 						 &captures);
       if (body_fn)
 	c_finish_effect_fiber_try (loc, body_fn, cap_type, captures, effect,
-				   clauses, kclauses, action, named);
+				   clauses, kclauses, action, coro, named);
     }
   else
     {
@@ -5538,7 +5688,8 @@ c_parser_effect_resume_statement (c_parser *parser)
   if (parser->effect_clause != current_function_decl
       || !parser->effect_clause)
     {
-      error_at (loc, "%<_Resume%> not within a %<_Handle%> clause");
+      error_at (loc, "%<_Resume%> outside a %<_Handle%> clause must be the "
+		"only statement in the body of a %<_Try%>");
       return NULL_TREE;
     }
   if (parser->effect_continuation && !k)
@@ -5550,7 +5701,9 @@ c_parser_effect_resume_statement (c_parser *parser)
     }
   if (k)
     add_stmt (build2_loc (loc, MODIFY_EXPR, integer_type_node,
-			  parser->effect_action, integer_one_node));
+			  parser->effect_action,
+			  build_int_cst (integer_type_node,
+					 EFFECT_ACTION_RESUME)));
   tree ret = c_finish_return (loc, value, origtype);
   /* An erroneous operand leaves no return statement; do not also report
      the clause as not ending in _Resume.  */
@@ -5562,10 +5715,11 @@ c_parser_effect_resume_statement (c_parser *parser)
    extension).
 
    effect-discard-statement:
-     _Discard ( identifier )
+     _Discard ( expression )
 
-   The statement returns from the clause without resuming its
-   continuation, which ends the _Try.  */
+   In a clause with a continuation, if the expression names it, the
+   statement returns from the clause and the _Try ends.  Otherwise the
+   expression is a stored continuation, whose coroutine is destroyed.  */
 
 static tree
 c_parser_effect_discard_statement (c_parser *parser)
@@ -5576,33 +5730,31 @@ c_parser_effect_discard_statement (c_parser *parser)
   matching_parens parens;
   if (!parens.require_open (parser))
     return NULL_TREE;
-  if (!parser->effect_continuation
-      || parser->effect_clause != current_function_decl)
+  if (parser->effect_continuation
+      && parser->effect_clause == current_function_decl
+      && c_parser_next_token_is (parser, CPP_NAME)
+      && c_parser_peek_2nd_token (parser)->type == CPP_CLOSE_PAREN
+      && (lookup_name (c_parser_peek_token (parser)->value)
+	  == parser->effect_continuation))
     {
-      error_at (loc, "%<_Discard%> not within a %<_Handle%> clause with a "
-		"continuation");
+      c_parser_consume_token (parser);
       parens.skip_until_found_close (parser);
-      return NULL_TREE;
+      add_stmt (build2_loc (loc, MODIFY_EXPR, integer_type_node,
+			    parser->effect_action,
+			    build_int_cst (integer_type_node,
+					   EFFECT_ACTION_DISCARD)));
+      tree rtype = TREE_TYPE (TREE_TYPE (current_function_decl));
+      tree ret = c_finish_return (loc,
+				  VOID_TYPE_P (rtype) ? NULL_TREE
+				  : build_zero_cst (rtype),
+				  NULL_TREE);
+      parser->effect_resume = ret ? ret : error_mark_node;
+      return ret;
     }
-  if (c_parser_next_token_is_not (parser, CPP_NAME)
-      || (lookup_name (c_parser_peek_token (parser)->value)
-	  != parser->effect_continuation))
-    {
-      error_at (c_parser_peek_token (parser)->location,
-		"expected the continuation %qD", parser->effect_continuation);
-      parens.skip_until_found_close (parser);
-      parser->effect_resume = error_mark_node;
-      return NULL_TREE;
-    }
-  c_parser_consume_token (parser);
+  struct c_expr expr = c_parser_expression_conv (parser);
+  mark_exp_read (expr.value);
   parens.skip_until_found_close (parser);
-  tree rtype = TREE_TYPE (TREE_TYPE (current_function_decl));
-  tree ret = c_finish_return (loc,
-			      VOID_TYPE_P (rtype) ? NULL_TREE
-			      : build_zero_cst (rtype),
-			      NULL_TREE);
-  parser->effect_resume = ret ? ret : error_mark_node;
-  return ret;
+  return c_build_effect_discard (loc, expr.value);
 }
 
 /* Parse a typeof specifier (a GNU extension adopted in C23).
