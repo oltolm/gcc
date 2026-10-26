@@ -479,8 +479,16 @@ proc gcc-set-multilib-library-path { compiler } {
     set options [lrange $compiler 1 end]
     set compiler [lindex $compiler 0]
 
+    # The libgcc DLL's name depends on the exception model
+    # (libgcc_s_seh-1.dll); its import library, next to it in the
+    # build tree, does not.
+    if { [istarget *-*-cygwin*] || [istarget *-*-mingw*] } {
+	set libgcc_s "libgcc_s.a"
+    } else {
+	set libgcc_s "libgcc_s.${shlib_ext}"
+    }
     set libgcc_s_x [remote_exec host "$compiler" \
-		    "$options -print-file-name=libgcc_s.${shlib_ext}"]
+		    "$options -print-file-name=$libgcc_s"]
     if { [lindex $libgcc_s_x 0] == 0 \
 	 && [set libgcc_s_dir [file dirname [lindex $libgcc_s_x 1]]] != "" } {
 	set libpath ":${libgcc_s_dir}"

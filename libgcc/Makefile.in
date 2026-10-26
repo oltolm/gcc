@@ -119,7 +119,8 @@ all: all-multi
 	# in-tree libraries, and DejaGNU) know about the layout
 	# of the build tree, for now.
 	$(MAKE) install-leaf DESTDIR=$(gcc_objdir) \
-	  slibdir= libsubdir= bindir= toolexeclibdir= MULTIOSDIR=$(MULTIDIR)
+	  slibdir= libsubdir= bindir= toolexeclibdir= SHLIB_DLLDIR=/ \
+	  MULTIOSDIR=$(MULTIDIR)
 
 .PHONY: all-multi
 all-multi:
