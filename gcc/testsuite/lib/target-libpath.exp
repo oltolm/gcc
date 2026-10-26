@@ -44,6 +44,31 @@ proc set_gcc_exec_prefix_env_var { } {
 }
 
 #######################################
+# proc windows_path_list { list }
+#######################################
+
+# Return the ':'-separated LIST of directories as a native Windows PATH
+# list, separated by ';'.  The directories are native Windows paths, so an
+# element of a single letter followed by one starting with '/' or '\' is
+# a drive letter, as in C:/src/build.
+
+proc windows_path_list { list } {
+  set parts [split $list ":"]
+  set result {}
+  for { set i 0 } { $i < [llength $parts] } { incr i } {
+    set part [lindex $parts $i]
+    set next [lindex $parts [expr { $i + 1 }]]
+    if { [regexp {^[A-Za-z]$} $part] && [regexp {^[/\\]} $next] } {
+      lappend result "$part:$next"
+      incr i
+    } elseif { $part ne "" } {
+      lappend result $part
+    }
+  }
+  return [join $result ";"]
+}
+
+#######################################
 # proc set_ld_library_path_env_vars { }
 #######################################
 
@@ -186,10 +211,19 @@ proc set_ld_library_path_env_vars { } {
     }
   }
   if { [istarget *-*-cygwin*] || [istarget *-*-mingw*] } {
-    if { $orig_path_saved } {
-      setenv PATH "$ld_library_path:$orig_path"
+    # A native Windows Tcl (not Cygwin's or MSYS's) sees PATH as a native
+    # list, separated by ';'.
+    if { $::tcl_platform(platform) eq "windows" } {
+      set path [windows_path_list $ld_library_path]
+      set sep ";"
     } else {
-      setenv PATH "$ld_library_path"
+      set path $ld_library_path
+      set sep ":"
+    }
+    if { $orig_path_saved } {
+      setenv PATH "$path$sep$orig_path"
+    } else {
+      setenv PATH "$path"
     }
   }
 
