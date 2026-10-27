@@ -3,7 +3,7 @@
 /* { dg-final { scan-assembler-times "vmovd\t\[0-9\]+\\(%e\[bs\]p\\), %xmm0" 1 { target ia32 } } } */
 /* { dg-final { scan-assembler-times "vmovss\t\[0-9\]+\\(%e\[bs\]p\\), %xmm0" 1 { target ia32 } } } */
 /* { dg-final { scan-assembler-times "vmovd\t%xmm0, %xmm0" 3 { target ia32 } } } */
-/* { dg-final { scan-assembler-times "vmovd\t%edi, %xmm0" 1 { target { ! ia32 } } } } */
+/* { dg-final { scan-assembler-times "vmovd\t%(?:edi|ecx), %xmm0" 1 { target { ! ia32 } } } } */
 /* { dg-final { scan-assembler-times "vmovd\t%xmm0, %xmm0" 4 { target { ! ia32 } } } } */
 
 

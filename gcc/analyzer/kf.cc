@@ -3194,6 +3194,7 @@ register_known_functions (known_function_manager &kfm,
     kfm.add ("__error", std::make_unique<kf_errno_location> ());
     kfm.add ("__errno", std::make_unique<kf_errno_location> ());
     kfm.add ("__get_errno_ptr", std::make_unique<kf_errno_location> ());
+    kfm.add ("_errno", std::make_unique<kf_errno_location> ());
   }
 
   /* Language-specific support functions.  */

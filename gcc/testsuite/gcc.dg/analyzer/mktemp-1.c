@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#ifdef __MINGW32__
+#include <io.h>
+#endif
 #include "analyzer-decls.h"
 
 extern void populate (char *buf);

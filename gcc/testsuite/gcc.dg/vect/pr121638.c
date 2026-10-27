@@ -11,8 +11,8 @@ main ()
   int D_3003;
   int d;
   int * e;
-  long unsigned int _9;
-  long unsigned int _10;
+  __SIZETYPE__ _9;
+  __SIZETYPE__ _10;
   int * _11;
   int _15;
   int _32;
@@ -25,8 +25,8 @@ main ()
   __BB(3,loop_header(2),guessed_local(8687547538)):
   d_29 = __PHI (__BB3: d_8, __BB2: 0);
   d_8 = d_29 + 1;
-  _9 = (long unsigned int) d_29;
-  _10 = _9 * 4ul;
+  _9 = (__SIZETYPE__) d_29;
+  _10 = _9 * _Literal (__SIZETYPE__) 4;
   _11 = e_6 + _10;
   __MEM <int> (_11) = d_29;
   if (d_8 <= 15)

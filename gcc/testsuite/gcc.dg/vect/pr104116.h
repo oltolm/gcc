@@ -4,8 +4,8 @@ void __GIMPLE (ssa,guessed_local(10737416)) \
 NAME (int * a) \
 { \
   int i; \
-  long unsigned int _1; \
-  long unsigned int _2; \
+  __SIZE_TYPE__ _1; \
+  __SIZE_TYPE__ _2; \
   int * _3; \
   int _4; \
   int _5; \
@@ -18,8 +18,8 @@ NAME (int * a) \
   __BB(3,loop_header(1),guessed_local(1063004408)): \
   i_14 = __PHI (__BB5: i_11, __BB2: 0); \
   _13 = __PHI (__BB5: _12, __BB2: 1024u); \
-  _1 = (long unsigned int) i_14; \
-  _2 = _1 * 4ul; \
+  _1 = (__SIZE_TYPE__) i_14; \
+  _2 = _1 * _Literal (__SIZE_TYPE__) 4; \
   _3 = a_9(D) + _2; \
   _4 = __MEM <int> (_3); \
   _5 = _4 OP CONST; \
@@ -45,8 +45,8 @@ void __GIMPLE (ssa,guessed_local(10737416)) \
 NAME (unsigned int * a) \
 { \
   int i; \
-  long unsigned int _1; \
-  long unsigned int _2; \
+  __SIZE_TYPE__ _1; \
+  __SIZE_TYPE__ _2; \
   unsigned int * _3; \
   unsigned int _4; \
   unsigned int _5; \
@@ -59,8 +59,8 @@ NAME (unsigned int * a) \
   __BB(3,loop_header(1),guessed_local(1063004408)): \
   i_14 = __PHI (__BB5: i_11, __BB2: 0); \
   _13 = __PHI (__BB5: _12, __BB2: 1024u); \
-  _1 = (long unsigned int) i_14; \
-  _2 = _1 * 4ul; \
+  _1 = (__SIZE_TYPE__) i_14; \
+  _2 = _1 * _Literal (__SIZE_TYPE__) 4; \
   _3 = a_9(D) + _2; \
   _4 = __MEM <unsigned int> (_3); \
   _5 = _4 OP CONST; \

@@ -176,32 +176,36 @@ FOO1 (int64_t, imul, *)
 FOO2 (short, imul, *)
 FOO2 (int, imul, *)
 FOO2 (int64_t, imul, *)
-/* { dg-final { scan-assembler-times "add(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "lea(?:l|q)\[^\n\r]\\(%r(?:d|s)i,%r(?:d|s)i\\), %(?:|r|e)ax" 4 } } */
-/* { dg-final { scan-assembler-times "add(?:b|l|w|q)\[^\n\r]%(?:|r|e)si(?:|l), \\(%(?:r|e)di\\), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "sub(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "sub(?:b|l|w|q)\[^\n\r]%(?:|r|e)si(?:|l), %(?:|r|e)di, %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "negb\[^\n\r]\\(%(?:r|e)di\\), %al" 1 } } */
-/* { dg-final { scan-assembler-times "neg(?:l|w|q)\[^\n\r]\\(%(?:r|e)di\\), %(?:|r|e)ax" 3 } } */
-/* { dg-final { scan-assembler-times "neg(?:l|w|q)\[^\n\r]%(?:|r|e)di, %(?:|r|e)ax" 4 } } */
-/* { dg-final { scan-assembler-times "not(?:b|l|w|q)\[^\n\r]\\(%(?:r|e)di\\), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "not(?:l|w|q)\[^\n\r]%(?:|r|e)di, %(?:|r|e)ax" 4 } } */
-/* { dg-final { scan-assembler-times "andb\[^\n\r]*1, \\(%(?:r|e)di\\), %al" 1 } } */
-/* { dg-final { scan-assembler-times "and(?:l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)ax" 3 } } */
-/* { dg-final { scan-assembler-times "and(?:l|w|q)\[^\n\r]%(?:|r|e)si, %(?:|r|e)di, %(?:|r|e)ax" 4 } } */
-/* { dg-final { scan-assembler-times "orb\[^\n\r]*1, \\(%(?:r|e)di\\), %al" 2} } */
-/* { dg-final { scan-assembler-times "or(?:l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)ax" 6 } } */
-/* { dg-final { scan-assembler-times "or(?:l|w|q)\[^\n\r]%(?:|r|e)si, %(?:|r|e)di, %(?:|r|e)ax" 8 } } */
-/* { dg-final { scan-assembler-times "xorb\[^\n\r]*1, \\(%(?:r|e)di\\), %al" 1 } } */
-/* { dg-final { scan-assembler-times "xor(?:l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)ax" 3 } } */
-/* { dg-final { scan-assembler-times "xor(?:l|w|q)\[^\n\r]%(?:|r|e)si, %(?:|r|e)di, %(?:|r|e)ax" 4 } } */
-/* { dg-final { scan-assembler-times "sal(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "sal(?:l|w|q)\[^\n\r]*7, %(?:|r|e)di, %(?:|r|e)ax" 4 } } */
-/* { dg-final { scan-assembler-times "sar(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "sar(?:b|l|w|q)\[^\n\r]*7, %(?:|r|e)di(?:|l), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "shr(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)di\\), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "shr(?:b|l|w|q)\[^\n\r]*7, %(?:|r|e)di(?:|l), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "ror(?:b|l|w|q)\[^\n\r]*1, %(?:|r|e)di(?:|l), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "rol(?:b|l|w|q)\[^\n\r]*1, %(?:|r|e)di(?:|l), %(?:|r|e)a(?:x|l)" 4 } } */
-/* { dg-final { scan-assembler-times "imul(?:l|q)\[^\n\r]%(?:|r|e)(?:|s|d)i, %(?:r|e)(?:|s|d)i, %(?:|r|e)ax" 3 } } */
-/* { dg-final { scan-assembler-times "imul(?:l|w|q)\[^\n\r]\\(%(?:r|e)di\\), %(?:|r|e)si, %(?:|r|e)ax" 3 } } */
+/* { dg-final { scan-assembler-times "add(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "lea(?:l|q)\[^\n\r]\\(%r(?:di|si|cx|dx),%r(?:di|si|cx|dx)\\), %(?:|r|e)ax" 4 } } */
+/* { dg-final { scan-assembler-times "add(?:b|l|w|q)\[^\n\r]%(?:rsi|esi|sil|rdx|edx|dx|dl), \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "sub(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "sub(?:b|l|w|q)\[^\n\r]%(?:(?:|r|e)si(?:|l)|(?:r|e)dx), %(?:r|e)(?:di|cx), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "negb\[^\n\r]\\(%(?:r|e)(?:di|cx)\\), %al" 1 } } */
+/* { dg-final { scan-assembler-times "neg(?:l|w|q)\[^\n\r]\\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)ax" 3 } } */
+/* { dg-final { scan-assembler-times "neg(?:l|w|q)\[^\n\r]%(?:r|e)(?:di|cx), %(?:|r|e)ax" 4 } } */
+/* { dg-final { scan-assembler-times "not(?:b|l|w|q)\[^\n\r]\\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "not(?:l|w|q)\[^\n\r]%(?:r|e)(?:di|cx), %(?:|r|e)ax" 4 } } */
+/* { dg-final { scan-assembler-times "andb\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %al" 1 } } */
+/* { dg-final { scan-assembler-times "and(?:l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)ax" 3 } } */
+/* { dg-final { scan-assembler-times "and(?:l|w|q)\[^\n\r]%(?:rsi|esi|rdx|edx|dx), %(?:r|e)(?:di|cx), %(?:|r|e)ax" 4 } } */
+/* { dg-final { scan-assembler-times "orb\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %al" 2} } */
+/* { dg-final { scan-assembler-times "or(?:l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)ax" 6 } } */
+/* { dg-final { scan-assembler-times "or(?:l|w|q)\[^\n\r]%(?:rsi|esi|rdx|edx|dx), %(?:r|e)(?:di|cx), %(?:|r|e)ax" 8 } } */
+/* { dg-final { scan-assembler-times "xorb\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %al" 1 } } */
+/* { dg-final { scan-assembler-times "xor(?:l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)ax" 3 } } */
+/* { dg-final { scan-assembler-times "xor(?:l|w|q)\[^\n\r]%(?:rsi|esi|rdx|edx|dx), %(?:r|e)(?:di|cx), %(?:|r|e)ax" 4 } } */
+/* { dg-final { scan-assembler-times "sal(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "sal(?:l|w|q)\[^\n\r]*7, %(?:r|e)(?:di|cx), %(?:|r|e)ax" 4 } } */
+/* { dg-final { scan-assembler-times "sar(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "sar(?:b|l|w|q)\[^\n\r]*7, %(?:rdi|edi), %(?:|r|e)a(?:x|l)" 4 { target { ! *-*-mingw* } } } } */
+/* { dg-final { scan-assembler-times "sar(?:b|l|w|q)\[^\n\r]*7, %(?:rcx|ecx|cl), %(?:|r|e)a(?:x|l)" 3 { target *-*-mingw* } } } */
+/* { dg-final { scan-assembler-times "shr(?:b|l|w|q)\[^\n\r]*1, \\(%(?:r|e)(?:di|cx)\\), %(?:|r|e)a(?:x|l)" 4 } } */
+/* { dg-final { scan-assembler-times "shr(?:b|l|w|q)\[^\n\r]*7, %(?:rdi|edi), %(?:|r|e)a(?:x|l)" 4 { target { ! *-*-mingw* } } } } */
+/* { dg-final { scan-assembler-times "shr(?:b|l|w|q)\[^\n\r]*7, %(?:rcx|ecx|cl), %(?:|r|e)a(?:x|l)" 3 { target *-*-mingw* } } } */
+/* { dg-final { scan-assembler-times "ror(?:b|l|w|q)\[^\n\r]*1, %(?:rdi|edi), %(?:|r|e)a(?:x|l)" 4 { target { ! *-*-mingw* } } } } */
+/* { dg-final { scan-assembler-times "ror(?:b|l|w|q)\[^\n\r]*1, %(?:rcx|ecx|cl), %(?:|r|e)a(?:x|l)" 3 { target *-*-mingw* } } } */
+/* { dg-final { scan-assembler-times "rol(?:b|l|w|q)\[^\n\r]*1, %(?:rdi|edi), %(?:|r|e)a(?:x|l)" 4 { target { ! *-*-mingw* } } } } */
+/* { dg-final { scan-assembler-times "rol(?:b|l|w|q)\[^\n\r]*1, %(?:rcx|ecx|cl), %(?:|r|e)a(?:x|l)" 3 { target *-*-mingw* } } } */
+/* { dg-final { scan-assembler-times "imul(?:l|q)\[^\n\r]%(?:r|e)(?:(?:|s|d)i|cx|dx), %(?:r|e)(?:(?:|s|d)i|cx|dx), %(?:|r|e)ax" 3 } } */
+/* { dg-final { scan-assembler-times "imul(?:l|w|q)\[^\n\r]\\(%(?:r|e)(?:di|cx)\\), %(?:rsi|esi|rdx|edx|dx), %(?:|r|e)ax" 3 } } */
