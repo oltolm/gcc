@@ -11,8 +11,8 @@ foo (int * r)
   int sum2;
   int sum1;
   int _1;
-  long unsigned int _2;
-  long unsigned int _3;
+  __SIZETYPE__ _2;
+  __SIZETYPE__ _3;
   int * _4;
   int _24;
   __SIZETYPE__ _6;
@@ -32,15 +32,15 @@ foo (int * r)
   i_28 = __PHI (__BB5: i_20, __BB2: 0);
   _31 = __PHI (__BB5: _30, __BB2: 64u);
   _1 = i_28 * 2;
-  _2 = (long unsigned int) _1;
-  _3 = _2 * 4ul;
+  _2 = (__SIZETYPE__) _1;
+  _3 = _2 * _Literal (__SIZETYPE__) 4;
   _4 = r_17(D) + _3;
   _24 = __MEM <int> (_4);
   /* Deliberately have swapped operands here */
   sum1_18 = sum1_5 + _24;
   _13 = _1 + 1;
   _6 = (__SIZETYPE__) _13;
-  _7 = _6 * 4ul;
+  _7 = _6 * _Literal (__SIZETYPE__) 4;
   _8 = r_17(D) + _7;
   _9 = __MEM <int> (_8);
   /* versus here.  */

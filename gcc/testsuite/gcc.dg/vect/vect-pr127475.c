@@ -9,7 +9,7 @@ f (unsigned char * restrict a, int n)
   int i;
   bool8 j;
   unsigned char _31;
-  unsigned long _32;
+  __SIZETYPE__ _32;
   unsigned char * _33;
 
   __BB(2):
@@ -22,7 +22,7 @@ f (unsigned char * restrict a, int n)
   i_10 = __PHI (__BB2: 0, __BB4: i_11);
   j_20 = __PHI (__BB2: _Literal (bool8) 0, __BB4: j_21);
   _31 = (unsigned char) j_20;
-  _32 = (unsigned long) i_10;
+  _32 = (__SIZETYPE__) i_10;
   _33 = a_1(D) + _32;
   __MEM <unsigned char> (_33) = _31;
   j_21 = j_20 + _Literal (bool8) 1;

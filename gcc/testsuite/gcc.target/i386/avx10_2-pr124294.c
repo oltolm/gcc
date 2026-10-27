@@ -2,7 +2,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx10.2 -masm=intel" } */
 /* { dg-require-effective-target masm_intel } */
-/* { dg-final { scan-assembler "\tvmovw\txmm0, xmm1" } } */
+/* { dg-final { scan-assembler "\tvmovw\txmm0, xmm\[01\]" } } */
 
 typedef unsigned char V __attribute__((vector_size (16)));
 

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+extern int mkstemps (char *, int);
 extern void populate (char *buf);
 
 void test_passthrough (char *s, int suffixlen)
