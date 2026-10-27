@@ -1,4 +1,4 @@
-/* { dg-do compile } */
+/* { dg-do compile { target *-*-linux* } } */
 /* { dg-options "-O2 -mfunction-return=thunk" } */
 
 void

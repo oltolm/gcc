@@ -1,4 +1,4 @@
-/* { dg-do compile } */
+/* { dg-do compile { target *-*-linux* } } */
 /* { dg-options "-O2 -mno-indirect-branch-register -mfunction-return=keep -mindirect-branch=thunk -fjump-tables" } */
 /* { dg-additional-options "-fno-pic" { target { ! *-*-darwin* } } } */
 

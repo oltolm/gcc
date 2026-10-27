@@ -1,4 +1,4 @@
-/* { dg-do compile } */
+/* { dg-do compile { target *-*-linux* } } */
 /* { dg-options "-O2 -mfunction-return=keep" } */
 
 extern void foo (void) __attribute__ ((function_return("thunk")));

@@ -60,7 +60,7 @@ next_htab_element (htab_iterator *hti)
   return (void *) 0;
 }
 
-typedef unsigned long vn_nary_op_t;
+typedef __UINTPTR_TYPE__ vn_nary_op_t;
 
 typedef struct vn_tables_s
 {
