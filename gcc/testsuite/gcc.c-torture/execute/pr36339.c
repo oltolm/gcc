@@ -1,6 +1,6 @@
 extern void abort (void);
 
-typedef unsigned long my_uintptr_t;
+typedef __UINTPTR_TYPE__ my_uintptr_t;
 
 int check_a(my_uintptr_t tagged_ptr);
 
