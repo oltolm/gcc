@@ -4,9 +4,9 @@
 /* { dg-final { scan-assembler-times "vmovw\t%xmm0, %xmm0" 4 { target ia32 } } } */
 /* { dg-final { scan-assembler-times "vmovw\t%edi, %xmm0" 1 { target { { ! ia32 } && { ! *-*-mingw* } } } } } */
 /* { dg-final { scan-assembler-times "vmovw\t%xmm0, %xmm0" 7 { target { { ! ia32 } && { ! *-*-mingw* } } } } } */
-/* { dg-final { scan-assembler-times "vmovw\t%ecx, %xmm0" 2 { target { { ! ia32 } && *-*-mingw* } } } */
-/* { dg-final { scan-assembler-times "vmovw\t%xmm0, %xmm0" 5 { target { { ! ia32 } && *-*-mingw* } } } */
-/* { dg-final { scan-assembler-times "vmovw\t\\(%rcx\\), %xmm0" 1 { target { { ! ia32 } && *-*-mingw* } } } */
+/* { dg-final { scan-assembler-times "vmovw\t%ecx, %xmm0" 2 { target { { ! ia32 } && *-*-mingw* } } } } */
+/* { dg-final { scan-assembler-times "vmovw\t%xmm0, %xmm0" 5 { target { { ! ia32 } && *-*-mingw* } } } } */
+/* { dg-final { scan-assembler-times "vmovw\t\\(%rcx\\), %xmm0" 1 { target { { ! ia32 } && *-*-mingw* } } } } */
 
 #include<immintrin.h>
 
