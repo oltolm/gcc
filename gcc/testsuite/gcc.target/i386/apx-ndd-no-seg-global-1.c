@@ -1,6 +1,7 @@
 /* PR target/113711 */
 /* { dg-do compile { target { { ! ia32 } && { ! *-*-darwin* } } } } */
 /* { dg-options "-mapxf -mtune-ctrl=enable_ndd_mem -O2" } */
+/* { dg-additional-options "-mcmodel=small" { target x86_64-*-mingw* } } */
 
 #include <stdint.h>
 

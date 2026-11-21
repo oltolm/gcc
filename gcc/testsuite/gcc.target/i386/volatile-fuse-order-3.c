@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fomit-frame-pointer -fno-pic -masm=att" } */
+/* { dg-additional-options "-mcmodel=small" { target x86_64-*-mingw* } } */
 /* { dg-final { check-function-bodies "**" "" "" { target { ! *-*-darwin* } } } } */
 
 /* As volatile-fuse-order-1.c, but only the sign of the difference is

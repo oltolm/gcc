@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mno-sse" } */
+/* { dg-additional-options "-mabi=sysv -mcmodel=small -mno-stack-arg-probe" { target x86_64-*-mingw* } } */
 
 struct S
 {

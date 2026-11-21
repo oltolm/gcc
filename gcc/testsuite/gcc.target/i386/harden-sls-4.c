@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mindirect-branch=keep -mharden-sls=all" } */
+/* { dg-additional-options "-mcmodel=small" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-fno-pic" { target { ! *-*-darwin* } } } */
 
 extern void (*fptr) (void);

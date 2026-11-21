@@ -1,6 +1,7 @@
 /* Verify zero initialization for integer and pointer type automatic variables.  */
 /* { dg-do compile } */
 /* { dg-options "-ftrivial-auto-var-init=zero -fdump-rtl-expand -fno-stack-protector -march=x86-64 -mtune=generic" } */
+/* { dg-additional-options "-mabi=sysv -mno-stack-arg-probe" { target x86_64-*-mingw* } } */
 
 #ifndef __cplusplus
 # define bool _Bool

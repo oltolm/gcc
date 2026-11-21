@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fstack-clash-protection -mtune=generic -fdump-rtl-expand -fno-stack-protector" } */
+/* { dg-additional-options "-mno-stack-arg-probe" { target x86_64-*-mingw* } } */
 /* { dg-require-effective-target supports_stack_clash_protection } */
 /* { dg-skip-if "" { *-*-* } { "-fstack-protector*" } { "" } } */
 

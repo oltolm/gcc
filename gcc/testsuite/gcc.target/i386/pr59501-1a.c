@@ -1,6 +1,7 @@
 /* PR target/59501 */
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -mavx -mno-accumulate-outgoing-args" } */
+/* { dg-additional-options "-mabi=sysv -mno-stack-arg-probe" { target x86_64-*-mingw* } } */
 
 typedef double V __attribute__ ((vector_size (32)));
 

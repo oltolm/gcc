@@ -8,6 +8,7 @@
 
 /* { dg-do compile } */
 /* { dg-options "-O2 -fstack-clash-protection -fdump-rtl-expand -fno-optimize-sibling-calls --param stack-clash-protection-probe-interval=12 --param stack-clash-protection-guard-size=12" } */
+/* { dg-additional-options "-mno-stack-arg-probe" { target i?86-*-mingw* x86_64-*-mingw* } } */
 /* { dg-require-effective-target supports_stack_clash_protection } */
 
 __attribute__((noinline, noclone)) void

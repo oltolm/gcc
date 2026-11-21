@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -msse2 -mtune=generic -mno-stackrealign" } */
+/* { dg-additional-options "-mcmodel=small" { target x86_64-*-mingw* } } */
 
 extern char *dst, *src;
 

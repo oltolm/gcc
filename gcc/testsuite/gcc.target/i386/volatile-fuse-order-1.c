@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fomit-frame-pointer -fno-pic -masm=att" } */
+/* { dg-additional-options "-mcmodel=small" { target x86_64-*-mingw* } } */
 /* { dg-final { check-function-bodies "**" "" "" { target { ! *-*-darwin* } } } } */
 
 /* The two volatile reads are in separate full expressions, so x must be

@@ -1,6 +1,7 @@
 /* PR rtl-optimization/122947 based on PR 117239 */
 /* { dg-do run } */
 /* { dg-options "-fno-inline -O2" } */
+/* { dg-additional-options "-mno-stack-arg-probe" { target i?86-*-mingw* x86_64-*-mingw* } } */
 /* { dg-additional-options "-fschedule-insns -mno-accumulate-outgoing-args" { target x86 } } */
 
 int c = 1;
