@@ -4,6 +4,7 @@
 
 // { dg-do run }
 // { dg-xfail-run-if "AIX operator new" { powerpc-ibm-aix* } }
+// { dg-xfail-run-if "libstdc++ DLL does not call replaced operator new/delete" { { *-*-mingw* } && c++14 } }
 
 #include <new>
 

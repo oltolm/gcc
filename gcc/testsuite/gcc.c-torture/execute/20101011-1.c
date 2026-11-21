@@ -5,6 +5,9 @@
 
 #ifdef SIGNAL_SUPPRESS
 # define DO_TEST 0
+#elif defined (__MINGW32__)
+  /* MinGW does not deliver integer division by zero as SIGFPE.  */
+# define DO_TEST 0
 #elif defined (__powerpc__) || defined (__PPC__) || defined (__ppc__) || defined (__POWERPC__) || defined (__ppc)
   /* On PPC division by zero does not trap.  */
 # define DO_TEST 0

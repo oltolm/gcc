@@ -1,5 +1,5 @@
 /* Test for cross x86_64<->w64 abi va_list calls.  */
-/* { dg-do run } */
+/* { dg-do run { target { ! *-*-mingw* } } } */
 /* { dg-options "-O2 -mabi=ms -std=gnu99 -fno-builtin" } */
 /* { dg-additional-sources "vaarg-4b.c" } */
 

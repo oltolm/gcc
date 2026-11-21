@@ -4,6 +4,7 @@
 // { dg-options -std=c++03 }
 // { dg-do run }
 // { dg-xfail-run-if "AIX operator new" { powerpc-ibm-aix* } }
+// { dg-xfail-run-if "libstdc++ DLL does not call replaced operator new/delete" { *-*-mingw* } }
 // { dg-skip-if "requires hosted libstdc++ for stdexcept" { ! hostedlib } }
 
 #include <assert.h>

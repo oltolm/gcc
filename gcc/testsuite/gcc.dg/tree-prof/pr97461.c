@@ -1,5 +1,6 @@
 /* PR gcov-profile/97461 */
 /* { dg-options "-O2 -ldl -fprofile-correction" } */
+/* { dg-require-effective-target dlopen } */
 
 #define _GNU_SOURCE
 

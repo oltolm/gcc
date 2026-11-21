@@ -4,6 +4,7 @@
 /* Origin: Kai Tietz <kai.tietz@onevision.com> */
 /* { dg-do compile { target { *-*-mingw* } } } */
 /* { dg-options "-std=iso9899:1999 -pedantic -Wformat -Wno-pedantic-ms-format" } */
+/* { dg-additional-options "-ftrack-macro-expansion=0" } */
 
 #define USE_SYSTEM_FORMATS
 #include "format.h"

@@ -1,4 +1,4 @@
-// { dg-do run { xfail powerpc-*-aix* } }
+// { dg-do run { xfail { powerpc-*-aix* || { *-*-mingw* && c++14 } } } }
 // It checks to see if you can define your own global delete operator.
 // prms-id: 755
 

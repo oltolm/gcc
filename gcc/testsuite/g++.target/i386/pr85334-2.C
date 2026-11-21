@@ -1,5 +1,6 @@
 // { dg-do run }
 // { dg-require-effective-target cet }
+// { dg-skip-if "needs sigaction" { *-*-mingw* } }
 // { dg-additional-options "-fexceptions -fnon-call-exceptions -fcf-protection" }
 
 // Delta between numbers of call stacks of pr85334-1.C and pr85334-2.C is 1.

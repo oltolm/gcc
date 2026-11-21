@@ -21,7 +21,7 @@ void foo (void)
   f1 (a2 + 1, 1);
 }
 
-// { dg-regexp " +inlined from 'foo' at \[^:\]+Warray-bounds-76.c:21:\\d+:" "inlined from foo" }
+// { dg-regexp " +inlined from 'foo' at (?:\[A-Za-z\]:)?\[^:\]+Warray-bounds-76.c:21:\\d+:" "inlined from foo" }
 
 extern int a3[3];   // { dg-note "'a3'" }
 
@@ -30,6 +30,6 @@ void bar (void)
   f2 (a3 + 1, 1);
 }
 
-// { dg-regexp " +inlined from 'f1' at \[^:\]+Warray-bounds-76.c:14:\\d+," "inlined from f1" }
-// { dg-regexp " +inlined from 'f2' at \[^:\]+Warray-bounds-76.c:15:\\d+," "inlined from f2" }
-// { dg-regexp " +inlined from 'bar' at \[^:\]+Warray-bounds-76.c:30:\\d+:" "inlined from bar" }
+// { dg-regexp " +inlined from 'f1' at (?:\[A-Za-z\]:)?\[^:\]+Warray-bounds-76.c:14:\\d+," "inlined from f1" }
+// { dg-regexp " +inlined from 'f2' at (?:\[A-Za-z\]:)?\[^:\]+Warray-bounds-76.c:15:\\d+," "inlined from f2" }
+// { dg-regexp " +inlined from 'bar' at (?:\[A-Za-z\]:)?\[^:\]+Warray-bounds-76.c:30:\\d+:" "inlined from bar" }

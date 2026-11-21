@@ -43,7 +43,7 @@
 #endif
 
 #if WCHAR_MAX >= 0x7ffffff
-# if L'\U1234abcd' != 0x1234abcd /* { dg-error "outside" "" { xfail powerpc-ibm-aix* } } */
+# if L'\U1234abcd' != 0x1234abcd /* { dg-error "outside" "" { xfail { powerpc-ibm-aix* || { ! 4byte_wchar_t } } } } */
 #  error bad long ucs	/* { dg-bogus "bad" "bad U1234abcd evaluation" } */
 # endif
 #endif
@@ -69,5 +69,5 @@ void foo ()
   c = L"\uD800"[0];	/* { dg-error "not a valid" "D800 invalid UCN" } */
   c = L'\U0000DFFF';	/* { dg-error "not a valid" "DFFF invalid UCN" } */
 
-  c = L'\U00110000';	/* { dg-error "outside|Invalid" "110000 outside UCS" } */
+  c = L'\U00110000';	/* { dg-error "outside|Invalid|Illegal" "110000 outside UCS" } */
 }

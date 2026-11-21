@@ -11,6 +11,7 @@
 
 extern int mkostemp (char *, int);
 extern int mkostemps (char *, int, int);
+extern int mkstemps (char *, int);
 
 /* For the following 8 tests, leak warnings may be reported at the call or at
    the closing brace, perhaps depending on system headers.  Keep each body on

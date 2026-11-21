@@ -2,6 +2,7 @@
 // { dg-do run  { target { { c++17 } && { ! default_packed } } } }
 // { dg-additional-options -faligned-new=2 }
 // { dg-xfail-run-if "AIX operator new" { powerpc-ibm-aix* } }
+// { dg-xfail-run-if "libstdc++ DLL does not call replaced operator new/delete" { *-*-mingw* } }
 
 #include <new>
 

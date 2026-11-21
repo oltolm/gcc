@@ -90,4 +90,4 @@ void test_wide (void)
 }
 
 /* { dg-final { scan-tree-dump-times "memchr" 0 "optimized" } }
-   { dg-final { scan-tree-dump-times "call_in_true_branch_not_eliminated" 0 "optimized" } } */
+   { dg-final { scan-tree-dump-times "call_in_true_branch_not_eliminated" 0 "optimized" { target 4byte_wchar_t } } } */

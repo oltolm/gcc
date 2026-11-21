@@ -1,6 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fdump-tree-cddce1-details -fdump-tree-optimized" } */
 // { dg-require-effective-target cxa_atexit }
+// { dg-skip-if "destructors are registered with atexit" { *-*-mingw* } }
 // { dg-additional-options "-fuse-cxa-atexit" }
 /* PR tree-optimization/19661 */
 

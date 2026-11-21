@@ -32,7 +32,7 @@ void foo (struct A *p)
   f0 (p);
 }
 
-// { dg-regexp " +inlined from 'foo' at \[^:\]+Wfree-nonheap-object-5.c:32:\\d+:" "note on line 32" }
+// { dg-regexp " +inlined from 'foo' at (?:\[A-Za-z\]:)?\[^:\]+Wfree-nonheap-object-5.c:32:\\d+:" "note on line 32" }
 
 
 void bar (struct A *p)
@@ -41,6 +41,6 @@ void bar (struct A *p)
   f2 (p);
 }
 
-// { dg-regexp " +inlined from 'f1' at \[^:\]+Wfree-nonheap-object-5.c:21:\\d+," "inlined from f1" }
-// { dg-regexp " +inlined from 'f2' at \[^:\]+Wfree-nonheap-object-5.c:22:\\d+," "inlined from f2" }
-// { dg-regexp " +inlined from 'bar' at \[^:\]+Wfree-nonheap-object-5.c:41:\\d+:" "inlined from bar" }
+// { dg-regexp " +inlined from 'f1' at (?:\[A-Za-z\]:)?\[^:\]+Wfree-nonheap-object-5.c:21:\\d+," "inlined from f1" }
+// { dg-regexp " +inlined from 'f2' at (?:\[A-Za-z\]:)?\[^:\]+Wfree-nonheap-object-5.c:22:\\d+," "inlined from f2" }
+// { dg-regexp " +inlined from 'bar' at (?:\[A-Za-z\]:)?\[^:\]+Wfree-nonheap-object-5.c:41:\\d+:" "inlined from bar" }
