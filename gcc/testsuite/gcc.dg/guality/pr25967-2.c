@@ -1,4 +1,5 @@
 /* { dg-do run { target i?86-*-* x86_64-*-* } } */
+/* { dg-skip-if "PR81693 sp not aligned to 16 bytes" { x86_64-*-mingw* } } */
 /* { dg-options "-g -mgeneral-regs-only" } */
 
 extern void exit (int);

@@ -13,7 +13,8 @@ foo (void *frame)
     __builtin_abort ();
 }
 
-/* { dg-final { scan-assembler-times "and\[lq\]?\[^\\n\]*-64,\[^\\n\]*sp" 1 } } */
+/* SEH limits stack alignment to 16 bytes; it aligns a pointer, not %rsp.  */
+/* { dg-final { scan-assembler-times "and\[lq\]?\[^\\n\]*-64,\[^\\n\]*sp" 1 { target { ! x86_64-*-mingw* } } } } */
 /* { dg-final { scan-assembler-times "iret" 1 { target ia32 } } } */
 /* { dg-final { scan-assembler-times "iretq" 1 { target { ! ia32 } } } } */
 /* { dg-final { scan-assembler-times "\tcld" 1 } } */

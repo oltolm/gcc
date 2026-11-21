@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx2 -fno-tree-vectorize -fno-pic" } */
+/* { dg-skip-if "x86-64 PE has no 32-bit absolute addresses" { x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times {(?n)movl[ \t]+.*, p1\.0\+[0-9]*\(,} 1 } } */
 
 int

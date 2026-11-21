@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fdump-rtl-pro_and_epilogue" } */
+/* { dg-skip-if "SEH disables separate shrink-wrapping" { x86_64-*-mingw* } } */
 typedef struct a b;
 typedef double c;
 struct a {

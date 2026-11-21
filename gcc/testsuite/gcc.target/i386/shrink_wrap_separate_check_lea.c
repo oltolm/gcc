@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -fdump-rtl-pro_and_epilogue" } */
+/* { dg-skip-if "SEH disables separate shrink-wrapping" { x86_64-*-mingw* } } */
 
 /* Avoid inserting sub between test-je-jle to change EFlags, lea should be used here
         xorl    %eax, %eax

@@ -1,5 +1,6 @@
 /* { dg-do compile }  */
 /* { dg-options "-O2 -mavx512f -mtune=generic" } */
+/* { dg-skip-if "SEH limits stack alignment to 16 bytes" { x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vmovupd.*, %zmm0" 1 } } */
 /* { dg-final { scan-assembler "and\[lq\]?\[\\t \]*\\$-64,\[\\t \]*%\[re\]?sp" } } */
 /* { dg-final { scan-assembler-not "vmovapd.*, %zmm0" } } */
