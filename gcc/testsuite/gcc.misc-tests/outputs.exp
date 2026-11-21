@@ -843,7 +843,9 @@ outest "$b-360 doc single  -c +-o" $sing "-c -o dir/$b.o -fdump-rtl-final -fstac
 outest "$b-361 doc double !-c  -o" $mult "-o dir/$b.exe -fdump-rtl-final -fstack-usage $gsplit_dwarf" {dir/} {{--1.c.???r.final --1.su !!$gspd --1.dwo !0 --2.c.???r.final --2.su !!$gspd --2.dwo !0 .exe} {}}
 
 # gcc foo.c -o dir/foo ...
-outest "$b-362 doc single !-c  -o" $sing "-o dir/$b-0 -fdump-rtl-final -fstack-usage $gsplit_dwarf" {dir/} {{-0.c.???r.final -0.su !!$gspd -0.dwo !0 -0} {}}
+# The PE linker appends .exe to an output name without a suffix.
+set exe_sfx [expr {[istarget *-*-mingw*] || [istarget *-*-cygwin*] ? ".exe" : ""}]
+outest "$b-362 doc single !-c  -o" $sing "-o dir/$b-0 -fdump-rtl-final -fstack-usage $gsplit_dwarf" {dir/} "{-0.c.???r.final -0.su !!\$gspd -0.dwo !0 -0$exe_sfx} {}"
 
 # gcc -save-temps -S foo.c
 outest "$b-363 doc single  -S -st" $sing "-save-temps -S" {} {{-0.i -0.s}}
