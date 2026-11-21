@@ -16,8 +16,8 @@ void q ()
 }
 
 // The instantiation of VAR becomes local
-// { dg-final { scan-assembler {.local	_Z3VARIZ1qvEUlvE_E} { target { { i?86-*-* x86_64-*-* } && { ! *-*-darwin* } } } } }
-// { dg-final { scan-assembler {.comm	_Z3VARIZ1qvEUlvE_E,1,1} { target { { i?86-*-* x86_64-*-* } && { ! *-*-darwin* } } } } }
+// { dg-final { scan-assembler {.local	_Z3VARIZ1qvEUlvE_E} { target { { { i?86-*-* x86_64-*-* } && { ! *-*-darwin* } } && { ! pe } } } } }
+// { dg-final { scan-assembler {.comm	_Z3VARIZ1qvEUlvE_E,1,1} { target { { { i?86-*-* x86_64-*-* } && { ! *-*-darwin* } } && { ! pe } } } } }
 
 // The instantiation of VAR becomes local
 // { dg-final { scan-assembler-not {.globl[ \t]+_?_Z4InitIN3VARIZ1qvEUlvE_EUlvE_EEbT_} { target *-*-darwin* } } }

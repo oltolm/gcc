@@ -26,4 +26,6 @@ int __attribute__((stack_protect)) c()
 }
 
 
-/* { dg-final { scan-assembler-times "stack_chk_fail" 2 } } */
+/* { dg-final { scan-assembler-times "stack_chk_fail" 2 { target { ! pe } } } } */
+/* PE also names the callee in a .def directive.  */
+/* { dg-final { scan-assembler-times "stack_chk_fail" 3 { target pe } } } */

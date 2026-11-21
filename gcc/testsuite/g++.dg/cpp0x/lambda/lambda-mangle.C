@@ -57,7 +57,7 @@ void bar()
 // lambdas used in namespace-scope initializers have the linkage of
 // the decl
 // { dg-final { scan-assembler-not "weak\[^\n\r\]*_ZNKUlv" } }
-// { dg-final { scan-assembler "weak\[^\n\r\]*variableMUlvE_clEv" { target c++14_down } } }
+// { dg-final { scan-assembler "weak\[^\n\r\]*variableMUlvE_clEv" { target { c++14_down && { ! { *-*-mingw* *-*-cygwin* } } } } } }
 // in c++17 and up, this operator() become constexpr, no not emitted
 // { dg-final { scan-assembler-not "weak\[^\n\r\]*variableMUlvE_clEv" { target c++17 } } }
 int variable = []{return 1;}();

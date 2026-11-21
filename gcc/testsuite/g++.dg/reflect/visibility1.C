@@ -1,5 +1,6 @@
 // { dg-do compile { target c++26 } }
 // { dg-additional-options "-freflection -O0" }
+// { dg-skip-if "Linkonce not weak" { *-*-mingw* *-*-cygwin* } }
 
 #include <meta>
 

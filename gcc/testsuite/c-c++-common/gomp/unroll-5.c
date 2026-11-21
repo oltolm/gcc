@@ -15,4 +15,5 @@ test1 (void)
 /* { dg-final { scan-tree-dump "#pragma omp unroll" "original" } } */
 /* { dg-final { scan-tree-dump-not "#pragma omp" "gimple" } } */
 /* { dg-final { scan-tree-dump-times "dummy" 1 "gimple" } } */
-/* { dg-final { scan-assembler-times "dummy" 8 { xfail hppa*-*-hpux* } } } */
+/* Skip the PE .def directive, which also names dummy.  */
+/* { dg-final { scan-assembler-times {(?n)^(?!\t\.def\t).*dummy} 8 { xfail hppa*-*-hpux* } } } */

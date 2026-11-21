@@ -2,7 +2,7 @@
 /* { dg-options "-fpermissive -O2 -fcf-protection" } */
 /* { dg-final { scan-assembler-times "endbr32" 1 { target ia32 } } } */
 /* { dg-final { scan-assembler-times "endbr64" 1 { target { ! ia32 } } } } */
-/* { dg-final { scan-assembler-times "notrack jmp\[ \t]+" 1 } } */
+/* { dg-final { scan-assembler-times "notrack (?:rex\\.W )?jmp\[ \t]+" 1 } } */
 
 void
 bar (void (*foo) (void))

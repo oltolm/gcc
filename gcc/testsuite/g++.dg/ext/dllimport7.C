@@ -22,6 +22,7 @@ const int Bar::three = 3;       //  { dg-warning "redeclared without dllimport" 
 //  { dg-error "definition of static data" "C++ specific error" { target i?86-*-cygwin* i?86-*-mingw* x86_64-*-mingw* } .-1 }
 				
 const Baz Bar::null_baz;	//  { dg-warning "redeclared without dllimport" }
+//  { dg-error "definition of static data" "C++ specific error" { target i?86-*-cygwin* i?86-*-mingw* x86_64-*-mingw* } .-1 }
 
 int foo()
 {

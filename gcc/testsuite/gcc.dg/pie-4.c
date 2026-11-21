@@ -1,4 +1,4 @@
-/* { dg-do compile { target { ! { *-*-darwin* hppa*64*-*-* mips*-*-linux-* amdgcn*-*-* } } } } */
+/* { dg-do compile { target { ! { *-*-darwin* hppa*64*-*-* mips*-*-linux-* amdgcn*-*-* x86_64-*-mingw* } } } } */
 /* { dg-options "-fno-PIE" } */
 
 #ifdef __PIC__

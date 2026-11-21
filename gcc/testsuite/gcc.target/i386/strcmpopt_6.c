@@ -33,4 +33,6 @@ int main (void)
 
 }
 
-/* { dg-final { scan-assembler-times "memcmp" 2 } } */
+/* { dg-final { scan-assembler-times "memcmp" 2 { target { ! pe } } } } */
+/* PE also names the callee in a .def directive.  */
+/* { dg-final { scan-assembler-times "memcmp" 3 { target pe } } } */

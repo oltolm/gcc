@@ -6,7 +6,7 @@
 /* { dg-additional-options "-Wl,-U,_Foo" { target *-*-darwin* }  } */
 /* { dg-require-weak "" } */
 /* { dg-skip-if "undefined weak not supported" { { hppa*-*-hpux* } && { ! lp64 } } } */
-/* { dg-skip-if "undefined weak not supported" { powerpc-ibm-aix* } } */
+/* { dg-skip-if "undefined weak not supported" { powerpc-ibm-aix* *-*-mingw* *-*-cygwin* } } */
 
 extern int __attribute__ ((weak)) Foo ();
 

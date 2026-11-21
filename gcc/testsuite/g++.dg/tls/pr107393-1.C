@@ -11,4 +11,6 @@ extern template Dtor X<char>::m;
 void *e2 = &X<char>::m;
 
 // tls_model should be tls-initial-exec due to extern template.
-// { dg-final { scan-ipa-dump "Varpool flags: tls-initial-exec" "whole-program" } }
+// { dg-final { scan-ipa-dump "Varpool flags: tls-initial-exec" "whole-program" { target { ! pe } } } }
+// PE images have only the local-exec TLS model.
+// { dg-final { scan-ipa-dump "Varpool flags: tls-local-exec" "whole-program" { target pe } } }

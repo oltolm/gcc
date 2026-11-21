@@ -10,4 +10,5 @@ void f ()
   throw A();
 }
 
-// { dg-final { scan-assembler-dem-not {\ntypeinfo for A[: \t\n]} } }
+// PE (MULTIPLE_SYMBOL_SPACES) emits class data in every TU that uses it.
+// { dg-final { scan-assembler-dem-not {\ntypeinfo for A[: \t\n]} { target { ! { *-*-mingw* *-*-cygwin* } } } } }

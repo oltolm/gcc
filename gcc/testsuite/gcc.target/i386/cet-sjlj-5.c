@@ -2,8 +2,8 @@
 /* { dg-options "-O -fcf-protection" } */
 /* { dg-final { scan-assembler-times "endbr32" 2 { target ia32 } } } */
 /* { dg-final { scan-assembler-times "endbr64" 2 { target { ! ia32 } } } } */
-/* { dg-final { scan-assembler-times "call	_?setjmp" 1 } } */
-/* { dg-final { scan-assembler-times "call	_?longjmp" 1 } } */
+/* { dg-final { scan-assembler-times "call	(?:\\*__imp_)?_?setjmp" 1 } } */
+/* { dg-final { scan-assembler-times "call	(?:\\*__imp_)?_?longjmp" 1 } } */
 
 #include <stdio.h>
 #include <setjmp.h>

@@ -1,5 +1,6 @@
 // PR c++/55877
 // { dg-require-weak "" }
+// { dg-skip-if "Linkonce not weak" { *-*-mingw* *-*-cygwin* } }
 // { dg-additional-options "-Wno-non-c-typedef-for-linkage" }
 
 namespace N1 {

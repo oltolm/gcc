@@ -5,7 +5,7 @@
 // This test requires support for undefined weak symbols.  This support
 // is not available on the following targets.  The test is skipped rather than
 // xfailed to suppress the warning that would otherwise arise.
-// { dg-skip-if "" { "hppa*-*-hpux*" "*-*-aix*" "nvptx-*-*" } }
+// { dg-skip-if "" { "hppa*-*-hpux*" "*-*-aix*" "nvptx-*-*" "*-*-mingw*" "*-*-cygwin*" } }
 // { dg-skip-if PR119369 { amdgcn-*-* } }
 
 // For kernel modules and static RTPs, the loader treats undefined weak
