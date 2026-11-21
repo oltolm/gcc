@@ -14428,6 +14428,11 @@ proc check_effective_target_caller_implicit_probes { } {
 # stack allocations and make it difficult to elimination loops or residual
 # allocations for dynamic stack allocations
 proc check_effective_target_callee_realigns_stack { } {
+  # SEH limits stack alignment to 16 bytes, so the stack pointer is
+  # never realigned.
+  if { [istarget x86_64-*-mingw*] || [istarget x86_64-*-cygwin*] } {
+	return 0
+  }
   if { [check_effective_target_x86] } {
 	return 1
   }
