@@ -1,6 +1,7 @@
 /* PR target/127773 */
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -mavx2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* The global register variable is live across the call to f, so
    vzeroupper must not be issued before the call.  */
 /* { dg-final { scan-assembler-not "vzeroupper.*call\[ \t\]+_?f\\M" } } */

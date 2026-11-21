@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -msse4.1" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef long long __m128i __attribute__ ((__vector_size__ (16)));
 

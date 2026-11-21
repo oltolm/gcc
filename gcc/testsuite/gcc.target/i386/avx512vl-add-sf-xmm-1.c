@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mfma -mavx512vl -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vaddps\[ \\t\]+\\(%(?:eax|rdi|edi)\\)\\\{1to\[1-8\]+\\\}, %xmm\[0-9\]+, %xmm0" 1 } } */
 /* { dg-final { scan-assembler-not "vbroadcastss\[^\n\]*%xmm\[0-9\]+" } } */
 

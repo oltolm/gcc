@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-fdiagnostics-show-caret -mno-fp-ret-in-387" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 extern long double fminl (long double __x, long double __y);
 

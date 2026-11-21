@@ -1,6 +1,7 @@
 /* PR target/124461 */
 /* { dg-do compile { target { masm_intel && { ! ia32 } } } } */
 /* { dg-options "-O2 -mmovrs -masm=intel" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "\tmovrs\teax, DWORD PTR \\\[\[er]di\\\]" } } */
 /* { dg-final { scan-assembler "\tmovrs\trax, QWORD PTR \\\[\[er]di\\\]" } } */
 

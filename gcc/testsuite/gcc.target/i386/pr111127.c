@@ -1,6 +1,7 @@
 /* PR target/111127 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512bf16 -mavx512vl" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vcvtne2ps2bf16\[ \\t\]+\[^\{\n\]*%zmm1, %zmm0, %zmm0\{%k\[0-9\]\}\{z\}\[^\n\r]*(?:\n|\[ \\t\]+#)" 1 } } */
 /* { dg-final { scan-assembler-times "vcvtne2ps2bf16\[ \\t\]+\[^\{\n\]*%ymm1, %ymm0, %ymm0\{%k\[0-9\]\}\{z\}\[^\n\r]*(?:\n|\[ \\t\]+#)" 1 } } */
 /* { dg-final { scan-assembler-times "vcvtne2ps2bf16\[ \\t\]+\[^\{\n\]*%xmm1, %xmm0, %xmm0\{%k\[0-9\]\}\{z\}\[^\n\r]*(?:\n|\[ \\t\]+#)" 1 } } */

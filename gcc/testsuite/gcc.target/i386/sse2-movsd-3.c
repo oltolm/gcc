@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -msse2 -mno-sse4" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef unsigned long long v2di __attribute__((vector_size(16)));
 typedef double v2df __attribute__((vector_size(16)));

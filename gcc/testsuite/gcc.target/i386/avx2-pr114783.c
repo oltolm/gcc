@@ -1,6 +1,7 @@
 /* PR target/114783 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx2 -mno-avx512f -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "vpcmpeqd\[ \\t\]+%ymm\[01\], %ymm\[01\], %ymm0" } } */
 
 typedef int V __attribute__((vector_size (32)));

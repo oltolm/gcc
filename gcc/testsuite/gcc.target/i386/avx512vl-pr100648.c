@@ -1,6 +1,7 @@
 /* PR target/100648.  */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512vl -mavx512bw -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "\tvpblendvb\t" 2 } } */
 /* { dg-final { scan-assembler-not "\tvpcmpeq" } } */
 /* { dg-final { scan-assembler-not "\tvpandn" } } */

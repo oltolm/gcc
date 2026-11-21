@@ -1,6 +1,7 @@
 /* PR target/45336 */
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -msse4 -mtune=generic" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "movsbq" } } */
 /* { dg-final { scan-assembler "movswq" } } */
 /* { dg-final { scan-assembler "(cltq|movslq)" } } */

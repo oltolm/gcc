@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512f -mno-avx512bw -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 #include "vect-bfloat16-2a.c"
 

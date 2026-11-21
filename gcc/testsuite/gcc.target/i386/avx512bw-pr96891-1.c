@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512bw -mavx512vl -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-not "%k\[0-7\]" } } */
 
 typedef char v16qi __attribute__ ((vector_size (16)));

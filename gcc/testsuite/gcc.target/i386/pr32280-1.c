@@ -1,6 +1,7 @@
 /* { dg-do compile } */
 /* { dg-require-effective-target int128 } */
 /* { dg-options "-O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 __uint128_t
 t1 (__uint128_t a)

@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512vl -mavx512vbmi -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-fno-PIE" { target ia32 } } */
 /* { dg-additional-options "-mdynamic-no-pic" { target { *-*-darwin* && ia32 } } } */
 /* { dg-final { scan-assembler-times "vpmovwb" "3" } } */

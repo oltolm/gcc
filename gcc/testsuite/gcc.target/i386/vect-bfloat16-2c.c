@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mf16c -msse2 -mno-avx2 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef __bf16 v8bf __attribute__ ((__vector_size__ (16)));
 typedef __bf16 v16bf __attribute__ ((__vector_size__ (32)));

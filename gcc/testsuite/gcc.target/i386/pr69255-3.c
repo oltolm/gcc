@@ -1,6 +1,7 @@
 /* PR target/69255 */
 /* { dg-do compile } */
 /* { dg-options "-msse4 -mno-avx" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 #pragma GCC push_options
 #pragma GCC target "avx512vl"

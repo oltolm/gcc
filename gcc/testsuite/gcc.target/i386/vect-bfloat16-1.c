@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512fp16 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 /* { dg-final { scan-assembler-times "vpbroadcastw" 1 { target { ! ia32 } } } }  */
 /* { dg-final { scan-assembler-times "vpblendw" 1 { target { ! ia32 } } } } */

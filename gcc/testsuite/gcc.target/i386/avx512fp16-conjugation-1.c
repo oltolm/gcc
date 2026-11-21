@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512fp16" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vpxord\[^\n\]*%zmm\[0-9\]+" 3 } } */
 /* { dg-final { scan-assembler-times "kmovw\[^\n\]*%k\[1-9\]+" 2 } } */
 /* { dg-final { scan-assembler-times "vmovaps\[ \\t\]+\[^\{\n\]*%zmm\[0-9\]+\{%k\[1-7\]\}(?:\n|\[ \\t\]+#)" 1 } } */

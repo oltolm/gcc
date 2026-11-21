@@ -1,5 +1,6 @@
 /* { dg-do compile { target int128 } } */
 /* { dg-options "-O2 -msse2 -mstv -W" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "(movaps|vmovdqa)\[ \t\]%xmm\[0-9\]+, \\(%rsp\\)" } } */
 
 #include <setjmp.h>

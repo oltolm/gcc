@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512f -mtune=generic -mavx512vl -mtune-ctrl=dest_false_dep_for_glc -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 
 #include <immintrin.h>

@@ -1,6 +1,7 @@
 /* PR target/85480 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512dq" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vmovaps\[^\n\r]*xmm0\[^\n\r]*xmm0" 1 } } */
 /* { dg-final { scan-assembler-times "vmovapd\[^\n\r]*xmm0\[^\n\r]*xmm0" 1 } } */
 /* { dg-final { scan-assembler-times "vmovdqa\[^\n\r]*xmm0\[^\n\r]*xmm0" 1 } } */

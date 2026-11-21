@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx2 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef unsigned int v4si __attribute__((vector_size(16)));
 

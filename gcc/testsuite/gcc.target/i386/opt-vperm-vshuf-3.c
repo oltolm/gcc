@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-Ofast -march=sapphirerapids" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vmov..." 3 } } */
 /* { dg-final { scan-assembler-times "vblendps\t\\\$15" 3 } } */
 /* { dg-final { scan-assembler-times "vblendps\t\\\$240" 3 } } */

@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fipa-ra -fomit-frame-pointer" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-mregparm=1" { target ia32 } } */
 
 /* Testing -fipa-ra optimization option.  */

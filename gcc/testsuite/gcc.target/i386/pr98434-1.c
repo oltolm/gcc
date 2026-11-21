@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512bw -mavx512vl -O2 -mprefer-vector-width=512" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times {vpsravw[\t ]*%xmm} 2 { target { ! ia32 } } } } */
 /* { dg-final { scan-assembler-times {vpsrlvw[\t ]*%ymm} 2 } } */
 /* { dg-final { scan-assembler-times {vpsllvw[\t ]*%zmm} 2 } } */

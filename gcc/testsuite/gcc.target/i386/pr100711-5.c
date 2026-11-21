@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512bw -mno-avx512vl -mprefer-vector-width=512 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef char v64qi __attribute__ ((vector_size (64)));
 typedef short v32hi __attribute__ ((vector_size (64)));

@@ -1,6 +1,7 @@
 /* PR target/82460 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512vbmi" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-not {\mvmovd} } } */
 
 #include <x86intrin.h>

@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-Og -fno-dce -mtune=generic" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef int __attribute__((__vector_size__ (4))) S;
 extern void bar (S);

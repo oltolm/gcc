@@ -1,5 +1,6 @@
 /* { dg-do compile  { target int128 } } */
 /* { dg-options "-O2 -march=cascadelake" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef struct { double x, y; } s_t;
 

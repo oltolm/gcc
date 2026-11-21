@@ -2,6 +2,7 @@
    registers.  */
 /* { dg-do compile } */
 /* { dg-options "-O2 -masm=att -mfpmath=387 -m80387 -mlong-double-80 -mno-sse -fomit-frame-pointer" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef int v2si __attribute__ ((vector_size (8)));
 extern void foo (void) __attribute__ ((no_caller_saved_registers));

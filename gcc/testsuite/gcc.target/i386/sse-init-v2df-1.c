@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -msse -mno-sse2 -mfpmath=sse" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef double v2df __attribute__ ((__vector_size__ (16)));
 

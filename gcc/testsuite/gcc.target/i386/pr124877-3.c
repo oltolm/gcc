@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef union { unsigned char x; signed char y; }
 __attribute__((__transparent_union__)) T;

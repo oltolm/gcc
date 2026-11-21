@@ -1,5 +1,6 @@
 /* { dg-do compile { target int128 } } */
 /* { dg-options "-O2 -msse2 -mno-sse4 -mno-stackrealign -mtune=generic" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 extern __int128 a, b, c, z;
 

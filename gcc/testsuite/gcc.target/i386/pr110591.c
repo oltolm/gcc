@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-mcmpccxadd -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-not {cmp[lq]?[ \t]+} } } */
 /* { dg-final { scan-assembler-times {cmpoxadd[ \t]+} 12 } } */
 

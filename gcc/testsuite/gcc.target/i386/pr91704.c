@@ -1,6 +1,7 @@
 /* PR target/91704 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -funsigned-char -mavx2 -mavx512f -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "\tvpcmpgtb\t%ymm" 1 } } */
 /* { dg-final { scan-assembler-not "\tvpsubusb\t" } } */
 /* { dg-final { scan-assembler-not "\tvpcmpeqb\t" } } */

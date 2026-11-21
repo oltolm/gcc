@@ -1,6 +1,7 @@
 /* PR target/48609 */
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -msse2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 typedef _Complex float SCtype;
 extern SCtype bar;
 void foo (SCtype x)

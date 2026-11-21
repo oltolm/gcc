@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512fp16 -mavx512vl -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-not "movw" } } */
 /* { dg-final { scan-assembler-times "vpermi2w" 3 } } */
 /* { dg-final { scan-assembler-times "vpermw" 6 } } */

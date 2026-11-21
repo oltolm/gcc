@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mno-sse --no-warning" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef double __m128d __attribute__((__vector_size__(16), __may_alias__));
 typedef double __m256d __attribute__((__vector_size__(32), __may_alias__));

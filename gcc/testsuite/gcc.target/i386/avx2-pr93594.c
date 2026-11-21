@@ -1,6 +1,7 @@
 /* PR target/93594 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx2 -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vmovdqa\t%xmm0, %xmm0" 4 } } */
 /* { dg-final { scan-assembler-not "vpxor\t%" } } */
 /* { dg-final { scan-assembler-not "vinserti128\t\\\$" } } */

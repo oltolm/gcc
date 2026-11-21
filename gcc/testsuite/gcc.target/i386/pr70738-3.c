@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-msse2 -mgeneral-regs-only" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef int int32x4_t __attribute__ ((__vector_size__ ((16))));
 extern int32x4_t c;

@@ -1,6 +1,7 @@
 /* PR rtl-optimization/70467 */
 /* { dg-do compile { target int128 } } */
 /* { dg-options "-O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 __uint128_t
 foo (__uint128_t x)

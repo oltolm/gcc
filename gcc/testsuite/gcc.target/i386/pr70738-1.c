@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-msse2 -mgeneral-regs-only" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef int int32x2_t __attribute__ ((__vector_size__ ((8))));
 

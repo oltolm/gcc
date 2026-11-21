@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -mavx512vl -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef float V1 __attribute__((vector_size (16)));
 typedef float V2 __attribute__((vector_size (32)));

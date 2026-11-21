@@ -1,4 +1,5 @@
 /* { dg-do compile { target { ! ia32 } } } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 void foo1(int i, int j) __attribute__((regparm(0))); /* { dg-warning "ignored" } */
 void foo2(int i, int j) __attribute__((stdcall)); /* { dg-warning "ignored" } */

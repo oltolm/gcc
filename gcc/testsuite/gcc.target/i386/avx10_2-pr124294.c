@@ -1,6 +1,7 @@
 /* PR target/124294 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx10.2 -masm=intel" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-require-effective-target masm_intel } */
 /* { dg-final { scan-assembler "\tvmovw\txmm0, xmm1" } } */
 

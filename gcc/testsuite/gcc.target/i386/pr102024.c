@@ -1,5 +1,6 @@
 /* PR target/102024 */
 /* { dg-do compile } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 struct S { float a; int : 0; float b; };
 void foo (struct S x);

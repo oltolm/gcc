@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-march=x86-64-v4 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-not "vzeroupper" { target { ! ia32 } } } } */
 
 #include <immintrin.h>

@@ -1,6 +1,7 @@
 /* PR target/85832 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512vl -mno-avx512bw -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times {\mvptestnmd\M} 2 } } */
 /* { dg-final { scan-assembler-times {\mvptestnmq\M} 2 } } */
 

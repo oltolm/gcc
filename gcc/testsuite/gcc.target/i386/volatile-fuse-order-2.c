@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fomit-frame-pointer -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { check-function-bodies "ia32" "*ia32" "" { target { ia32 && { ! *-*-darwin* } } } } } */
 /* { dg-final { check-function-bodies "x64" "*x64" "" { target { { ! ia32 } && { ! *-*-darwin* } } } } } */
 

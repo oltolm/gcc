@@ -1,6 +1,7 @@
 /* PR target/45336 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -msse4 -mtune=generic" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "movsbl" } } */
 /* { dg-final { scan-assembler "(movswl|cwtl)" } } */
 /* { dg-final { scan-assembler "pextrb" } } */

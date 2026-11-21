@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-Ofast -mavx2" } */
+// { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } }
 /* { dg-final {scan-assembler-times "vblendvps\[ \\t\]" 2 } } */
 /* { dg-final {scan-assembler-not "vpcmpeqd\[ \\t\]" } } */
 /* { dg-final {scan-assembler-not "vpxor\[ \\t\]" } } */

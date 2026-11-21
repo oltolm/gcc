@@ -1,5 +1,6 @@
 /* PR c/68657 */
 /* { dg-options "-mno-avx512f -Werror=psabi" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef int V __attribute__((vector_size (64)));
 

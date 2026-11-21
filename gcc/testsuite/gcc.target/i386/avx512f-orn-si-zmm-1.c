@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512f -mno-avx512vl -mprefer-vector-width=512 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vpternlogd\[ \\t\]+\\\$245, \\(%(?:eax|rdi|edi)\\)\\\{1to\[1-8\]+\\\}, %zmm\[0-9\]+, %zmm0" 1 } } */
 /* { dg-final { scan-assembler-not "vpbroadcast" } } */
 

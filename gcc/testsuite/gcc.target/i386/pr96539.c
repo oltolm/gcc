@@ -1,6 +1,7 @@
 /* PR rtl-optimization/96539 */
 /* { dg-do compile } */
 /* { dg-options "-Os" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* The need to restore the PIC register prevents PLT tail-calls on ia32,
    so S has to be copied to call baz.  */
 /* { dg-additional-options "-fno-PIE" { target ia32 } } */

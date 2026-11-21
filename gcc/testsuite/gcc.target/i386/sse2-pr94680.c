@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-msse2 -mno-sse4.1 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times {(?n)(?:mov|psrldq).*%xmm[0-9]} 12 } } */
 /* { dg-final { scan-assembler-not "pxor" } } */
 

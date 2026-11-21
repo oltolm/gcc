@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-msse2 -O2 -ffast-math -mavxneconvert -mno-avx512bf16" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-fno-asynchronous-unwind-tables" { target { ! *-*-darwin* } } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "ia32" "*ia32" "" { target ia32 } {^\t?\.} } } */

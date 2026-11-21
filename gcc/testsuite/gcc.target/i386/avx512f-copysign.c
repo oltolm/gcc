@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-mavx512f -mno-avx512vl -mprefer-vector-width=512 -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vpternlog\[dq\]\[ \\t\]+\\\$(?:216|228|0xd8|0xe4)," 5 } } */
 
 double cs_df (double x, double y)

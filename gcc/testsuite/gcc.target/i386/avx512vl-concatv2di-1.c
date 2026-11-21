@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -mavx512vl -mno-avx512dq -masm=att -mtune=haswell" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef long long V __attribute__((vector_size (16)));
 

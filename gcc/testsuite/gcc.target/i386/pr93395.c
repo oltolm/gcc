@@ -1,6 +1,7 @@
 /* PR target/93395 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512f -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vpermilpd\t.5, %ymm" 3 } } */
 /* { dg-final { scan-assembler-times "vpermilpd\t.85, %zmm" 3 } } */
 /* { dg-final { scan-assembler-not "vpermpd\t" } } */

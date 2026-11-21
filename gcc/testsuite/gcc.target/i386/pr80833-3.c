@@ -1,5 +1,6 @@
 /* { dg-do compile { target int128 } } */
 /* { dg-options "-O2 -mavx512dq -mavx512vl -mno-avx512bw -mtune=intel" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 __int128 test (__int128 a)
 {

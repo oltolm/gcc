@@ -1,6 +1,7 @@
 /* PR target/99930 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mno-avx -msse2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target { ! ia32 } } {^\t?\.} } } */
 

@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-march=cannonlake -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-not {(?n)vmovdq} } } */
 /* There should be no load + vpcmp, just vpcmp with memory operand.  */
 

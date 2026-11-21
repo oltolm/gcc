@@ -1,6 +1,7 @@
 /* PR target/124798  */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mtune=corei7 -mtune-ctrl=^prologue_using_move,^epilogue_using_move -fomit-frame-pointer" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 [[gnu::no_caller_saved_registers]] extern int foo (void);
 

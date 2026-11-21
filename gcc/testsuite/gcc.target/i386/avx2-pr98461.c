@@ -1,6 +1,7 @@
 /* PR target/98461 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx2 -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "\tvpmovmskb\t" 6 } } */
 /* { dg-final { scan-assembler-times "\t(?:notl|vpternlog\[dq\])\t" 6 } } */
 /* { dg-final { scan-assembler-not "\tvpcmpeq" } } */

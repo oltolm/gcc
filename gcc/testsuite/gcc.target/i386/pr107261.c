@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -msse2 -fomit-frame-pointer" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 typedef __bf16 v4bf __attribute__ ((vector_size (8)));
 typedef __bf16 v2bf __attribute__ ((vector_size (4)));

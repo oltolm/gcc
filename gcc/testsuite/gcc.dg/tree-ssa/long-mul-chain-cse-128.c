@@ -1,5 +1,6 @@
 /* { dg-do compile { target { oi_mode && int128 } } } */
 /* { dg-options "-O3 -fdump-tree-forwprop1-details -fdump-tree-optimized" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 /* Two differently-spelled high-part longhands of the same 128x128
    product both fold to the canonical (u256) x * (u256) y >> 128, so

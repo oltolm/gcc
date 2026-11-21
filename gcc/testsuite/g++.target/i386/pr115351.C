@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O3 -std=c++11" } */
+// { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } }
 
 struct complex
 {

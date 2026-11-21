@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-mavx512f -O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vmovdqa" 4 } } */
 /* { dg-final { scan-assembler-times {vpternlog[^\n\r]*\(%(?:r|e)dx\)} 2 { target { ! ia32 } } } } */
 

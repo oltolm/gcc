@@ -1,6 +1,7 @@
 /* PR target/108516 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -dp" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-mregparm=1" { target ia32 } } */
 
 struct S

@@ -1,5 +1,6 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -mgeneral-regs-only -mno-cld -mred-zone -fno-stack-protector" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 void
 __attribute__((interrupt))

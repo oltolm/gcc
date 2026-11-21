@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-Ofast -march=sapphirerapids" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-not "vmovaps" } } */
 /* { dg-final { scan-assembler-not "vblendps" } } */
 /* { dg-final { scan-assembler-not "vperm2i128" } } */

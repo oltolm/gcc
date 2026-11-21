@@ -1,6 +1,7 @@
 /* PR target/124315 */
 /* { dg-do compile { target masm_intel } } */
 /* { dg-options "-O2 -mavx512f -masm=intel" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "\tvfmadd231sd\txmm0{k\[0-7]}, xmm1, xmm2, {ru-sae}" } } */
 /* { dg-final { scan-assembler "\tvfmsub231sd\txmm0{k\[0-7]}, xmm1, xmm2, {ru-sae}" } } */
 /* { dg-final { scan-assembler "\tvfnmadd231sd\txmm0{k\[0-7]}, xmm1, xmm2, {ru-sae}" } } */

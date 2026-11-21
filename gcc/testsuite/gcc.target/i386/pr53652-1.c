@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -msse2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "pandn\[ \\t\]" 2 } } */
 /* { dg-final { scan-assembler-not "vpternlogq\[ \\t\]" } } */
 

@@ -1,6 +1,7 @@
 /* PR target/93696 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512bitalg -mavx512vpopcntdq -mavx512vl -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "vpopcnt\[bwdq]\t%\[xyz]mm1, %\[xyz]mm0\{%k\[0-7]\}\{z\}" 12 } } */
 /* { dg-final { scan-assembler-not "vmovdq\[au]\[0-9]" } } */
 

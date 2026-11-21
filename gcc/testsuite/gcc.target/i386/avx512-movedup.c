@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512f" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "vunpcklpd\[ \\t\]+%zmm\[0-9\]+, %zmm\[0-9\]+" } } */
 /* { dg-final { scan-assembler "vunpcklpd\[ \\t\]+%ymm\[0-9\]+, %ymm\[0-9\]+" } } */
 /* { dg-final { scan-assembler "vmovddup\[ \\t\]+\\(" } } */

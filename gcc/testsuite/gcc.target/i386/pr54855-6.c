@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -msse -mfpmath=sse" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "divss" 1 } } */
 /* { dg-final { scan-assembler-not "movaps" } } */
 /* { dg-final { scan-assembler-not "movss" } } */

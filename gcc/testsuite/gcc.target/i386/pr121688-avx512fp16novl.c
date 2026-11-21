@@ -1,6 +1,7 @@
 /* PR target/121688 */
 /* { dg-do compile } */
 /* { dg-options "-O2 -mf16c -mavx512fp16 -mno-avx512vl -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler-times "\tvcvtps2ph\t\\\$4, %xmm\[0-9]\+, %xmm\[0-9]\+" 2 } } */
 /* { dg-final { scan-assembler-times "\tvcvtps2ph\t\\\$4, %ymm\[0-9]\+, %xmm\[0-9]\+" 2 } } */
 /* { dg-final { scan-assembler-not "\tvcvtps2ph\t\\\$4, %zmm\[0-9]\+, %ymm\[0-9]\+" } } */

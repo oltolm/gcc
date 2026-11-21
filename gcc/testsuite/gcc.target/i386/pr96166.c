@@ -1,6 +1,7 @@
 /* PR target/96166 */
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O3 -mtune=generic -masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-final { scan-assembler "rolq\\s\\\$32, \\\(%\[re]di\\\)" } } */
 
 static inline void

@@ -1,6 +1,7 @@
 /* PR target/127020.  */
 /* { dg-do compile { target int128 } } */
 /* { dg-options "-O2 -march=x86-64-v2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 extern __int128 a, b, c, z;
 

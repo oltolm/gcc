@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mavx512fp16" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Cope with --enable-frame-pointer.  */
 /* { dg-additional-options "-fomit-frame-pointer" } */
 

@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-masm=att" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 
 void bar(unsigned char x);
 void foo()
