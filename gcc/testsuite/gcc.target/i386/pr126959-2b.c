@@ -5,11 +5,18 @@
 
 /*
 **func:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	kxnorq	%k0, %k0, %k0
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 

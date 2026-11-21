@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fomit-frame-pointer" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-mregparm=1" { target ia32 } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target *-*-* } {^\t?\.} } } */
@@ -12,7 +13,10 @@
 **	cmpb	\$0, \(%(e|r)(di|ax)\)
 **	jns	.L[0-9]+
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 

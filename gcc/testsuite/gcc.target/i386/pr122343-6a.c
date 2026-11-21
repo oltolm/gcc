@@ -1,13 +1,18 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fomit-frame-pointer" } */
+/* { dg-additional-options "-mabi=sysv -mcmodel=small" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-fno-pie" { target ia32 } } */
 /* { dg-final { check-function-bodies "**" "*#" "" { target { ! *-*-darwin* } } {^\t?\.} } } */
 /* { dg-final { check-function-bodies "*D" "*E" "" { target { *-*-darwin* && lp64 } } {^\t?\.} } } */
 
 /*
 **foo:
+**(
 **.LFB0:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	movl	bar(|\(%rip\)), %eax
 **	movl	bar(|\(%rip\)), %eax
 **	imull	\$123, %eax, %edx
@@ -19,7 +24,10 @@
 **	addl	%edx, %eax
 **	subl	%eax, bar(|\(%rip\))
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 *#
 * Darwin indirects extern accesses

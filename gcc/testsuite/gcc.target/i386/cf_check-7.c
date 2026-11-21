@@ -6,8 +6,12 @@
 
 /*
 **foo:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	ret
 **...
 */

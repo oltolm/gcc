@@ -1,12 +1,17 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -march=x86-64-v3" } */
+/* { dg-additional-options "-mabi=sysv -mcmodel=small" { target x86_64-*-mingw* } } */
 /* { dg-final { check-function-bodies "**" "*#" "" { target { { ! ia32 } && { ! *-*-darwin* } } } {^\t?\.} } } */
 /* { dg-final { check-function-bodies "*D" "*E" "" { target { lp64 && *-*-darwin* } } {^\t?\.} } } */
 
 /*
 **foo:
+**(
 **.LFB0:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	vpbroadcastw	cost\(%rip\), %xmm0
 **	vmovq	%xmm0, cost1\(%rip\)
 **	vmovdqu	%xmm0, cost2\(%rip\)

@@ -1,13 +1,18 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fomit-frame-pointer -fno-pie" } */
+/* { dg-additional-options "-mabi=sysv -mcmodel=small" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "*#" "" { target { ! *-*-darwin* } } {^\t?\.} } } */
 /* { dg-final { check-function-bodies "*D" "*E" "" { target { *-*-darwin* && lp64 } } {^\t?\.} } } */
 
 /*
 **foo:
+**(
 **.LFB0:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	movl	bar(|\(%rip\)), %eax
 **	movl	bar(|\(%rip\)), %eax
 **...
@@ -16,7 +21,10 @@
 **	addl	bar(|\(%rip\)), %eax
 **	subl	bar(|\(%rip\)), %eax
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 *#
 

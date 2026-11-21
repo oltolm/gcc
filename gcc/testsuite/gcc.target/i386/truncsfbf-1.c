@@ -1,13 +1,18 @@
 /* { dg-do compile } */
 /* { dg-options "-msse2 -O2 -ffast-math -mno-avxneconvert -mno-avx512bf16" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "ia32" "*ia32" "" { target ia32 } {^\t?\.} } } */
 /* { dg-final { check-function-bodies "x64" "*x64" "" { target { ! ia32 } } {^\t?\.} } } */
 
 /*
 ia32foo:
+ia32(
 ia32.LFB0:
 ia32	.cfi_startproc
+ia32|
+ia32	.seh_endprologue
+ia32)
 ia32	movl	4\(%esp\), %edx
 ia32	movl	%edx, %eax
 ia32	shrl	\$16, %eax
@@ -24,8 +29,12 @@ ia32...
 *ia32
 
 x64foo:
+x64(
 x64.LFB0:
 x64	.cfi_startproc
+x64|
+x64	.seh_endprologue
+x64)
 x64	(v|)movd	%xmm0, %edx
 x64	movl	%edx, %eax
 x64	shrl	\$16, %eax

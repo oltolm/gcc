@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -fomit-frame-pointer" } */
+/* { dg-additional-options "-mabi=sysv -mcmodel=small" { target x86_64-*-mingw* } } */
 /* { dg-additional-options "-fno-pie" { target ia32 } } */
 /* { dg-add-options check_function_bodies } */
 /* { dg-final { check-function-bodies "**" "*#" "" { target { ! *-*-darwin* } } {^\t?\.} } } */
@@ -7,12 +8,19 @@
 
 /*
 **foo:
+**(
 **.LFB0:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	movl	bar1(|\(%rip\)), %eax
 **	addl	bar2(|\(%rip\)), %eax
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 *#
 

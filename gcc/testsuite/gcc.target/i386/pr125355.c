@@ -5,10 +5,17 @@
 
 /*
 **foo:
+**(
 **.LFB0:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	jmp	_?memmove
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 

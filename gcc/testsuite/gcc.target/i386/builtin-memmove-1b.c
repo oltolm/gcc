@@ -1,12 +1,17 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mno-avx512f -march=x86-64-v3 -mtune=generic -minline-all-stringops" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target { ! ia32 } } {^\t?\.} } } */
 
 /*
 **memmove7:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	movl	\(%(?:r|e)si\), %edx
 **	movl	3\(%(?:r|e)si\), %eax
 **	movl	%edx, \(%(?:r|e)di\)
@@ -17,8 +22,12 @@
 
 /*
 **memmove13:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	movq	\(%(?:r|e)si\), %rdx
 **	movq	5\(%(?:r|e)si\), %rax
 **	movq	%rdx, \(%(?:r|e)di\)
@@ -29,8 +38,12 @@
 
 /*
 **memmove31:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	vmovdqu	\(%(?:r|e)si\), %xmm1
 **	vmovdqu	15\(%(?:r|e)si\), %xmm0
 **	vmovdqu	%xmm1, \(%(?:r|e)di\)
@@ -41,8 +54,12 @@
 
 /*
 **memmove39:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	vmovdqu	\(%(?:r|e)si\), %ymm0
 **	movq	31\(%(?:r|e)si\), %rax
 **	vmovdqu	%ymm0, \(%(?:r|e)di\)
@@ -54,8 +71,12 @@
 
 /*
 **memmove61:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	vmovdqu	\(%(?:r|e)si\), %ymm1
 **	vmovdqu	29\(%(?:r|e)si\), %ymm0
 **	vmovdqu	%ymm1, \(%(?:r|e)di\)
@@ -67,8 +88,12 @@
 
 /*
 **memmove69:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	vmovdqu	32\(%(?:r|e)si\), %ymm0
 **	movq	61\(%(?:r|e)si\), %rax
 **	vmovdqu	\(%(?:r|e)si\), %ymm1
@@ -82,8 +107,12 @@
 
 /*
 **memmove93:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	vmovdqu	\(%(?:r|e)si\), %ymm2
 **	vmovdqu	32\(%(?:r|e)si\), %ymm1
 **	vmovdqu	61\(%(?:r|e)si\), %ymm0

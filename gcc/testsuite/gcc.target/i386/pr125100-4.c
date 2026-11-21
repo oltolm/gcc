@@ -1,16 +1,24 @@
 /* { dg-do compile { target { { ! ia32 } && fpic } } } */
 /* { dg-options "-O2" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target "*-*-*" } {^\t?\.} } } */
 
 /*
 **foo:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	movabsq	\$4758053007424749568, %rax
 **	movq	%rax, \(%[re]di\)
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 

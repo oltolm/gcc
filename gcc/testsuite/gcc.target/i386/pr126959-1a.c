@@ -5,11 +5,18 @@
 
 /*
 **func1:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	kxnorb	%k0, %k0, %k0
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 
@@ -22,11 +29,18 @@ func1 (void)
 
 /*
 **func2:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	kxnorw	%k0, %k0, %k0
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 
@@ -39,11 +53,18 @@ func2 (void)
 
 /*
 **func3:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	kxnord	%k0, %k0, %k0
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 

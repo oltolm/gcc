@@ -5,8 +5,12 @@
 
 /*
 **foo:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	orps	.LC[0-9]+\(%rip\), %xmm0
 **	ret
 **...

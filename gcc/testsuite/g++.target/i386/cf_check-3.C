@@ -6,7 +6,11 @@
 /*
 **_Z3foov:
 **.LFB[0-9]+:
+**(
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	ret
 **...
 */

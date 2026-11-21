@@ -1,12 +1,17 @@
 /* { dg-do compile } */
 /* { dg-options "-Os -mno-sse -mstringop-strategy=unrolled_loop" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target { ! ia32 } } {^\t?\.} } } */
 
 /*
 **foo:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	xorl	%eax, %eax
 **	movq	%rax, \(%(e|r)di\)
 **	movq	%rax, 8\(%(e|r)di\)

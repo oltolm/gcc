@@ -8,7 +8,10 @@
 **...
 **	call	_?memmove
 **	call	_?abort
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 

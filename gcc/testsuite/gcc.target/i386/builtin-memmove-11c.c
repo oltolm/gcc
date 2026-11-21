@@ -1,12 +1,17 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -march=x86-64-v4 -mmove-max=512 -mtune=generic -minline-all-stringops" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target { ! ia32 } } {^\t?\.} } } */
 
 /*
 **gcc_memmove_zmm:
+**(
 **.LFB0:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	vmovdqu64	\(%(e|r)si\), %zmm7
 **	vmovdqu64	64\(%(e|r)si\), %zmm6
 **	vmovdqu64	128\(%(e|r)si\), %zmm5
@@ -25,7 +30,10 @@
 **	vmovdqu64	%zmm0, 448\(%(e|r)di\)
 **	vzeroupper
 **	ret
+**(
 **	.cfi_endproc
+**|
+**)
 **...
 */
 

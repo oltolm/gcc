@@ -5,7 +5,10 @@
 
 /*
 **vcn_init_session_buf_fc:
+**(
 **.LFB0:
+**|
+**)
 **...
 **	pxor	%xmm0, %xmm0
 **	xorl	%[a-z0-9]+, %[a-z0-9]+

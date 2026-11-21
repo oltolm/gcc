@@ -1,12 +1,17 @@
 /* { dg-do compile { target { ! ia32 } } } */
 /* { dg-options "-O2 -fdump-rtl-pro_and_epilogue" } */
+/* { dg-skip-if "SEH has no simple_return, so no shrink-wrapping" { x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target "*-*-*" } {^\t?\.}  } } */
 
 /*
 **advance:
+**(
 **.LFB0:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	testl	%edi, %edi
 **	jle	.L2
 **	imull	%edi, %edi

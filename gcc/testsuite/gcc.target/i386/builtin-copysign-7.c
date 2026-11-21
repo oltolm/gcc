@@ -1,12 +1,17 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mno-avx -msse2 -mtune-ctrl=^sse_packed_single_insn_optimal" } */
+/* { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } } */
 /* Keep labels and directives ('.cfi_startproc', '.cfi_endproc').  */
 /* { dg-final { check-function-bodies "**" "" "" { target { ! ia32 } } {^\t?\.} } } */
 
 /*
 **foo:
+**(
 **.LFB[0-9]+:
 **	.cfi_startproc
+**|
+**	.seh_endprologue
+**)
 **	pand	.LC[0-9]+\(%rip\), %xmm0
 **	por	.LC[0-9]+\(%rip\), %xmm0
 **	ret
