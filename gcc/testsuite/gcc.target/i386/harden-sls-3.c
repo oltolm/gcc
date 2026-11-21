@@ -1,6 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-O2 -mindirect-branch=thunk -mharden-sls=all" } */
 /* { dg-additional-options "-fno-pic" { target { ! *-*-darwin* } } } */
+/* { dg-skip-if "SEH does not use indirect branch thunks" { x86_64-*-mingw* } } */
 
 extern void (*fptr) (void);
 

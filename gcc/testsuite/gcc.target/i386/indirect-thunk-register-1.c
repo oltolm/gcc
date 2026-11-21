@@ -1,4 +1,4 @@
-/* { dg-do compile } */
+/* { dg-do compile { target *-*-linux* } } */
 /* { dg-options "-O2 -mindirect-branch=thunk -mindirect-branch-register " } */
 /* { dg-additional-options "-fno-pic" { target { ! *-*-darwin* } } } */
 
