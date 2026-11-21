@@ -1,4 +1,5 @@
 /* { dg-do run { target { bitint && le } } } */
+/* { dg-additional-options "-mno-ms-bitfields" { target *-*-mingw* } } */
 
 #if __BITINT_MAXWIDTH__ >= 1024
 union U1 {

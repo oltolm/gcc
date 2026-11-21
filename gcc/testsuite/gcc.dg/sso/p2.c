@@ -1,4 +1,5 @@
 /* { dg-do run } */
+/* { dg-additional-options "-mno-ms-bitfields" { target *-*-mingw* } } */
 
 #include <stdio.h>
 

@@ -1,6 +1,7 @@
 /* PR middle-end/37248 */
 /* { dg-do compile { target { ! default_packed } } } */
 /* { dg-options "-O2 -fdump-tree-optimized" } */
+/* { dg-additional-options "-mno-ms-bitfields" { target *-*-mingw* } } */
 
 struct S
 {

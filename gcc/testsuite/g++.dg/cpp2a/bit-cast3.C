@@ -1,4 +1,5 @@
 // { dg-do compile { target c++11 } }
+// { dg-additional-options "-mno-ms-bitfields" { target *-*-mingw* } }
 
 template <typename To, typename From>
 constexpr To
