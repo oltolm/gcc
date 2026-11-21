@@ -1,5 +1,5 @@
 /* PR target/126160 */
-/* { dg-do compile { target { ! ia32 } } } */
+/* { dg-do compile { target lp64 } } */
 /* { dg-options "-Ofast -mavx512dq -mavx512vl" } */
 /* { dg-final { scan-assembler-times "vcvtps2qq" 2 } } */
 /* { dg-final { scan-assembler-not "vcvtss2si" } } */

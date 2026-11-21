@@ -5,5 +5,5 @@
 void
 f ()
 {
-  const int tbl[(long) "h"] = { 12 }; // { dg-error "size of array .tbl. is not an integral constant-expression" }
+  const int tbl[(__INTPTR_TYPE__) "h"] = { 12 }; // { dg-error "size of array .tbl. is not an integral constant-expression" }
 }

@@ -9,5 +9,5 @@ class B {
   void d();
   b<const int *> e;
 };
-long f;
+__INTPTR_TYPE__ f;
 void B::d() { e.c((const int *)f); }

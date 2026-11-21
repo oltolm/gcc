@@ -44,7 +44,7 @@ main ()
     }
 
   unsigned long real_iter_count
-    = ((unsigned long)i - (unsigned long)data) / (sizeof (int) * 2);
+    = ((__UINTPTR_TYPE__)i - (__UINTPTR_TYPE__)data) / (sizeof (int) * 2);
   ASSERT_EQ (real_iter_count, 5);
 
   return 0;

@@ -66,8 +66,8 @@ test1 (void)
   #pragma omp parallel for
   for (i = 0; i < 1; i++)
     f23 ();	/* { dg-final { scan-tree-dump-times "f22 \\\(\\\);" 1 "gimple" } } */
-  f27 ();	/* { dg-final { scan-tree-dump-times "f25 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && lp64 } } } } */
-		/* { dg-final { scan-tree-dump-times "f24 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { ! lp64 } } } } } */
+  f27 ();	/* { dg-final { scan-tree-dump-times "f25 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { lp64 || llp64 } } } } } */
+		/* { dg-final { scan-tree-dump-times "f24 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { ! { lp64 || llp64 } } } } } } */
 		/* { dg-final { scan-tree-dump-times "f24 \\\(\\\);" 1 "gimple" { target { ! { nvptx*-*-* amdgcn*-*-* i?86-*-* x86_64-*-* } } } } } */
 		/* { dg-final { scan-tree-dump-times "f27 \\\(\\\);" 1 "gimple" { target { nvptx*-*-* amdgcn*-*-* } } } } */
 }

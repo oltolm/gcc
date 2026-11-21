@@ -1,5 +1,6 @@
 /* PR c/70859 */
 /* { dg-do compile } */
+/* { dg-additional-options "-Wno-long-long" { target llp64 } } */
 
 #ifdef _AIX
 #define _ISOC99_SOURCE

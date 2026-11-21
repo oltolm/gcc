@@ -6,7 +6,7 @@
 
 typedef int int32_t;
 typedef unsigned char uint8_t;
-typedef unsigned long int uintptr_t;
+typedef __UINTPTR_TYPE__ uintptr_t;
 typedef uint8_t scm_t_uint8;
 typedef int32_t scm_t_int32;
 typedef uintptr_t scm_t_uintptr;

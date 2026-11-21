@@ -12,5 +12,5 @@ struct _Unwind_Context {
   struct _Unwind_Context cur_contextcur_context =
       _Unwind_Resume_or_Rethrow_this_context;
   offset(0);
-  __builtin_eh_return ((long) offset, 0);
+  __builtin_eh_return (__extension__ (__INTPTR_TYPE__) offset, 0);
 }

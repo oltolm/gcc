@@ -11,7 +11,7 @@ int a;
 int fn2(int, int);
 
 int fn1(int p1) {
-  int h = fn2(p1, (int)(long)&e);
+  int h = fn2(p1, (int)(__INTPTR_TYPE__)&e);
   for (; d < e; d++)
     if (f[d] != a)
       h += g ? g[f[d]] : 1;
@@ -20,6 +20,6 @@ int fn1(int p1) {
 
 int main() {
   struct _GPart *i;
-  for (; b < (int)(long)(i->g); b++)
-    c[b] = fn1((int)(long)i->g);
+  for (; b < (int)(__INTPTR_TYPE__)(i->g); b++)
+    c[b] = fn1((int)(__INTPTR_TYPE__)i->g);
 }

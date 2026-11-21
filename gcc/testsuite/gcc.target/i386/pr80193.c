@@ -169,7 +169,7 @@ static void bf ()
                                             int cb;
                                             *aa = &cb;
                                           }
-                                    m ((long) &br);
+                                    m ((__INTPTR_TYPE__) &br);
                                     while (an)
                                       while (1)
                                         ;

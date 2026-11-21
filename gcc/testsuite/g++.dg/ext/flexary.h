@@ -19,4 +19,4 @@
 #define ASSERT_AT_END(T, m)                             \
   ASSERT (__builtin_offsetof (T, m) == sizeof (T))
 
-typedef __SIZE_TYPE__ size_t;
+__extension__ typedef __SIZE_TYPE__ size_t;

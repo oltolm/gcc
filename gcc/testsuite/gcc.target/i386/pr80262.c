@@ -19,7 +19,7 @@ typedef struct {
   S2 s2;
 } S3;
  
-long int BASE;
+__INTPTR_TYPE__ BASE;
  
 void fn1(int n) {
   clearS2 (&(((__seg_gs S3*)(BASE))->s2), n);

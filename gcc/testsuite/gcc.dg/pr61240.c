@@ -1,7 +1,7 @@
 /* PR c/61240 */
 /* { dg-do compile } */
 
-typedef __PTRDIFF_TYPE__ ptrdiff_t;
+__extension__ typedef __PTRDIFF_TYPE__ ptrdiff_t;
 
 ptrdiff_t
 foo (ptrdiff_t a[4])

@@ -303,7 +303,7 @@ f2 (struct C *x)
 #if __SIZEOF_POINTER__ == __SIZEOF_LONG__ && !__MSP430X_LARGE__
 	      if (((unsigned long) o > (unsigned long) -4000L))
 #else
-	  if (((__UINTPTR_TYPE__) o > (__UINTPTR_TYPE__) -4000UL))
+	  if (((__UINTPTR_TYPE__) o > -(__UINTPTR_TYPE__) 4000))
 #endif
 		{
 		  e = 5;
@@ -391,7 +391,7 @@ f2 (struct C *x)
 #if __SIZEOF_POINTER__ == __SIZEOF_LONG__ && !__MSP430X_LARGE__
 	  if (((unsigned long) o > (unsigned long) -4000L))
 #else
-	  if (((__UINTPTR_TYPE__) o > (__UINTPTR_TYPE__) -4000UL))
+	  if (((__UINTPTR_TYPE__) o > -(__UINTPTR_TYPE__) 4000))
 #endif
 	    {
 	      e = 6;

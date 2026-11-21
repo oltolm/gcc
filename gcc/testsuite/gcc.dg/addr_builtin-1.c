@@ -2,7 +2,7 @@
    { dg-do compile }  */
 
 typedef void (F)(void);
-typedef __UINTPTR_TYPE__ uintptr_t;
+__extension__ typedef __UINTPTR_TYPE__ uintptr_t;
 
 /* Utility function to test passing built-in functions as an ordinary
    argument and via the ellipsis.  */
@@ -122,7 +122,7 @@ static F* test_taking_address_of_gcc_builtin (void)
    of a user-declared function that's also a GCC built-in.  */
 extern int abs (int);
 
-extern __SIZE_TYPE__ strlen (const char*);
+__extension__ extern __SIZE_TYPE__ strlen (const char*);
 
 /* Taking the address of a builtin with a library "fallback" must be
    allowed, either using the __builtin_xxx form or the xxx form, when
@@ -147,7 +147,7 @@ void test_taking_address_of_library_builtin (int i)
   }
 
   {
-    typedef __SIZE_TYPE__ size_t;
+    __extension__ typedef __SIZE_TYPE__ size_t;
     typedef size_t F (const char*);
 
     /* Compute the address of libc's strlen using the implicitly

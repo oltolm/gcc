@@ -27,7 +27,7 @@ struct D1: virtual B, virtual C
      to the opening brace.  */
   D1 ()
   {
-    ci = 0;                   // { dg-warning "\\\[-Warray-bounds" "assign" { xfail lp64 } }
+    ci = 0;                   // { dg-warning "\\\[-Warray-bounds" "assign" { xfail { lp64 || llp64 } } }
   }
 };
 

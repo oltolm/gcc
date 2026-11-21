@@ -14,7 +14,7 @@ void corge() {
   a.foo(xx1, 0);
 }
 
-typedef unsigned long int VV __attribute__((vector_size (2 * sizeof (long))));
+typedef __UINTPTR_TYPE__ VV __attribute__((vector_size (2 * sizeof (__UINTPTR_TYPE__))));
 VV vv;
 __attribute__((noipa)) static void fn1 (void) {}
 __attribute__((noipa)) static void fn2 (void) {}
@@ -22,6 +22,6 @@ __attribute__((noipa)) static void fn2 (void) {}
 void
 fn3 ()
 {
-  VV a = { (unsigned long) &fn1, (unsigned long) &fn2 };
+  VV a = { (__UINTPTR_TYPE__) &fn1, (__UINTPTR_TYPE__) &fn2 };
   vv = a;
 }

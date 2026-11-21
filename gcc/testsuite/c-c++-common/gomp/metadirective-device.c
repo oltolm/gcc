@@ -1,6 +1,6 @@
 /* { dg-do compile }  */
 /* { dg-additional-options "-foffload=disable -fdump-tree-optimized" } */
-/* { dg-additional-options "-DDEVICE_ARCH=x86_64 -DDEVICE_ISA=sse -msse" { target { x86 && lp64 } } } */
+/* { dg-additional-options "-DDEVICE_ARCH=x86_64 -DDEVICE_ISA=sse -msse" { target { x86 && { lp64 || llp64 } } } } */
 // { dg-additional-options "-Wno-deprecated-openmp" }
 #include <stdlib.h>
 

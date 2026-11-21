@@ -37,14 +37,14 @@ void len_ul_1_max (unsigned long i)
 {
   if (i < 1) i = 1;
   n = strlen (a + i);         // { dg-warning "reading 1 or more bytes from a region of size 0" }
-  n = strlen (a + i + 1);     // { dg-warning "reading 1 or more bytes from a region of size 0" "" { xfail *-*-* } }
+  n = strlen (a + i + 1);     // { dg-warning "reading 1 or more bytes from a region of size 0" "" { xfail { ! llp64 } } }
 }
 
 
 void len_si_min_m1 (int i)
 {
   if (i > -1) i = -1;
-  n = strlen (a + i - 1);     // { dg-warning "reading 1 or more bytes from a region of size 0" "" { xfail lp64 } }
+  n = strlen (a + i - 1);     // { dg-warning "reading 1 or more bytes from a region of size 0" "" { xfail { lp64 || llp64 } } }
   n = strlen (a + i);         // { dg-warning "reading 1 or more bytes from a region of size 0" "" { xfail *-*-* } }
   n = strlen (a + i + 2);
 }
@@ -52,7 +52,7 @@ void len_si_min_m1 (int i)
 void len_sl_min_m1 (long i)
 {
   if (i > -1) i = -1;
-  n = strlen (a + i - 1);     // { dg-warning "reading 1 or more bytes from a region of size 0" }
+  n = strlen (a + i - 1);     // { dg-warning "reading 1 or more bytes from a region of size 0" "" { xfail llp64 } }
   n = strlen (a + i);         // { dg-warning "reading 1 or more bytes from a region of size 0" "" { xfail *-*-* } }
   n = strlen (a + i + 2);
 }

@@ -14,7 +14,7 @@ template <typename _Tp> struct _MakeUniq<_Tp[]> {
   typedef unique_ptr<_Tp[]> __array;
 };
 template <typename _Tp> using __unique_ptr_array_t = _MakeUniq<_Tp>::__array;
-constexpr __unique_ptr_array_t<char[]> make_unique(long __num) {
+constexpr __unique_ptr_array_t<char[]> make_unique(__INTPTR_TYPE__ __num) {
   return unique_ptr<char[]>(new char[__num]);
 }
 } // namespace std
@@ -22,6 +22,6 @@ int a;
 int
 main ()
 {
-  std::unique_ptr p = std::make_unique((long)&a);
-  constexpr std::unique_ptr p2 = std::make_unique((long)&a); // { dg-error "conversion" }
+  std::unique_ptr p = std::make_unique((__INTPTR_TYPE__)&a);
+  constexpr std::unique_ptr p2 = std::make_unique((__INTPTR_TYPE__)&a); // { dg-error "conversion" }
 }

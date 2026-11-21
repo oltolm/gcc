@@ -11,7 +11,7 @@ typedef signed int sint32;
 
 typedef uint32 reg_t;
 
-typedef unsigned long int host_addr_t;
+typedef __UINTPTR_TYPE__ host_addr_t;
 typedef uint32 target_addr_t;
 typedef sint32 target_saddr_t;
 
@@ -35,7 +35,7 @@ typedef union
 typedef struct
 {
   target_addr_t vaddr_tag;
-  unsigned long int rigged_paddr;
+  host_addr_t rigged_paddr;
 } tlb_entry_t;
 
 typedef struct

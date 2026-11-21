@@ -1,6 +1,7 @@
 /* PR c/96596 - ICE on a declaration of a built-in with invalid array
    argument
-   { dg-do compile } */
+   { dg-do compile }
+   { dg-additional-options "-Wno-long-long" { target llp64 } } */
 
 void __builtin_abort (int[foo]);            /* { dg-error "'foo' undeclared" } */
 void __builtin_trap (int[__SIZE_MAX__]);    /* { dg-error "size of unnamed array is too large" } */

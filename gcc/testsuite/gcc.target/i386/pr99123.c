@@ -7,14 +7,14 @@ baz (void *s, unsigned long c, unsigned int count)
   int d0, d1;
   __asm__ __volatile__ (""
                         : "=&c" (d0), "=&D" (d1)
-                        :"a" (c), "q" (count), "0" (count / 4), "" ((long) s)   /// "1"
+                        :"a" (c), "q" (count), "0" (count / 4), "" ((__INTPTR_TYPE__) s)   /// "1"
                         :"memory");
   return s;
 }
 
 struct A
 {
-  unsigned long *a;
+  __UINTPTR_TYPE__ *a;
 };
 
 inline static void *

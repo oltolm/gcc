@@ -33,5 +33,7 @@ void foo()
 /* { dg-final { scan-rtl-dump-times "0xfffffffffffffefe" 1 "expand" } } */
 /* { dg-final { scan-rtl-dump-times "0xfffffffffefefefe" 2 "expand" { target lp64 } } } */
 /* { dg-final { scan-rtl-dump-times "0xfefefefefefefefe" 3 "expand" { target lp64 } } } */
-/* { dg-final { scan-rtl-dump-times "0xfffffffffefefefe" 4 "expand" { target { ! lp64 } } } } */
-/* { dg-final { scan-rtl-dump-times "0xfefefefefefefefe" 1 "expand" { target { ! lp64 } } } } */
+/* { dg-final { scan-rtl-dump-times "0xfffffffffefefefe" 3 "expand" { target llp64 } } } */
+/* { dg-final { scan-rtl-dump-times "0xfefefefefefefefe" 2 "expand" { target llp64 } } } */
+/* { dg-final { scan-rtl-dump-times "0xfffffffffefefefe" 4 "expand" { target { ! { lp64 || llp64 } } } } } */
+/* { dg-final { scan-rtl-dump-times "0xfefefefefefefefe" 1 "expand" { target { ! { lp64 || llp64 } } } } } */

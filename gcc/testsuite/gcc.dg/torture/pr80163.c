@@ -12,14 +12,14 @@ bar (void)
 }
 
 __attribute__((noinline, noclone)) __int128_t *
-foo (unsigned long **p)
+foo (__UINTPTR_TYPE__ **p)
 {
 a:
   bar ();
 b:
   bar ();
-  static __int128_t d = (unsigned long) &&a - (unsigned long) &&b;
-  static unsigned long e = (unsigned long) &&a - (unsigned long) &&b;
+  static __int128_t d = (__UINTPTR_TYPE__) &&a - (__UINTPTR_TYPE__) &&b;
+  static __UINTPTR_TYPE__ e = (__UINTPTR_TYPE__) &&a - (__UINTPTR_TYPE__) &&b;
   *p = &e;
   return &d;
 }
@@ -28,7 +28,7 @@ int
 main ()
 {
   __int128_t *p;
-  unsigned long *q;
+  __UINTPTR_TYPE__ *q;
   p = foo (&q);
   if (*p != *q)
     __builtin_abort ();

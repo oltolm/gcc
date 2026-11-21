@@ -9,8 +9,8 @@ struct S { info i; };
 
 // These are non-constant under https://eel.is/c++draft/bit.cast#2 and
 // https://eel.is/c++draft/expr.const#core-1.2
-constexpr auto x = __builtin_bit_cast (unsigned long, ^^int);   // { dg-error ".__builtin_bit_cast. is not a constant expression because its type is .std::meta::info." }
-constexpr auto y = __builtin_bit_cast (decltype(^^int), 0UL);   // { dg-error ".__builtin_bit_cast. is not a constant expression because its type is .std::meta::info." }
-constexpr auto w = __builtin_bit_cast (S, 0UL);   // { dg-error ".__builtin_bit_cast. is not a constant expression because .S. contains .std::meta::info. type" }
+constexpr auto x = __builtin_bit_cast (__UINTPTR_TYPE__, ^^int);   // { dg-error ".__builtin_bit_cast. is not a constant expression because its type is .std::meta::info." }
+constexpr auto y = __builtin_bit_cast (decltype(^^int), (__UINTPTR_TYPE__) 0);   // { dg-error ".__builtin_bit_cast. is not a constant expression because its type is .std::meta::info." }
+constexpr auto w = __builtin_bit_cast (S, (__UINTPTR_TYPE__) 0);   // { dg-error ".__builtin_bit_cast. is not a constant expression because .S. contains .std::meta::info. type" }
 // TODO: CWG 3217. Run-time treatment of std::meta::info types
-info z = __builtin_bit_cast (decltype(^^int), 0xdeadbeefUL);
+info z = __builtin_bit_cast (decltype(^^int), (__UINTPTR_TYPE__) 0xdeadbeef);

@@ -4,7 +4,7 @@
 /* { dg-options "-O2 -Warray-bounds -fdiagnostics-show-context=1" } */
 /* { dg-additional-options "-fdiagnostics-show-line-numbers -fdiagnostics-path-format=inline-events -fdiagnostics-show-caret" } */
 /* { dg-enable-nn-line-numbers "" } */
-typedef long unsigned int size_t;
+typedef __SIZE_TYPE__ size_t;
 
 struct obj_t { size_t field0; size_t field1; };
 struct obj_array_t { size_t objcnt; struct obj_t* objary; };

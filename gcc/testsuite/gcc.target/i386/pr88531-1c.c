@@ -3,6 +3,6 @@
 
 #include "pr88531-1a.c"
 
-/* { dg-final { scan-assembler-times "vgatherdpd" 4 { target { ! lp64 } } } } */
-/* { dg-final { scan-assembler-times "vgatherqpd" 4 { target lp64 } } } */
+/* { dg-final { scan-assembler-times "vgatherdpd" 4 { target { ! { lp64 || llp64 } } } } } */
+/* { dg-final { scan-assembler-times "vgatherqpd" 4 { target { lp64 || llp64 } } } } */
 /* { dg-final { scan-assembler-times "vmulpd" 4 } } */

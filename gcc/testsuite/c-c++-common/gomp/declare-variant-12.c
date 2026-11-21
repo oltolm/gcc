@@ -71,8 +71,8 @@ test1 (void)
     #pragma omp parallel for	/* 5 constructs in OpenMP context, arch is 2^6, isa 2^7.  */
     for (j = 0; j < 1; j++)
       {
-	f13 ();	/* { dg-final { scan-tree-dump-times "f09 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && lp64 } } } } */
-		/* { dg-final { scan-tree-dump-times "f11 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { ! lp64 } } } } } */
+	f13 ();	/* { dg-final { scan-tree-dump-times "f09 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { lp64 || llp64 } } } } } */
+		/* { dg-final { scan-tree-dump-times "f11 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { ! { lp64 || llp64 } } } } } } */
 		/* { dg-final { scan-tree-dump-times "f10 \\\(\\\);" 1 "gimple" { target { ! { i?86-*-* x86_64-*-* } } } } } */
 	f17 ();	/* { dg-final { scan-tree-dump-times "f14 \\\(\\\);" 1 "gimple" } } */
 	f21 ();	/* { dg-final { scan-tree-dump-times "f19 \\\(\\\);" 1 "gimple" } } */

@@ -58,8 +58,8 @@ struct T
 void
 test ()
 {
-  f02<1> ();	// { dg-final { scan-tree-dump-times "f01 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && lp64 } } } }
-		// { dg-final { scan-tree-dump-times "f02<1> \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { ! lp64 } } } } }
+  f02<1> ();	// { dg-final { scan-tree-dump-times "f01 \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { lp64 || llp64 } } } } }
+		// { dg-final { scan-tree-dump-times "f02<1> \\\(\\\);" 1 "gimple" { target { { i?86-*-* x86_64-*-* } && { ! { lp64 || llp64 } } } } } }
 		// { dg-final { scan-tree-dump-times "f02<1> \\\(\\\);" 1 "gimple" { target { ! { i?86-*-* x86_64-*-* } } } } }
   f04<1> ();		// { dg-final { scan-tree-dump-times "f03 \\\(\\\);" 1 "gimple" } }
   f06<1, long> ();	// { dg-final { scan-tree-dump-times "f05<1> \\\(\\\);" 1 "gimple" } }

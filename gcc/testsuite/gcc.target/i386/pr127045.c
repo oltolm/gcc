@@ -2,7 +2,7 @@
 /* { dg-options "-O1" } */
 
 float a;
-long b, c;
+long long b, c;
 int d, e, f, *g, *h, **i, **l, **m;
 short n, o, p, q;
 void
@@ -12,7 +12,7 @@ r (short s, short t)
     ;
 }
 void
-u (short s, int t, long v)
+u (short s, int t, long long v)
 {
   h = &e;
   i = &g;
@@ -35,7 +35,7 @@ u (short s, int t, long v)
 void
 w (float s)
 {
-  long j, k;
+  long long j, k;
   a = 8.0f * s;
   b = 2.0f;
   j = a;

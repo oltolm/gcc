@@ -6,14 +6,14 @@ int a;
 constexpr char *
 f1 ()
 {
-  constexpr auto p = new char[(long int) &a]; // { dg-error "conversion from pointer" }
+  constexpr auto p = new char[(__INTPTR_TYPE__) &a]; // { dg-error "conversion from pointer" }
   return p;
 }
 
 constexpr char *
 f2 ()
 {
-  auto p = new char[(long int) &a];  // { dg-error "conversion from pointer" }
+  auto p = new char[(__INTPTR_TYPE__) &a];  // { dg-error "conversion from pointer" }
   return p;
 }
 

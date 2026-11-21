@@ -13,7 +13,7 @@ void sink (int, ...);
 
 void test_cststring (int i)
 {
-  T (""[SSIZE_MIN]);                      /* { dg-warning "below array bounds" "string" { xfail lp64 } } */
+  T (""[SSIZE_MIN]);                      /* { dg-warning "below array bounds" "string" { xfail { lp64 || llp64 } } } */
   T (""[SSIZE_MIN + 1]);                  /* { dg-warning "below array bounds" "string" } */
   T (""[-1]);                             /* { dg-warning "below array bounds" "string" } */
   T (""[0]);

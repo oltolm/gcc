@@ -30,11 +30,11 @@ TypHandle FunOnRight (TypHandle hdCall)
 
     if ( ((hdCall)->size) != 3*((size_t)sizeof(TypHandle)) )
         return Error("",0L,0L);
-    hdPnt = ((long)(((TypHandle*)((hdCall)->ptr))[1])&1 ? (((TypHandle*)((hdCall)->ptr))[1]) : (* EvTab[(((long)(((TypHandle*)((hdCall)->ptr))[1]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[1])->type))])((((TypHandle*)((hdCall)->ptr))[1])));
-    hdElm = ((long)(((TypHandle*)((hdCall)->ptr))[2])&1 ? (((TypHandle*)((hdCall)->ptr))[2]) : (* EvTab[(((long)(((TypHandle*)((hdCall)->ptr))[2]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[2])->type))])((((TypHandle*)((hdCall)->ptr))[2])));
+    hdPnt = ((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[1])&1 ? (((TypHandle*)((hdCall)->ptr))[1]) : (* EvTab[(((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[1]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[1])->type))])((((TypHandle*)((hdCall)->ptr))[1])));
+    hdElm = ((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[2])&1 ? (((TypHandle*)((hdCall)->ptr))[2]) : (* EvTab[(((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[2]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[2])->type))])((((TypHandle*)((hdCall)->ptr))[2])));
 
 
-    hdRes = ((*TabProd[(((long)(hdPnt) & 1) ? 1 : ((hdPnt)->type))][(((long)(hdElm) & 1) ? 1 : ((hdElm)->type))])((hdPnt),(hdElm)));
+    hdRes = ((*TabProd[(((__INTPTR_TYPE__)(hdPnt) & 1) ? 1 : ((hdPnt)->type))][(((__INTPTR_TYPE__)(hdElm) & 1) ? 1 : ((hdElm)->type))])((hdPnt),(hdElm)));
     return hdRes;
 }
 
@@ -48,11 +48,11 @@ TypHandle FunOnLeft (TypHandle hdCall)
 
     if ( ((hdCall)->size) != 3*((size_t)sizeof(TypHandle)) )
         return Error("",0L,0L);
-    hdPnt = ((long)(((TypHandle*)((hdCall)->ptr))[1])&1 ? (((TypHandle*)((hdCall)->ptr))[1]) : (* EvTab[(((long)(((TypHandle*)((hdCall)->ptr))[1]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[1])->type))])((((TypHandle*)((hdCall)->ptr))[1])));
-    hdElm = ((long)(((TypHandle*)((hdCall)->ptr))[2])&1 ? (((TypHandle*)((hdCall)->ptr))[2]) : (* EvTab[(((long)(((TypHandle*)((hdCall)->ptr))[2]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[2])->type))])((((TypHandle*)((hdCall)->ptr))[2])));
+    hdPnt = ((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[1])&1 ? (((TypHandle*)((hdCall)->ptr))[1]) : (* EvTab[(((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[1]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[1])->type))])((((TypHandle*)((hdCall)->ptr))[1])));
+    hdElm = ((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[2])&1 ? (((TypHandle*)((hdCall)->ptr))[2]) : (* EvTab[(((__INTPTR_TYPE__)(((TypHandle*)((hdCall)->ptr))[2]) & 1) ? 1 : ((((TypHandle*)((hdCall)->ptr))[2])->type))])((((TypHandle*)((hdCall)->ptr))[2])));
 
 
-    hdRes = ((*TabProd[(((long)(hdElm) & 1) ? 1 : ((hdElm)->type))][(((long)(hdPnt) & 1) ? 1 : ((hdPnt)->type))])((hdElm),(hdPnt)));
+    hdRes = ((*TabProd[(((__INTPTR_TYPE__)(hdElm) & 1) ? 1 : ((hdElm)->type))][(((__INTPTR_TYPE__)(hdPnt) & 1) ? 1 : ((hdPnt)->type))])((hdElm),(hdPnt)));
     return hdRes;
 }
 

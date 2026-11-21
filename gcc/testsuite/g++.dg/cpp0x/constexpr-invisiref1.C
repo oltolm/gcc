@@ -4,18 +4,18 @@
 class CAddress
 {
 public:
-  constexpr CAddress(unsigned long begin) : m_Begin(begin) {}
+  constexpr CAddress(__UINTPTR_TYPE__ begin) : m_Begin(begin) {}
   constexpr CAddress(const CAddress &other) : m_Begin(other.m_Begin) {}
 
 private:
-  unsigned long m_Begin;
+  __UINTPTR_TYPE__ m_Begin;
 };
 
 extern "C" char _lnkDDRRAM;
 /* internal compiler error on gcc 4.6.3 */
 const CAddress s_Memmap[2]
 {
-  {(unsigned long)&_lnkDDRRAM}, /* segmentation fault */
+  {(__UINTPTR_TYPE__)&_lnkDDRRAM}, /* segmentation fault */
   {0x40000000},
 };
 

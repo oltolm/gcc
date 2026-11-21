@@ -9,7 +9,7 @@ foo ()
 
   for (unsigned c = 0x1F;; c >>= 1)
     {
-      unsigned d = (long)"a";
+      unsigned d = (__INTPTR_TYPE__)"a";
       long e = 8;
 
       while (e)

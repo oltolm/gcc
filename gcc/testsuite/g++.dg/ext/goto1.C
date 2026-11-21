@@ -3,7 +3,7 @@
 // { dg-options "" }
 
 void c() {
-  static __int128_t d = (long)&&a - (long)&&b;
+  static __int128_t d = (__INTPTR_TYPE__)&&a - (__INTPTR_TYPE__)&&b;
 a:
 b:;
 }

@@ -1,7 +1,7 @@
 /* { dg-do compile } */
 /* { dg-options "-Wall -O3" } */
 
-typedef long unsigned int size_t;
+typedef __SIZE_TYPE__ size_t;
 
 inline void
 fill (int *p, size_t n, int)

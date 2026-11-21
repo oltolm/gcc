@@ -2,7 +2,7 @@
 /* { dg-options "-O2 -fno-tree-vectorize -fno-unroll-loops" } */
 
 int *a;
-long len;
+__INTPTR_TYPE__ len;
 
 int
 test ()

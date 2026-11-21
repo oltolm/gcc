@@ -31,10 +31,10 @@ _Alignas (long double) int ild;
 
 _Alignas (char) long int lic; /* { dg-error "cannot reduce alignment" } */
 _Alignas (short int) long int lis; /* { dg-error "cannot reduce alignment" } */
-_Alignas (int) long int lii; /* { dg-error "cannot reduce alignment" "" { target { ! { ilp32 } } } } */
+_Alignas (int) long int lii; /* { dg-error "cannot reduce alignment" "" { target { ! { ilp32 || llp64 } } } } */
 _Alignas (long int) long int lil;
 _Alignas (long long int) long int lill;
-_Alignas (float) long int lif; /* { dg-error "cannot reduce alignment" "" { target { ! { ilp32 } } } } */
+_Alignas (float) long int lif; /* { dg-error "cannot reduce alignment" "" { target { ! { ilp32 || llp64 } } } } */
 _Alignas (double) long int lid;
 _Alignas (long double) long int lild;
 
