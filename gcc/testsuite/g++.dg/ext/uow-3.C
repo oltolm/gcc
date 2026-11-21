@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-Wall" } */
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 typedef int UOW;  /* { dg-message "declared here" } */
 struct ABC {

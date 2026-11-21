@@ -1,4 +1,5 @@
 // { dg-options "-fdiagnostics-show-caret" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 class t1
 {

@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 // Check that an appropriate diagnostic is emitted when a dispatch directive
 // appears in a pragma_member context.

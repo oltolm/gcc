@@ -1,5 +1,6 @@
 // { dg-do assemble  }
 // { dg-options "-Wno-deprecated -Wreturn-type" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // GROUPS passed i960
 /*
   Bug Id: bnr

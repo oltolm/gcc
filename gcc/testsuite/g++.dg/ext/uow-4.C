@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-Wall -pedantic" } */
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 extern "C" {
 

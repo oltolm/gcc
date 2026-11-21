@@ -1,4 +1,5 @@
 /* { dg-options "-std=gnu89" } */
+/* { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } } */
 /* In GNU C mode, we recognize the anonymous struct/union extension,
    but not Microsoft extensions.  */
 

@@ -2,6 +2,7 @@
 
 /* Also turn off the default -pedantic-errors option.  */
 /* { dg-options "-fpermissive" } */
+/* { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } } */
 
 /* When not using -fplan9-extensions, we don't support automatic
    conversion of pointer types, and we don't support referring to a

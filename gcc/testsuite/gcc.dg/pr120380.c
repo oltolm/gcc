@@ -1,5 +1,6 @@
 /* PR c/120380 */
 /* { dg-do compile } */
+/* { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } } */
 
 struct pair_t {
   char c;

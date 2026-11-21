@@ -2,6 +2,7 @@
 // lenient if it has the same meaning.
 
 // { dg-options "" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 struct Lock { };
 struct Traits

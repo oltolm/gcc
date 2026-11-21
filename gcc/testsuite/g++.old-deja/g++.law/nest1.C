@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // GROUPS passed nest
 // nest file
 // From: gs4t@virginia.edu (Gnanasekaran  Swaminathan)

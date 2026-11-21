@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // 
 // Copyright (C) 1999 Free Software Foundation, Inc.
 // Contributed by Nathan Sidwell 27 Sep 1999 <nathan@acm.org>

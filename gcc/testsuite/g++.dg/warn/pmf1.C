@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 // Origin: benko@sztaki.hu
 

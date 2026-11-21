@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // { dg-additional-options "-Wno-non-c-typedef-for-linkage" }
 
 template <int> void a() {

@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-fpermissive" } */
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 template <class _Tp> class auto_ptr {};  /* { dg-message "declared here" } */
 template <class _Tp>

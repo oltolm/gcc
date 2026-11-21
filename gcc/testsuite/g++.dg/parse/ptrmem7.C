@@ -1,5 +1,6 @@
 // PR c++/80043
 // { dg-options -fpermissive }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 struct A
 {

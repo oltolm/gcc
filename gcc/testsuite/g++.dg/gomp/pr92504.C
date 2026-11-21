@@ -1,5 +1,6 @@
 // PR c++/92504
 // { dg-do compile { target c++11 } }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // { dg-additional-options "-O2" }
 
 namespace std {

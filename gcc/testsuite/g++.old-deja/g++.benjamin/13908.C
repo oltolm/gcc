@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // 981203 bkoz
 // g++/13908
 

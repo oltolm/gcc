@@ -1,3 +1,4 @@
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // PR c++/28513
 
 class foo {			// { dg-message "declared here" }

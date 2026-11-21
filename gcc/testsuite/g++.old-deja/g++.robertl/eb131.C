@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // From: Klaus-Georg Adams <Klaus-Georg.Adams@chemie.uni-karlsruhe.de> 
 // Reported against EGCS snaps 98/06/18.
 

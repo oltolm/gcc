@@ -1,5 +1,6 @@
 // PR c++/29225
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 template <typename L, typename R> bool operator< (L x, R y);
 struct T { int t (); };

@@ -1,3 +1,4 @@
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // PR c++/106858
 // { dg-additional-options "-fopenmp -fsanitize=undefined" }
 

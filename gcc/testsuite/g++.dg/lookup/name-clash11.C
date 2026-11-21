@@ -2,6 +2,7 @@
 // Test also verifies the correct evaluation of the expressions with
 // -fpermissive.
 // { dg-options "-fpermissive" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 #if __cplusplus >= 201103L
 #  define ASSERT(e) static_assert (e, #e)

@@ -1,5 +1,6 @@
 // PR c++/89537
 // { dg-do compile { target c++11 } }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 template <typename> class A {};
 template <typename, typename, typename, typename> class B;

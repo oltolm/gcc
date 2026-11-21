@@ -2,6 +2,7 @@
 // type can only be used in a call.
 
 // { dg-do compile { target concepts } }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 template<class D, class T>
 constexpr decltype(auto) invoke(D (T::*pmd), T&& t)

@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // Submitted by Nathan Sidwell <nathan@acm.org>
 // Bug: g++ was crashing after giving errors.
 

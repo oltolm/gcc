@@ -1,5 +1,6 @@
 // PR c++/98356
 // { dg-do compile { target c++11 } }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 template <template <typename> class T> struct S {
   using A = T<int>;

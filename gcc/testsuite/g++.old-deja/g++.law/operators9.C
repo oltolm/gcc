@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // GROUPS passed operators
 // opr-eq file
 // Message-Id: <9301141514.AA05925@mi.el.utwente.nl>

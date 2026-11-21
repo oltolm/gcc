@@ -1,5 +1,6 @@
 // { dg-do compile }
 // { dg-options "-fpermissive -Wno-return-type" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 typedef long unsigned int size_t;
        typedef bool _CORBA_Boolean;
          typedef unsigned int _CORBA_ULong;

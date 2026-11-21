@@ -1,3 +1,4 @@
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // PR c++/84632
 // { dg-additional-options "-w" }
 

@@ -3,6 +3,7 @@
 // Contributed by Gabriel Dos Reis <gdr@integrable-solutions.net>
 
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 struct A 
 {

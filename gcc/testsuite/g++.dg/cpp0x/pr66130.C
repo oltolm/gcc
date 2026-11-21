@@ -1,5 +1,6 @@
 // PR c++/66130
 // { dg-do compile { target c++11 } }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 struct Local
 {

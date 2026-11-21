@@ -1,5 +1,6 @@
 // PR c++/36405
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 #include <typeinfo>
 

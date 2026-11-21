@@ -1,5 +1,6 @@
 // PR c++/51429
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 struct A
 {

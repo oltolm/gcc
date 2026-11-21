@@ -2,6 +2,7 @@
    cases.  */
 /* { dg-do compile } */
 /* { dg-options "-std=c11 -pedantic-errors" } */
+/* { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } } */
 
 typedef struct s0
 {

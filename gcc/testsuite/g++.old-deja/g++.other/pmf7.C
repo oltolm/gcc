@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // Test for proper diagnostics on trying to take the address of a non-static
 // member function.
 

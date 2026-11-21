@@ -1,3 +1,4 @@
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // PR c++/26496
 
 template< typename _Generator> int generate_n(_Generator __gen);

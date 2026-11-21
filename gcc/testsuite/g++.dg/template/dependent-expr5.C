@@ -1,4 +1,5 @@
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 // Copyright 2005 Free Software Foundation
 // contributed by Alexandre Oliva <aoliva@redhat.com>

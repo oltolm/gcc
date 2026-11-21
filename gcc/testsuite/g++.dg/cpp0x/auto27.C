@@ -1,3 +1,4 @@
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // PR c++/51186
 
 auto main()->int	       // { dg-error "std=" "std" { target { ! c++11 } } }

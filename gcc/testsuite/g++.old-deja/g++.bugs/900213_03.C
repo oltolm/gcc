@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // g++ 1.36.1 bug 900213_03
 
 // g++ fails to detect an error when the address of a "bound" function is

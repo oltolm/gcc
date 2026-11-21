@@ -1,5 +1,6 @@
 // { dg-do assemble  }
 // { dg-options "" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // PRMS Id: 4985
 
 struct Thing {

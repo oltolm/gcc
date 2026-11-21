@@ -1,5 +1,6 @@
 // { dg-do assemble  }
 // { dg-options "-ansi -Wall -pedantic" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // GROUPS passed ARM-compliance
 // arm file
 // From: Olaf.Weber@cwi.nl

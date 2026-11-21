@@ -1,3 +1,4 @@
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // PR c++/86661
 
 typedef int a;  // { dg-message "declared here" }

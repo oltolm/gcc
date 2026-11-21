@@ -1,5 +1,6 @@
 // PR c++/27572
 // { dg-do compile }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 void f1(typedef) {}        // { dg-error "9:typedef declaration" }
 // { dg-error "no type" "" { target *-*-* } .-1 }

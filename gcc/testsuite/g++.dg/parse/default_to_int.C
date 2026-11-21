@@ -1,5 +1,6 @@
 // PR c++/118306 - "Document" various behaviours wrt. defaulting types to int.
 // { dg-do "compile" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // { dg-additional-options "-fpermissive" }
 
 // Members.

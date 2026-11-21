@@ -2,6 +2,7 @@
 // { dg-require-effective-target c++11 }
 // { dg-skip-if "" keeps_null_pointer_checks }
 // { dg-options "-fdelete-null-pointer-checks" }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 void f();
 static_assert(f, "");

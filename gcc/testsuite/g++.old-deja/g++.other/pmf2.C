@@ -1,4 +1,5 @@
 // { dg-do assemble  }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 
 // submitted by David C Binderman <dcb@pncl.co.uk>
 

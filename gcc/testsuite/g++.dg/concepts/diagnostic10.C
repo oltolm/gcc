@@ -1,5 +1,6 @@
 // PR c++/67825
 // { dg-do compile { target concepts } }
+// { dg-additional-options "-fno-ms-extensions" { target *-*-mingw* } }
 // { dg-additional-options "-fconcepts-diagnostics-depth=2" }
 
 template<typename T>
