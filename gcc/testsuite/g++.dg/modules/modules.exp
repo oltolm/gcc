@@ -353,8 +353,10 @@ proc unsupported { args } {
     return [uplevel 1 modules-saved-unsupported $args]
 }
 
-# not grouped tests, sadly tcl doesn't have negated glob
-foreach test [prune [lsort [find $srcdir/$subdir {*.[CH]}]] \
+# not grouped tests, sadly tcl doesn't have negated glob.  Glob is
+# case-insensitive on Windows, so drop the *.h headers that tests include.
+foreach test [prune [lsort [lsearch -all -inline -regexp \
+				[find $srcdir/$subdir {*.[CH]}] {\.[CH]$}]] \
 		  "$srcdir/$subdir/*_?.\[CH\]"] {
     if [runtest_file_p $runtests $test] {
 	set nshort [file tail [file dirname $test]]/[file tail $test]
