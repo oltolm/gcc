@@ -1,5 +1,6 @@
 // { dg-do compile }
 // { dg-options "-O2 -std=c++11 -fno-pic" }
+// { dg-additional-options "-mabi=sysv" { target x86_64-*-mingw* } }
 // { dg-require-effective-target fpic }
 
 struct dummy { };
