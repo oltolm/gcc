@@ -8,7 +8,9 @@ public:
     EmptyClass();
 };
 
-EmptyClass::EmptyClass() {
+/* Keep EmptyClass::EmptyClass opaque so the type walk for CompositeClass
+   must cross a call before reaching its vptr store.  */
+__attribute__((noipa)) EmptyClass::EmptyClass() {
 }
 
 class CompositeClass {
