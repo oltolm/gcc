@@ -1,6 +1,7 @@
 /* { dg-do run } */
 /* { dg-options "-O2 -msse4" } */
 /* { dg-require-effective-target sse4 } */
+/* { dg-skip-if "SEH does not support stack realignment" { x86_64-*-mingw* } } */
 
 typedef unsigned short u16;
 typedef unsigned int   u32;

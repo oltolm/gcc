@@ -1,5 +1,6 @@
 /* { dg-do compile } */
 /* { dg-options "-std=gnu99 -mpreferred-stack-boundary=4" } */
+/* { dg-skip-if "SEH does not support stack realignment" { x86_64-*-mingw* } } */
 int
 outer_function (int x, int y)
 {

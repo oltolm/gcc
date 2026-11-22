@@ -3419,6 +3419,16 @@ ix86_set_func_type (tree fndecl)
     }
   else
     cfun->machine->func_type = TYPE_NORMAL;
+
+  /* With SEH, GCC does not realign the stack: an ms_abi function would
+     ignore the attribute and a sysv_abi function would get a broken
+     frame.  */
+  if (TARGET_SEH
+      && lookup_attribute ("force_align_arg_pointer",
+			   TYPE_ATTRIBUTES (TREE_TYPE (fndecl))))
+    error_at (DECL_SOURCE_LOCATION (fndecl),
+	      "%<force_align_arg_pointer%> attribute is not supported "
+	      "with SEH");
 }
 
 /* Set the indirect_branch_type field from the function FNDECL.  */

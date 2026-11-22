@@ -1,6 +1,7 @@
 /* { dg-do run } */
 /* { dg-options "-std=gnu99 -msse2 -mpreferred-stack-boundary=4" } */
 /* { dg-require-effective-target sse2 } */
+/* { dg-skip-if "SEH does not support stack realignment" { x86_64-*-mingw* } } */
 
 #include "sse2-check.h"
 
