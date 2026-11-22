@@ -17921,7 +17921,7 @@ ix86_output_call_insn (rtx_insn *insn, rtx call_op)
 	    }
 
 	  /* If we get to another real insn, we don't need the nop.  */
-	  if (INSN_P (i))
+	  if (active_insn_p (i))
 	    break;
 
 	  /* If we get to the epilogue note, prevent a catch region from
