@@ -9,7 +9,7 @@
 template <auto F>
 struct wrapper;
 
-template <typename R, typename... Args, SYSV R (*Func) (Args...)>
+template <typename R, typename... Args, R (SYSV *Func) (Args...)>
 struct wrapper<Func>
 {
   static R SYSV NOINLINE
