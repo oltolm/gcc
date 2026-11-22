@@ -12,7 +12,7 @@ struct S s;
 struct S a[5];
 
 void
-foo (struct S, struct S *arg1, struct S) // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { ! { ia32 } } } } }
+foo (struct S, struct S *arg1, struct S) // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { { ! { ia32 } } && { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } } } }
 {
   if (arg1 != &a[1])
     __builtin_abort ();
@@ -21,5 +21,5 @@ foo (struct S, struct S *arg1, struct S) // { dg-warning "ABI" "" { target { { i
 int
 main ()
 {
-  foo (s, &a[1], a[2]); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { ! { ia32 } } } } }
+  foo (s, &a[1], a[2]); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { { ! { ia32 } } && { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } } } }
 }

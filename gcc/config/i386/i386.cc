@@ -5064,7 +5064,9 @@ ix86_gimplify_va_arg (tree valist, tree type, gimple_seq *pre_p,
     = ix86_pass_by_reference_abi (SYSV_ABI, function_arg_info (type, false));
   if (indirect_p)
     type = build_pointer_type (type);
-  size = arg_int_size_in_bytes (type);
+  /* A SysV va_list means the SysV ABI, whatever the ABI of the current
+     function.  */
+  size = TYPE_EMPTY_P (type) ? 0 : int_size_in_bytes (type);
   rsize = CEIL (size, UNITS_PER_WORD);
 
   nat_mode = type_natural_mode (type, NULL, false);
@@ -18626,6 +18628,20 @@ ix86_is_empty_record (const_tree type)
   return default_is_empty_record (type);
 }
 
+/* Implement TARGET_EMPTY_TYPE_P.  Only the SysV ABI gives an empty class no
+   space; the MS ABI passes and returns it like any other structure of its
+   size, as MSVC does.  */
+
+static bool
+ix86_empty_type_p (const_tree fntype, const_tree type)
+{
+  if (!TYPE_EMPTY_P (type))
+    return false;
+  enum calling_abi abi = (fntype ? ix86_function_type_abi (fntype)
+			  : ix86_cfun_abi ());
+  return abi != MS_ABI;
+}
+
 /* Implement TARGET_WARN_PARAMETER_PASSING_ABI.  */
 
 static void
@@ -18636,7 +18652,8 @@ ix86_warn_parameter_passing_abi (cumulative_args_t cum_v, tree type)
   if (!cum->warn_empty)
     return;
 
-  if (!TYPE_EMPTY_P (type))
+  /* The MS ABI passes empty classes as it did before GCC 8.  */
+  if (cum->call_abi == MS_ABI || !TYPE_EMPTY_P (type))
     return;
 
   /* Don't warn if the function isn't visible outside of the TU.  */
@@ -29738,6 +29755,9 @@ ix86_libgcc_floating_mode_supported_p
 
 #undef TARGET_EMPTY_RECORD_P
 #define TARGET_EMPTY_RECORD_P ix86_is_empty_record
+
+#undef TARGET_EMPTY_TYPE_P
+#define TARGET_EMPTY_TYPE_P ix86_empty_type_p
 
 #undef TARGET_WARN_PARAMETER_PASSING_ABI
 #define TARGET_WARN_PARAMETER_PASSING_ABI ix86_warn_parameter_passing_abi

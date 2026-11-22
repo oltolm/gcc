@@ -5062,6 +5062,13 @@ This target hook returns true if the type is an empty record.  The default
 is to return @code{false}.
 @end deftypefn
 
+@deftypefn {Target Hook} bool TARGET_EMPTY_TYPE_P (const_tree @var{fntype}, const_tree @var{type})
+This target hook returns true if @var{type} is an empty record that takes
+no space when it is passed to or returned from a function of type
+@var{fntype}, or of the current function if @var{fntype} is null.  The
+default is to return @code{TYPE_EMPTY_P (@var{type})}.
+@end deftypefn
+
 @deftypefn {Target Hook} void TARGET_WARN_PARAMETER_PASSING_ABI (cumulative_args_t @var{ca}, tree @var{type})
 This target hook warns about the change in empty class parameter passing
 ABI.

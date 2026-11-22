@@ -151,12 +151,13 @@ static unsigned HOST_WIDE_INT stored_args_watermark;
 static int stack_arg_under_construction;
 
 static void precompute_register_parameters (int, struct arg_data *, int *);
-static bool store_one_arg (struct arg_data *, rtx, int, int, int);
+static bool store_one_arg (const_tree, struct arg_data *, rtx, int, int, int);
 static void store_unaligned_arguments_into_pseudos (struct arg_data *, int);
 static bool finalize_must_preallocate (bool, int, struct arg_data *,
 				       struct args_size *);
 static void precompute_arguments (int, struct arg_data *);
-static void compute_argument_addresses (struct arg_data *, rtx, int);
+static void compute_argument_addresses (const_tree, struct arg_data *, rtx,
+					int);
 static rtx rtx_for_function_call (tree, tree);
 static void load_register_parameters (struct arg_data *, int, rtx *, int,
 				      int, bool *);
@@ -1598,7 +1599,7 @@ initialize_argument_information (int num_actuals ATTRIBUTE_UNUSED,
 #endif
 			     reg_parm_stack_space,
 			     args[i].pass_on_stack ? 0 : args[i].partial,
-			     fndecl, args_size, &args[i].locate);
+			     fntype, args_size, &args[i].locate);
 #ifdef BLOCK_REG_PADDING
       else
 	/* The argument is passed entirely in registers.  See at which
@@ -1829,10 +1830,12 @@ finalize_must_preallocate (bool must_preallocate, int num_actuals,
    We need not ensure it is a valid memory address here; it will be
    validized when it is used.
 
+   FNTYPE is the type of the function being called.
    ARGBLOCK is an rtx for the address of the outgoing arguments.  */
 
 static void
-compute_argument_addresses (struct arg_data *args, rtx argblock, int num_actuals)
+compute_argument_addresses (const_tree fntype, struct arg_data *args,
+			    rtx argblock, int num_actuals)
 {
   if (argblock)
     {
@@ -1861,7 +1864,8 @@ compute_argument_addresses (struct arg_data *args, rtx argblock, int num_actuals
 	      && args[i].partial == 0)
 	    continue;
 
-	  if (TYPE_EMPTY_P (TREE_TYPE (args[i].tree_value)))
+	  if (targetm.calls.empty_type_p (fntype,
+					  TREE_TYPE (args[i].tree_value)))
 	    continue;
 
 	  addr = simplify_gen_binary (PLUS, Pmode, arg_reg, offset);
@@ -3491,7 +3495,7 @@ expand_call (tree exp, rtx target, int ignore)
 	      }
 	}
 
-      compute_argument_addresses (args, argblock, num_actuals);
+      compute_argument_addresses (fntype, args, argblock, num_actuals);
 
       /* Stack is properly aligned, pops can't safely be deferred during
 	 the evaluation of the arguments.  */
@@ -3585,7 +3589,7 @@ expand_call (tree exp, rtx target, int ignore)
 		  continue;
 		}
 
-	      if (store_one_arg (&args[i], argblock, flags,
+	      if (store_one_arg (fntype, &args[i], argblock, flags,
 				 adjusted_args_size.var != 0,
 				 reg_parm_stack_space)
 		  || (pass == 0
@@ -3626,7 +3630,7 @@ expand_call (tree exp, rtx target, int ignore)
 		  break;
 		}
 
-	      if (store_one_arg (&args[i], argblock, flags,
+	      if (store_one_arg (fntype, &args[i], argblock, flags,
 				 adjusted_args_size.var != 0,
 				 reg_parm_stack_space)
 		  || (pass == 0
@@ -4982,14 +4986,15 @@ emit_library_call_value_1 (int retval, rtx orgfun, rtx value,
    argument stack.  This is used if ACCUMULATE_OUTGOING_ARGS to indicate
    that we need not worry about saving and restoring the stack.
 
-   FNDECL is the declaration of the function we are calling.
+   FNTYPE is the type of the function we are calling.
 
    Return true if this arg should cause sibcall failure,
    false otherwise.  */
 
 static bool
-store_one_arg (struct arg_data *arg, rtx argblock, int flags,
-	       int variable_size ATTRIBUTE_UNUSED, int reg_parm_stack_space)
+store_one_arg (const_tree fntype, struct arg_data *arg, rtx argblock,
+	       int flags, int variable_size ATTRIBUTE_UNUSED,
+	       int reg_parm_stack_space)
 {
   tree pval = arg->tree_value;
   rtx reg = 0;
@@ -5159,7 +5164,7 @@ store_one_arg (struct arg_data *arg, rtx argblock, int flags,
 	 Note that in C the default argument promotions
 	 will prevent such mismatches.  */
 
-      poly_int64 size = (TYPE_EMPTY_P (TREE_TYPE (pval))
+      poly_int64 size = (targetm.calls.empty_type_p (fntype, TREE_TYPE (pval))
 			 ? 0 : GET_MODE_SIZE (arg->mode));
 
       /* Compute how much space the push instruction will push.
@@ -5230,9 +5235,9 @@ store_one_arg (struct arg_data *arg, rtx argblock, int flags,
 	  /* PUSH_ROUNDING has no effect on us, because emit_push_insn
 	     for BLKmode is careful to avoid it.  */
 	  excess = (arg->locate.size.constant
-		    - arg_int_size_in_bytes (TREE_TYPE (pval))
+		    - arg_int_size_in_bytes (TREE_TYPE (pval), fntype)
 		    + partial);
-	  size_rtx = expand_expr (arg_size_in_bytes (TREE_TYPE (pval)),
+	  size_rtx = expand_expr (arg_size_in_bytes (TREE_TYPE (pval), fntype),
 				  NULL_RTX, TYPE_MODE (sizetype),
 				  EXPAND_NORMAL);
 	}

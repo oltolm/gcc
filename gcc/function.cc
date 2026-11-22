@@ -2205,7 +2205,7 @@ aggregate_value_p (const_tree exp, const_tree fntype)
   if (TREE_ADDRESSABLE (type))
     return true;
 
-  if (TYPE_EMPTY_P (type))
+  if (targetm.calls.empty_type_p (fntype, type))
     return false;
 
   if (flag_pcc_struct_return && AGGREGATE_TYPE_P (type))
@@ -2698,7 +2698,8 @@ assign_parm_find_entry_rtl (struct assign_parm_data_all *all,
 
   locate_and_pad_parm (data->arg.mode, data->arg.type, in_regs,
 		       all->reg_parm_stack_space,
-		       entry_parm ? data->partial : 0, current_function_decl,
+		       entry_parm ? data->partial : 0,
+		       TREE_TYPE (current_function_decl),
 		       &all->stack_args_size, &data->locate);
 
   /* Update parm_stack_boundary if this parameter is passed in the
@@ -3210,7 +3211,8 @@ assign_parm_setup_block (struct assign_parm_data_all *all,
 	move_block_from_reg (REGNO (entry_parm), mem,
 			     size_stored / UNITS_PER_WORD);
     }
-  else if (data->stack_parm == 0 && !TYPE_EMPTY_P (data->arg.type))
+  else if (data->stack_parm == 0
+	   && !targetm.calls.empty_type_p (NULL_TREE, data->arg.type))
     {
       push_to_sequence2 (all->first_conversion_insn, all->last_conversion_insn);
       emit_block_move (stack_parm, data->entry_parm, GEN_INT (size),
@@ -3623,7 +3625,7 @@ assign_parm_setup_stack (struct assign_parm_data_all *all, tree parm,
       dest = validize_mem (copy_rtx (data->stack_parm));
       src = validize_mem (copy_rtx (data->entry_parm));
 
-      if (TYPE_EMPTY_P (data->arg.type))
+      if (targetm.calls.empty_type_p (NULL_TREE, data->arg.type))
 	/* Empty types don't really need to be copied.  */;
       else if (MEM_P (src))
 	{
@@ -3791,7 +3793,7 @@ assign_parms (tree fndecl)
 	     passing area, have non-zero size and have address taken,
 	     force creation of a stack slot so that they have distinct
 	     address from other parameters.  */
-	  if (TYPE_EMPTY_P (data.arg.type)
+	  if (targetm.calls.empty_type_p (NULL_TREE, data.arg.type)
 	      && TREE_ADDRESSABLE (parm)
 	      && data.entry_parm == data.stack_parm
 	      && MEM_P (data.entry_parm)
@@ -3948,7 +3950,7 @@ assign_parms (tree fndecl)
 	  rtx real_decl_rtl;
 
 	  /* Unless the psABI says not to.  */
-	  if (TYPE_EMPTY_P (TREE_TYPE (decl_result)))
+	  if (targetm.calls.empty_type_p (NULL_TREE, TREE_TYPE (decl_result)))
 	    real_decl_rtl = NULL_RTX;
 	  else
 	    {
@@ -4093,7 +4095,8 @@ gimplify_parameters (gimple_seq *cleanup)
    REG_PARM_STACK_SPACE is the number of bytes of stack space reserved
    for arguments which are passed in registers.
 
-   FNDECL is the function in which the argument was defined.
+   FNTYPE is the type of the function the argument is passed to, or null
+   if unknown.
 
    There are two types of rounding that are done.  The first, controlled by
    TARGET_FUNCTION_ARG_BOUNDARY, forces the offset from the start of the
@@ -4114,7 +4117,7 @@ gimplify_parameters (gimple_seq *cleanup)
 void
 locate_and_pad_parm (machine_mode passed_mode, tree type, int in_regs,
 		     int reg_parm_stack_space, int partial,
-		     tree fndecl ATTRIBUTE_UNUSED,
+		     tree fntype,
 		     struct args_size *initial_offset_ptr,
 		     struct locate_and_pad_arg_data *locate)
 {
@@ -4148,7 +4151,7 @@ locate_and_pad_parm (machine_mode passed_mode, tree type, int in_regs,
   part_size_in_regs = (reg_parm_stack_space == 0 ? partial : 0);
 
   sizetree = (type
-	      ? arg_size_in_bytes (type)
+	      ? arg_size_in_bytes (type, fntype)
 	      : size_int (GET_MODE_SIZE (passed_mode)));
   where_pad = targetm.calls.function_arg_padding (passed_mode, type);
   boundary = targetm.calls.function_arg_boundary (passed_mode, type);
@@ -5573,7 +5576,7 @@ expand_function_end (void)
 	   ? REGNO (decl_rtl) >= FIRST_PSEUDO_REGISTER
 	   : DECL_REGISTER (decl_result))
 	  /* Unless the psABI says not to.  */
-	  && !TYPE_EMPTY_P (TREE_TYPE (decl_result)))
+	  && !targetm.calls.empty_type_p (NULL_TREE, TREE_TYPE (decl_result)))
 	{
 	  rtx real_decl_rtl = crtl->return_rtx;
 	  complex_mode cmode;

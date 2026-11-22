@@ -12,6 +12,6 @@ int main()
   struct dummy d;
   struct foo f = { -1, -2, -3, -4, -5 };
 
-  fun(d, f); // { dg-warning "empty" }
+  fun(d, f); // { dg-warning "empty" "" { target { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } }
   return 0;
 }

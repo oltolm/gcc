@@ -2485,6 +2485,14 @@ default_get_reg_raw_mode (int regno)
   return as_a <fixed_size_mode> (reg_raw_mode[regno]);
 }
 
+/* The default implementation of TARGET_EMPTY_TYPE_P.  */
+
+bool
+default_empty_type_p (const_tree, const_tree type)
+{
+  return TYPE_EMPTY_P (type);
+}
+
 /* Return true if a leaf function should stay leaf even with profiling
    enabled.  */
 
@@ -2698,7 +2706,7 @@ std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
   /* va_list pointer is aligned to PARM_BOUNDARY.  If argument actually
      requires greater alignment, we must perform dynamic alignment.  */
   if (boundary > align
-      && !TYPE_EMPTY_P (type)
+      && !targetm.calls.empty_type_p (NULL_TREE, type)
       && !integer_zerop (TYPE_SIZE (type)))
     {
       t = build2 (MODIFY_EXPR, TREE_TYPE (valist), valist_tmp,
@@ -2725,7 +2733,7 @@ std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
     }
 
   /* Compute the rounded size of the type.  */
-  type_size = arg_size_in_bytes (type);
+  type_size = arg_size_in_bytes (type, NULL_TREE);
   rounded_size = round_up (type_size, align);
 
   /* Reduce rounded_size so it's sharable with the postqueue.  */

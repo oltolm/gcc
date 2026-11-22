@@ -909,7 +909,7 @@ lm32_std_gimplify_va_arg_expr (tree valist, tree ap_reg, tree type, gimple_seq *
     }
 
   /* Compute the rounded size of the type.  */
-  type_size = arg_size_in_bytes (type);
+  type_size = arg_size_in_bytes (type, NULL_TREE);
   rounded_size = round_up (type_size, align);
 
   /* Reduce rounded_size so it's sharable with the postqueue.  */

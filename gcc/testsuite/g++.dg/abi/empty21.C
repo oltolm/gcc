@@ -18,6 +18,6 @@ void f(int i, ...)
 int main()
 {
   f(0);
-  f(1, A()); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { ! { ia32 } } } } }
-  f(2, A(), 42); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { ! { ia32 } } } } }
+  f(1, A()); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { { ! { ia32 } } && { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } } } }
+  f(2, A(), 42); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { { ! { ia32 } } && { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } } } }
 }

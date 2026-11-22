@@ -3672,7 +3672,7 @@ copy_blkmode_to_reg (machine_mode mode_in, tree src)
 
   x = expand_normal (src);
 
-  bytes = arg_int_size_in_bytes (TREE_TYPE (src));
+  bytes = arg_int_size_in_bytes (TREE_TYPE (src), NULL_TREE);
   if (bytes == 0)
     return NULL_RTX;
 

@@ -7286,8 +7286,8 @@ extern bool is_empty_type (const_tree);
 extern bool default_is_empty_record (const_tree);
 extern bool flexible_array_member_type_p (const_tree);
 extern bool flexible_array_type_p (const_tree);
-extern HOST_WIDE_INT arg_int_size_in_bytes (const_tree);
-extern tree arg_size_in_bytes (const_tree);
+extern HOST_WIDE_INT arg_int_size_in_bytes (const_tree, const_tree);
+extern tree arg_size_in_bytes (const_tree, const_tree);
 extern bool expr_type_first_operand_type_p (tree_code);
 
 extern location_t

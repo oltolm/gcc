@@ -10,6 +10,6 @@ void
 foo ()
 {
   struct dummy a0;
-  test1 (a0, 42); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { ! { ia32 } } } } }
-  test2 (a0, 42); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { ! { ia32 } } } } }
+  test1 (a0, 42); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { { ! { ia32 } } && { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } } } }
+  test2 (a0, 42); // { dg-warning "ABI" "" { target { { i?86-*-* x86_64-*-* } && { { ! { ia32 } } && { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } } } }
 }

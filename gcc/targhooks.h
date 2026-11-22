@@ -282,6 +282,7 @@ extern unsigned int default_dwarf_poly_indeterminate_value (unsigned int,
 							    int *);
 extern machine_mode default_dwarf_frame_reg_mode (int);
 extern fixed_size_mode default_get_reg_raw_mode (int);
+extern bool default_empty_type_p (const_tree, const_tree);
 extern bool default_keep_leaf_when_profiled ();
 
 extern void *default_get_pch_validity (size_t *);

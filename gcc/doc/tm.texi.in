@@ -3627,6 +3627,8 @@ nothing when you use @option{-freg-struct-return} mode.
 
 @hook TARGET_EMPTY_RECORD_P
 
+@hook TARGET_EMPTY_TYPE_P
+
 @hook TARGET_WARN_PARAMETER_PASSING_ABI
 
 @node Caller Saves

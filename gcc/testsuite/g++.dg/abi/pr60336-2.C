@@ -6,7 +6,7 @@
 struct dummy { };
 
 void
-test (struct dummy a, int m, ...) // { dg-warning "empty" }
+test (struct dummy a, int m, ...) // { dg-warning "empty" "" { target { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } }
 {
   va_list va_arglist;
   int i;
@@ -43,6 +43,6 @@ struct dummy a0;
 int
 main ()
 {
-  test (a0, 0, 1, 2, 3, 4, 5, 6); // { dg-warning "empty" }
+  test (a0, 0, 1, 2, 3, 4, 5, 6); // { dg-warning "empty" "" { target { ! { x86_64-*-mingw* x86_64-*-cygwin* } } } }
   return 0;
 }

@@ -15497,20 +15497,25 @@ flexible_array_type_p (const_tree type)
   }
 }
 
-/* Like int_size_in_bytes, but handle empty records specially.  */
+/* Like int_size_in_bytes, but handle empty records specially.  FNTYPE is
+   the type of the function TYPE is passed to or returned from, or null for
+   the current function.  */
 
 HOST_WIDE_INT
-arg_int_size_in_bytes (const_tree type)
+arg_int_size_in_bytes (const_tree type, const_tree fntype)
 {
-  return TYPE_EMPTY_P (type) ? 0 : int_size_in_bytes (type);
+  return (targetm.calls.empty_type_p (fntype, type)
+	  ? 0 : int_size_in_bytes (type));
 }
 
-/* Like size_in_bytes, but handle empty records specially.  */
+/* Like size_in_bytes, but handle empty records specially.  FNTYPE is as
+   for arg_int_size_in_bytes.  */
 
 tree
-arg_size_in_bytes (const_tree type)
+arg_size_in_bytes (const_tree type, const_tree fntype)
 {
-  return TYPE_EMPTY_P (type) ? size_zero_node : size_in_bytes (type);
+  return (targetm.calls.empty_type_p (fntype, type)
+	  ? size_zero_node : size_in_bytes (type));
 }
 
 /* Return true if an expression with CODE has to have the same result type as

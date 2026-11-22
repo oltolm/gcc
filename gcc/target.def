@@ -5806,6 +5806,17 @@ is to return @code{false}.",
  bool, (const_tree type),
  hook_bool_const_tree_false)
 
+/* Return true if an empty record takes no space when passed to or returned
+   from a function with a given ABI.  */
+DEFHOOK
+(empty_type_p,
+ "This target hook returns true if @var{type} is an empty record that takes\n\
+no space when it is passed to or returned from a function of type\n\
+@var{fntype}, or of the current function if @var{fntype} is null.  The\n\
+default is to return @code{TYPE_EMPTY_P (@var{type})}.",
+ bool, (const_tree fntype, const_tree type),
+ default_empty_type_p)
+
 /* Warn about the change in empty class parameter passing ABI.  */
 DEFHOOK
 (warn_parameter_passing_abi,
