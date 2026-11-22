@@ -1,5 +1,6 @@
 /* { dg-do compile { target { { ! ia32 } && { ! *-*-darwin* } } } } */
 /* { dg-options "-O2 -mpreferred-stack-boundary=3 -mapx-features=push2pop2 -fomit-frame-pointer" } */
+/* { dg-skip-if "SEH limits -mpreferred-stack-boundary to 4" { x86_64-*-mingw* } } */
 
 extern int bar (int);
 

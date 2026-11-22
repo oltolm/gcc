@@ -2,6 +2,7 @@
 /* { dg-options "-O3 -mgeneral-regs-only -mno-cld" } */
 /* { dg-additional-options "-mpreferred-stack-boundary=3" { target { ! ia32 } } }  */
 /* { dg-additional-options "-mpreferred-stack-boundary=2" { target ia32 } } */
+/* { dg-skip-if "SEH limits -mpreferred-stack-boundary to 4" { x86_64-*-mingw* } } */
 
 extern void foo (void *) __attribute__ ((interrupt));
 extern void bar (void) __attribute__ ((no_caller_saved_registers));
