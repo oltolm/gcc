@@ -55,6 +55,25 @@ sysv_stack (int a, int b, int c, int d, int e, int f, ...)
   return x + a + b + c + d + e + f - 21;
 }
 
+// The va_list determines the ABI even when a function with the other ABI
+// consumes it.
+SYSV long long
+sysv_consume_ms (__builtin_ms_va_list ap)
+{
+  __builtin_va_arg (ap, S);
+  return __builtin_va_arg (ap, long long);
+}
+
+MS long long
+ms_forward (int n, ...)
+{
+  __builtin_ms_va_list ap;
+  __builtin_ms_va_start (ap, n);
+  long long x = sysv_consume_ms (ap);
+  __builtin_ms_va_end (ap);
+  return x;
+}
+
 int
 main ()
 {
@@ -65,5 +84,7 @@ main ()
   if (sysv_reg (1, S (), 42LL) != 42)
     __builtin_abort ();
   if (sysv_stack (1, 2, 3, 4, 5, 6, S (), 42LL) != 42)
+    __builtin_abort ();
+  if (ms_forward (1, S (), 42LL) != 42)
     __builtin_abort ();
 }

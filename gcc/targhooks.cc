@@ -2653,9 +2653,11 @@ build_va_arg_indirect_ref (tree addr)
 /* The "standard" implementation of va_arg: read the value from the
    current (padded) address and increment by the (padded) size.  */
 
+/* As above, but EMPTY_P says whether TYPE takes no argument space.  */
+
 tree
 std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
-			  gimple_seq *post_p)
+			  gimple_seq *post_p, bool empty_p)
 {
   tree addr, t, type_size, rounded_size, valist_tmp;
   unsigned HOST_WIDE_INT align, boundary;
@@ -2669,7 +2671,10 @@ std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
 
   indirect = pass_va_arg_by_reference (type);
   if (indirect)
-    type = build_pointer_type (type);
+    {
+      type = build_pointer_type (type);
+      empty_p = false;
+    }
 
   if (targetm.calls.split_complex_arg
       && TREE_CODE (type) == COMPLEX_TYPE
@@ -2678,11 +2683,13 @@ std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
       tree real_part, imag_part;
 
       real_part = std_gimplify_va_arg_expr (valist,
-					    TREE_TYPE (type), pre_p, NULL);
+					    TREE_TYPE (type), pre_p, NULL,
+					    false);
       real_part = get_initialized_tmp_var (real_part, pre_p);
 
       imag_part = std_gimplify_va_arg_expr (unshare_expr (valist),
-					    TREE_TYPE (type), pre_p, NULL);
+					    TREE_TYPE (type), pre_p, NULL,
+					    false);
       imag_part = get_initialized_tmp_var (imag_part, pre_p);
 
       return build2 (COMPLEX_EXPR, type, real_part, imag_part);
@@ -2706,7 +2713,7 @@ std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
   /* va_list pointer is aligned to PARM_BOUNDARY.  If argument actually
      requires greater alignment, we must perform dynamic alignment.  */
   if (boundary > align
-      && !targetm.calls.empty_type_p (NULL_TREE, type)
+      && !empty_p
       && !integer_zerop (TYPE_SIZE (type)))
     {
       t = build2 (MODIFY_EXPR, TREE_TYPE (valist), valist_tmp,
@@ -2733,7 +2740,7 @@ std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
     }
 
   /* Compute the rounded size of the type.  */
-  type_size = arg_size_in_bytes (type, NULL_TREE);
+  type_size = empty_p ? size_zero_node : size_in_bytes (type);
   rounded_size = round_up (type_size, align);
 
   /* Reduce rounded_size so it's sharable with the postqueue.  */
@@ -2762,6 +2769,14 @@ std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
     addr = build_va_arg_indirect_ref (addr);
 
   return build_va_arg_indirect_ref (addr);
+}
+
+tree
+std_gimplify_va_arg_expr (tree valist, tree type, gimple_seq *pre_p,
+			  gimple_seq *post_p)
+{
+  bool empty_p = targetm.calls.empty_type_p (NULL_TREE, type);
+  return std_gimplify_va_arg_expr (valist, type, pre_p, post_p, empty_p);
 }
 
 /* An implementation of TARGET_CAN_USE_DOLOOP_P for targets that do

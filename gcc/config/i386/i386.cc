@@ -5042,10 +5042,11 @@ ix86_gimplify_va_arg (tree valist, tree type, gimple_seq *pre_p,
       if (indirect_p)
 	{
 	  type = build_pointer_type (type);
-	  t = std_gimplify_va_arg_expr (valist, type, pre_p, post_p);
+	  t = std_gimplify_va_arg_expr (valist, type, pre_p, post_p, false);
 	  return build_va_arg_indirect_ref (t);
 	}
-      return std_gimplify_va_arg_expr (valist, type, pre_p, post_p);
+      /* Empty types occupy a slot in an MS va_list.  */
+      return std_gimplify_va_arg_expr (valist, type, pre_p, post_p, false);
     }
 
   f_gpr = TYPE_FIELDS (TREE_TYPE (sysv_va_list_type_node));
