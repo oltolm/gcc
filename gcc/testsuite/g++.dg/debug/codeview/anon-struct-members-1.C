@@ -1,8 +1,8 @@
 // { dg-do compile }
 // { dg-options "-gcodeview" }
 
-// get_type_num_struct must emit complete definitions for the unnamed types
-// of S::a and S::b, without additional anonymous forward references.
+// The unnamed types of S::a and S::b must have distinct names and unique
+// names on both their forward references and their definitions.
 
 struct S
 {
@@ -12,4 +12,5 @@ struct S
 
 S s;
 
-// { dg-final { scan-assembler-times "<unnamed-tag>" 2 } }
+// { dg-final { scan-assembler-times {\.ascii "S::<unnamed-type-a>\\0"\n\t\.ascii "_ZTSN1SUt_E\\0"} 2 } }
+// { dg-final { scan-assembler-times {\.ascii "S::<unnamed-type-b>\\0"\n\t\.ascii "_ZTSN1SUt0_E\\0"} 2 } }

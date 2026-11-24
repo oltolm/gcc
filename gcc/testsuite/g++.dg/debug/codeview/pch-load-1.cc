@@ -3,5 +3,6 @@
 int
 pch_use (int x)
 {
-  return pch_parent (x) + pch_child (x);
+  pch_record r;
+  return pch_parent (x) + pch_child (x) + r.member.get ();
 }

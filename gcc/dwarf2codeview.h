@@ -86,6 +86,8 @@ along with GCC; see the file COPYING3.  If not see
 #define CV_METHOD_PUREINTRO	0x18
 
 #define CV_PROP_FWDREF		0x80
+#define CV_PROP_SCOPED		0x100
+#define CV_PROP_HAS_UNIQUE_NAME	0x200
 
 /* Debug Format Interface.  Used in dwarf2out.cc.  */
 

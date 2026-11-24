@@ -78,6 +78,14 @@ if { ! [string match "*: target system does not support the * debug format*" \
 				fail "$testname source file $name"
 			    }
 			}
+			# The forward reference and the definition of an unnamed
+			# class from the PCH must carry its name and unique name.
+			if { [regexp -all {\.ascii "pch_record::<unnamed-type-member>\\0"\n\t\.ascii "_ZTSN10pch_recordUt_E\\0"} \
+				  $asm] == 2 } {
+			    pass "$testname unique name"
+			} else {
+			    fail "$testname unique name"
+			}
 			# get_file_id must not hash the current contents of PCH headers.
 			if { [regexp {(?s)cv_filechksms_start:\n(.*?)\.Lcv_filechksms_end:} \
 				  $asm dummy checksums]

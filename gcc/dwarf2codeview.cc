@@ -34,6 +34,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "langhooks.h"
 #include "dwarf2out.h"
 #include "dwarf2codeview.h"
+#include "demangle.h"
 #include "rtl.h"
 
 #ifdef CODEVIEW_DEBUGGING_INFO
@@ -1346,6 +1347,7 @@ struct codeview_custom_type
       uint32_t vshape;
       codeview_integer length;
       char *name;
+      char *unique_name;
     } lf_structure;
     struct
     {
@@ -4587,9 +4589,18 @@ write_lf_structure (codeview_custom_type *t)
     }
 
   leaf_len += name_len;
+
+  if (t->lf_structure.unique_name)
+    {
+      name_len = strlen (t->lf_structure.unique_name) + 1;
+      ASM_OUTPUT_ASCII (asm_out_file, t->lf_structure.unique_name, name_len);
+      leaf_len += name_len;
+    }
+
   write_cv_padding (4 - (leaf_len % 4));
 
   free (t->lf_structure.name);
+  free (t->lf_structure.unique_name);
 
   asm_fprintf (asm_out_file, "%LLcv_type%x_end:\n", t->num);
 }
@@ -4653,9 +4664,18 @@ write_lf_union (codeview_custom_type *t)
     }
 
   leaf_len += name_len;
+
+  if (t->lf_structure.unique_name)
+    {
+      name_len = strlen (t->lf_structure.unique_name) + 1;
+      ASM_OUTPUT_ASCII (asm_out_file, t->lf_structure.unique_name, name_len);
+      leaf_len += name_len;
+    }
+
   write_cv_padding (4 - (leaf_len % 4));
 
   free (t->lf_structure.name);
+  free (t->lf_structure.unique_name);
 
   asm_fprintf (asm_out_file, "%LLcv_type%x_end:\n", t->num);
 }
@@ -5598,6 +5618,163 @@ get_type_num_volatile_type (dw_die_ref type, bool in_struct)
   return ct->num;
 }
 
+/* Return true if DIE is an unnamed C++ closure type, according to the
+   mangled name that gen_struct_or_union_type_die recorded for it.  */
+
+static bool
+closure_type_p (dw_die_ref die)
+{
+  struct demangle_component *dc;
+  const char *mangled;
+  void *mem = NULL;
+  bool ret;
+
+  if (dw_get_die_tag (die) != DW_TAG_structure_type
+      && dw_get_die_tag (die) != DW_TAG_class_type
+      && dw_get_die_tag (die) != DW_TAG_union_type)
+    return false;
+
+  mangled = get_AT_string (die, DW_AT_linkage_name);
+  if (!mangled)
+    return false;
+
+  dc = cplus_demangle_v3_components (mangled, DMGL_TYPES, &mem);
+
+  while (dc && (dc->type == DEMANGLE_COMPONENT_QUAL_NAME
+		|| dc->type == DEMANGLE_COMPONENT_LOCAL_NAME))
+    dc = dc->u.s_binary.right;
+
+  ret = dc && dc->type == DEMANGLE_COMPONENT_LAMBDA;
+
+  free (mem);
+
+  return ret;
+}
+
+/* Return the number of closure types that precede the closure type TYPE
+   in its scope.  */
+
+static unsigned int
+get_lambda_number (dw_die_ref type)
+{
+  dw_die_ref first_child, c;
+  unsigned int num = 0;
+
+  first_child = dw_get_die_child (dw_get_die_parent (type));
+  c = first_child;
+
+  do
+    {
+      c = dw_get_die_sib (c);
+
+      if (c == type)
+	break;
+
+      if (closure_type_p (c))
+	num++;
+    }
+  while (c != first_child);
+
+  return num;
+}
+
+/* Return the first named typedef of TYPE, or member or variable declared
+   with TYPE, within SCOPE, including its lexical blocks, or NULL.  */
+
+static dw_die_ref
+find_declarator (dw_die_ref scope, dw_die_ref type)
+{
+  dw_die_ref first_child, c;
+
+  first_child = dw_get_die_child (scope);
+  if (!first_child)
+    return NULL;
+
+  c = first_child;
+
+  do
+    {
+      c = dw_get_die_sib (c);
+
+      switch (dw_get_die_tag (c))
+	{
+	case DW_TAG_typedef:
+	  if (get_AT_string (c, DW_AT_name)
+	      && get_AT_ref (c, DW_AT_type) == type)
+	    return c;
+
+	  break;
+
+	case DW_TAG_member:
+	case DW_TAG_variable:
+	  {
+	    dw_die_ref t = get_AT_ref (c, DW_AT_type);
+
+	    while (t && (dw_get_die_tag (t) == DW_TAG_const_type
+			 || dw_get_die_tag (t) == DW_TAG_volatile_type
+			 || dw_get_die_tag (t) == DW_TAG_pointer_type
+			 || dw_get_die_tag (t) == DW_TAG_reference_type
+			 || dw_get_die_tag (t) == DW_TAG_rvalue_reference_type
+			 || dw_get_die_tag (t) == DW_TAG_array_type))
+	      t = get_AT_ref (t, DW_AT_type);
+
+	    if (get_AT_string (c, DW_AT_name) && t == type)
+	      return c;
+
+	    break;
+	  }
+
+	case DW_TAG_lexical_block:
+	  {
+	    dw_die_ref decl = find_declarator (c, type);
+
+	    if (decl)
+	      return decl;
+
+	    break;
+	  }
+
+	default:
+	  break;
+	}
+    }
+  while (c != first_child);
+
+  return NULL;
+}
+
+/* Return the name of DIE without its scope.  For an unnamed C++ structure,
+   follow MSVC: a forward reference to a type called <unnamed-tag> cannot be
+   resolved, so name closure types by their number and other types by their
+   typedef or first declarator.  */
+
+static char *
+get_unqualified_name (dw_die_ref die)
+{
+  const char *name = get_AT_string (die, DW_AT_name);
+  dw_die_ref decl;
+
+  if (name)
+    return xstrdup (name);
+
+  if (!get_AT_string (die, DW_AT_linkage_name))
+    return NULL;
+
+  if (closure_type_p (die))
+    return xasprintf ("<lambda_%u>", get_lambda_number (die));
+
+  decl = find_declarator (dw_get_die_parent (die), die);
+  if (!decl)
+    return NULL;
+
+  name = get_AT_string (decl, DW_AT_name);
+
+  if (dw_get_die_tag (decl) == DW_TAG_typedef)
+    return xstrdup (name);
+
+  return concat ("<unnamed-type-", name, ">", NULL);
+}
+
 /* Return the name of a DIE, traversing its parents in order to construct a
    C++-style name if necessary.  */
 static char *
@@ -5605,7 +5782,7 @@ get_name (dw_die_ref die)
 {
   dw_die_ref decl = get_AT_ref (die, DW_AT_specification);
   dw_die_ref parent;
-  const char *name;
+  char *name;
   char *str;
   size_t len;
 
@@ -5615,7 +5792,7 @@ get_name (dw_die_ref die)
   if (decl)
     die = decl;
 
-  name = get_AT_string (die, DW_AT_name);
+  name = get_unqualified_name (die);
 
   if (!name)
     return NULL;
@@ -5623,12 +5800,12 @@ get_name (dw_die_ref die)
   parent = dw_get_die_parent (die);
 
   if (!parent || dw_get_die_tag (parent) == DW_TAG_compile_unit)
-    return xstrdup (name);
+    return name;
 
   len = strlen (name);
   while (parent && dw_get_die_tag (parent) != DW_TAG_compile_unit)
     {
-      const char *ns_name = get_AT_string (parent, DW_AT_name);
+      char *ns_name = get_unqualified_name (parent);
 
       len += sizeof (sep) - 1;
 
@@ -5636,6 +5813,8 @@ get_name (dw_die_ref die)
 	len += strlen (ns_name);
       else
 	len += sizeof (anon) - 1;
+
+      free (ns_name);
 
       parent = dw_get_die_parent (parent);
     }
@@ -5646,10 +5825,12 @@ get_name (dw_die_ref die)
   len -= strlen (name);
   memcpy (str + len, name, strlen (name));
 
+  free (name);
+
   parent = dw_get_die_parent (die);
   while (parent && dw_get_die_tag (parent) != DW_TAG_compile_unit)
     {
-      const char *ns_name = get_AT_string (parent, DW_AT_name);
+      char *ns_name = get_unqualified_name (parent);
 
       len -= sizeof (sep) - 1;
       memcpy (str + len, sep, sizeof (sep) - 1);
@@ -5665,10 +5846,49 @@ get_name (dw_die_ref die)
 	  memcpy (str + len, anon, sizeof (anon) - 1);
 	}
 
+      free (ns_name);
+
       parent = dw_get_die_parent (parent);
     }
 
   return str;
+}
+
+/* Return the unique name of the structure TYPE, or NULL if it has none.
+   Use the typeinfo name of its mangled type, as clang does, so that the
+   unique names of both compilers agree.  */
+
+static char *
+get_unique_name (dw_die_ref type)
+{
+  const char *mangled = get_AT_string (type, DW_AT_linkage_name);
+
+  if (!mangled)
+    return NULL;
+
+  return concat ("_ZTS", mangled, NULL);
+}
+
+/* Give the LF_STRUCTURE, LF_CLASS, or LF_UNION CT for TYPE its unique name.
+   Debuggers find the definition of a scoped type by its unique name, so
+   mark a type within a function as scoped only if it has one.  */
+
+static void
+add_unique_name (codeview_custom_type *ct, dw_die_ref type)
+{
+  ct->lf_structure.unique_name = get_unique_name (type);
+
+  if (!ct->lf_structure.unique_name)
+    return;
+
+  ct->lf_structure.properties |= CV_PROP_HAS_UNIQUE_NAME;
+
+  for (dw_die_ref p = dw_get_die_parent (type); p; p = dw_get_die_parent (p))
+    if (dw_get_die_tag (p) == DW_TAG_subprogram)
+      {
+	ct->lf_structure.properties |= CV_PROP_SCOPED;
+	break;
+      }
 }
 
 /* Add a forward declaration for an enum.  This is legal from C++11 onwards.  */
@@ -5937,6 +6157,7 @@ add_struct_forward_def (dw_die_ref type)
   ct->lf_structure.length.neg = false;
   ct->lf_structure.length.num = 0;
   ct->lf_structure.name = get_name (type);
+  add_unique_name (ct, type);
 
   add_custom_type (ct);
 
@@ -6362,7 +6583,11 @@ get_type_num_struct (dw_die_ref type, bool in_struct, bool *is_fwd_ref)
   uint16_t num_members = 0;
   uint32_t last_type = 0;
 
-  if ((in_struct && get_AT_string (type, DW_AT_name))
+  /* A member function needs its class's type number before the class's
+     LF_STRUCTURE exists.  Only a forward reference can provide it, and that
+     can be resolved only by a name or unique name.  */
+  if ((in_struct && (get_AT_string (type, DW_AT_name)
+		     || get_AT_string (type, DW_AT_linkage_name)))
       || get_AT_flag (type, DW_AT_declaration))
     {
       *is_fwd_ref = true;
@@ -6558,6 +6783,7 @@ get_type_num_struct (dw_die_ref type, bool in_struct, bool *is_fwd_ref)
   ct->lf_structure.length.neg = false;
   ct->lf_structure.length.num = get_AT_unsigned (type, DW_AT_byte_size);
   ct->lf_structure.name = get_name (type);
+  add_unique_name (ct, type);
 
   add_custom_type (ct);
 

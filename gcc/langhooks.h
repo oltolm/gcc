@@ -185,6 +185,10 @@ struct lang_hooks_for_types
      value otherwise.  */
   int (*type_dwarf_attribute) (const_tree, int);
 
+  /* Returns the mangled name of TYPE, or NULL if it has none.  The name
+     is valid until the next call.  */
+  const char *(*mangled_type_name) (const_tree);
+
   /* Returns a tree for the unit size of T excluding tail padding that
      might be used by objects inheriting from T.  */
   tree (*unit_size_without_reusable_padding) (tree);

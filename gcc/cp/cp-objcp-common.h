@@ -28,6 +28,7 @@ extern tree objcp_tsubst_expr (tree, tree, tsubst_flags_t, tree);
 
 extern int cp_decl_dwarf_attribute (const_tree, int);
 extern int cp_type_dwarf_attribute (const_tree, int);
+extern const char *cp_mangled_type_name (const_tree);
 extern void cp_common_init_ts (void);
 extern tree cp_unit_size_without_reusable_padding (tree);
 extern tree cp_classtype_as_base (const_tree);
@@ -170,6 +171,8 @@ static const scoped_attribute_specs *const cp_objcp_attribute_table[] =
 #define LANG_HOOKS_DECL_DWARF_ATTRIBUTE cp_decl_dwarf_attribute
 #undef LANG_HOOKS_TYPE_DWARF_ATTRIBUTE
 #define LANG_HOOKS_TYPE_DWARF_ATTRIBUTE cp_type_dwarf_attribute
+#undef LANG_HOOKS_MANGLED_TYPE_NAME
+#define LANG_HOOKS_MANGLED_TYPE_NAME cp_mangled_type_name
 #undef LANG_HOOKS_UNIT_SIZE_WITHOUT_REUSABLE_PADDING
 #define LANG_HOOKS_UNIT_SIZE_WITHOUT_REUSABLE_PADDING cp_unit_size_without_reusable_padding
 #undef LANG_HOOKS_CLASSTYPE_AS_BASE

@@ -416,6 +416,16 @@ cp_type_dwarf_attribute (const_tree type, int attr)
   return -1;
 }
 
+/* Return the mangled name of TYPE, or NULL if it has none.  */
+const char *
+cp_mangled_type_name (const_tree type)
+{
+  if (!CLASS_TYPE_P (type))
+    return NULL;
+
+  return mangle_type_string (const_cast<tree> (type));
+}
+
 /* Return the unit size of TYPE without reusable tail padding.  */
 
 tree

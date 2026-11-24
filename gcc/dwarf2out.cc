@@ -26622,7 +26622,23 @@ gen_struct_or_union_type_die (tree type, dw_die_ref context_die,
       if (old_die)
 	add_AT_specification (type_die, old_die);
       else
-	add_name_attribute (type_die, type_tag (type));
+	{
+	  const char *name = type_tag (type);
+
+	  add_name_attribute (type_die, name);
+
+#ifdef CODEVIEW_DEBUGGING_INFO
+	  /* CodeView needs a name or a unique name to resolve forward
+	     references.  The DIE carries it so that it survives in a PCH.  */
+	  if (!name && codeview_debuginfo_p ())
+	    {
+	      const char *mangled = lang_hooks.types.mangled_type_name (type);
+
+	      if (mangled)
+		add_AT_string (type_die, DW_AT_linkage_name, mangled);
+	    }
+#endif
+	}
     }
   else
     remove_AT (type_die, DW_AT_declaration);
@@ -26769,7 +26785,10 @@ gen_typedef_die (tree decl, dw_die_ref context_die)
 	     anonymous struct TYPE.  The value of that attribute
 	     is the name of the typedef decl naming the anonymous
 	     struct.  This greatly eases the work of consumers of
-	     this debug info.  */
+	     this debug info.  For CodeView, gen_struct_or_union_type_die
+	     may have recorded the mangled name the type had before the
+	     typedef named it.  */
+	  remove_AT (lookup_type_die (type), DW_AT_linkage_name);
 	  add_linkage_name_raw (lookup_type_die (type), decl);
 	}
     }

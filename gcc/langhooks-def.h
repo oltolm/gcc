@@ -223,6 +223,7 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
 #define LANG_HOOKS_GET_DEBUG_TYPE	NULL
 #define LANG_HOOKS_GET_FIXED_POINT_TYPE_INFO NULL
 #define LANG_HOOKS_TYPE_DWARF_ATTRIBUTE	lhd_type_dwarf_attribute
+#define LANG_HOOKS_MANGLED_TYPE_NAME	hook_constcharptr_const_tree_null
 #define LANG_HOOKS_UNIT_SIZE_WITHOUT_REUSABLE_PADDING lhd_unit_size_without_reusable_padding
 #define LANG_HOOKS_CLASSTYPE_AS_BASE	hook_tree_const_tree_null
 
@@ -251,6 +252,7 @@ extern tree lhd_unit_size_without_reusable_padding (tree);
   LANG_HOOKS_GET_DEBUG_TYPE, \
   LANG_HOOKS_GET_FIXED_POINT_TYPE_INFO, \
   LANG_HOOKS_TYPE_DWARF_ATTRIBUTE, \
+  LANG_HOOKS_MANGLED_TYPE_NAME, \
   LANG_HOOKS_UNIT_SIZE_WITHOUT_REUSABLE_PADDING, \
   LANG_HOOKS_CLASSTYPE_AS_BASE \
 }
